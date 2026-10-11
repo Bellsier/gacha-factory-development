@@ -88,9 +88,9 @@ function buildMines(){
     card.className = 'line world-mine';
     card.innerHTML = '<div class="res-name">' + (resource ? resource.name : mine.resource) + '</div>' +
       '<div class="rate">위치 (' + mine.x + ', ' + mine.y + ') · 등급 ' + mine.grade + ' · 채굴력 ' + mine.miningPower + '</div>' +
-      '<div class="rate">' + (secured ? '확보 완료' : '미확보') + '</div>' +
+      '<div class="rate">' + (secured ? '확보 완료 · 초당 +' + fmt(mineBaseRate(mine) * mult()) : '미확보 · 확보하면 초당 +' + fmt(mineBaseRate(mine) * mult())) + '</div>' +
       '<button data-secure-mine="' + mine.id + '" ' + (secured || siteLocked ? 'disabled' : '') + '>' + (secured ? '확보됨' : siteLocked ? '잠김 · ' + (site ? site.name : '지역') + ' 해금 필요' : '광맥 확보') + '</button>' +
-      '<button data-mine-mine="' + mine.id + '" ' + (mine.developmentState !== 'secured' ? 'disabled' : '') + '>채굴하기 (+' + mine.miningPower + ')</button>';
+      '<button data-mine-mine="' + mine.id + '" ' + (mine.developmentState !== 'secured' ? 'disabled' : '') + '>채굴하기 (+' + fmt(mine.miningPower * mult()) + ')</button>';
     wrap.appendChild(card);
   });
   if(hiddenCount > 0){

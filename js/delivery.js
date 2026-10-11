@@ -220,7 +220,10 @@ function makeRepeatOrder(def, p, random){
 function issueOrder(key, random){
   const def = companyDef(key), p = companyProgress(key);
   if(!def || !p || p.open.length >= orderCap()) return null;
-  const order = nextFixedOrder(def, p) || (p.orderIndex >= def.orders.length ? makeRepeatOrder(def, p, random || Math.random) : null);
+  // Task 88: once the company has paid its first fixed order, a free second slot is filled with a
+  // repeat order while the next fixed order is still open (so the slot is not idle in the fixed phase).
+  const wantsRepeat = p.orderIndex >= def.orders.length || (p.open.length > 0 && p.orderIndex >= 1);
+  const order = nextFixedOrder(def, p) || (wantsRepeat ? makeRepeatOrder(def, p, random || Math.random) : null);
   if(order) p.open.push(order);
   return order;
 }

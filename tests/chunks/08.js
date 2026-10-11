@@ -3775,6 +3775,41 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   check('Task86: the target is saved and loaded', newDom(storage).window.state.craftTarget.steel === 9);
 })();
 
+
+(function test_T87_mineIncome() {
+  const win = newDom(makeMemoryStorage()).window;
+  const mine = win.state.world.mines.find((m) => m.resource === 'iron');
+  const base = win.autoRate('iron');
+  mine.developmentState = 'unsecured';
+  const without = win.autoRate('iron');
+  mine.developmentState = 'secured';
+  const rate = win.autoRate('iron');
+  check('Task87: a secured mine adds miningPower x grade x rate x multiplier per second', Math.abs((rate - without) - mine.miningPower * mine.grade * win.BALANCE.mining.MINE_RATE_PER_GRADE * win.mult()) < 1e-9 && rate > without);
+  const r0 = win.state.resources.iron;
+  win.tickMining();
+  check('Task87: the tick pays it out', win.state.resources.iron - r0 > 0);
+  mine.developmentState = 'unsecured';
+  const m0 = win.state.resources.iron;
+  check('Task87: an unsecured mine adds nothing and cannot be mined', win.mineMine(mine.id) === false && win.state.resources.iron === m0 && Math.abs(win.autoRate('iron') - without) < 1e-12);
+  mine.developmentState = 'secured';
+  win.permanent.totalPrestige = 10;
+  const before = win.state.resources.iron;
+  win.mineMine(mine.id);
+  check('Task87: the click scales with the multiplier', Math.abs(win.state.resources.iron - before - mine.miningPower * win.mult()) < 1e-9);
+})();
+
+(function test_T88_secondSlot() {
+  const win = newDom(makeMemoryStorage()).window;
+  const p = win.permanent.companies.forge;
+  win.permanent.totalPrestige = 18;
+  t83SetOrder(win, 'forge', 0);
+  check('Task88: before the first fixed order is paid there is no second order', win.issueOrder('forge', Math.random) === null && p.open.length === 1);
+  t83SetOrder(win, 'forge', 1);
+  const o = win.issueOrder('forge', Math.random);
+  check('Task88: with a fixed order open and one paid, the free second slot gets a repeat order', !!o && o.index === -1 && p.open.length === 2 && p.open[0].index === 1);
+  check('Task88: the cap still holds', win.issueOrder('forge', Math.random) === null && p.open.length === 2);
+})();
+
 // SUMMARY
 // =============================================================================
 

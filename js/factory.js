@@ -311,7 +311,7 @@ function mineMine(mineId){
   const mine = mineById(mineId);
   if(!mine || mine.developmentState !== 'secured') return false;
   if(!isMineResourceValid(mine.resource) || !isNonNegativeFinite(mine.miningPower) || mine.miningPower <= 0) return false;
-  state.resources[mine.resource] += mine.miningPower;
+  state.resources[mine.resource] += mine.miningPower * mult(); // Task 87: the click scales with the multiplier like every other yield
   return true;
 }
 

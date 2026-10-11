@@ -58,6 +58,8 @@ const BALANCE = {
     MAX_LEVEL: 12,              // Task 84
   },
   mining: {
+    // Task 87: every secured mine yields miningPower * grade * this per second of its resource (times mult()).
+    MINE_RATE_PER_GRADE: 0.4,
     WORKFORCE_BONUS_MULTIPLIER: 1.5, // autoRate(): auto-mining bonus per workforce level
     FACILITY_COST_BASE: 20,          // facilityCost(): base cost of facility level 0
     FACILITY_COST_GROWTH: 1.5,       // facilityCost(): cost growth factor per level

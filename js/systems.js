@@ -20,10 +20,18 @@ function workerUpgradeCost(worker, stat){
   return expCost(BALANCE.worker.STAT_COST_BASE[stat], BALANCE.worker.STAT_COST_GROWTH, worker[stat+'Lvl']);
 }
 
+// Task 87: passive yield of the secured mines of one resource (before mult()).
+function mineBaseRate(mine){
+  return mine.miningPower * mine.grade * BALANCE.mining.MINE_RATE_PER_GRADE;
+}
+function mineRate(resKey){
+  return state.world.mines.filter(m => m && m.resource === resKey && m.developmentState === 'secured').reduce((s, m) => s + mineBaseRate(m), 0);
+}
+
 function autoRate(resKey){
   const charBonus = state.characters.filter(c=>c.resource===resKey).reduce((s,c)=>s+workerEffective(c),0);
   const workforceBonus = state.workforce[resKey] * BALANCE.mining.WORKFORCE_BONUS_MULTIPLIER;
-  return (charBonus + workforceBonus) * mult();
+  return (charBonus + workforceBonus + mineRate(resKey)) * mult();
 }
 
 function manualAmount(resKey){

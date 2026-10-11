@@ -1,19 +1,19 @@
 (function test_T49_expansionDoesNotDuplicateMines() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task49: first expansion succeeds', win.expandBase() === true);
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task49: repeated same-region expansion is rejected', win.expandBase() === false);
   check('Task49: repeated expansion does not duplicate seeded mines', win.state.world.mines.length === 4);
 })();
 
 (function test_T50_expansionUI() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   win.renderBaseInfo();
   const btn = win.document.querySelector('[data-expand-base]');
   check('Task50: base panel shows next-region expansion button', !!btn);
-  check('Task50: expansion button shows cost', btn && btn.textContent.includes('700G'));
+  check('Task50: expansion button shows cost', btn && btn.textContent.includes('3000G'));
 })();
 
 (function test_T51_calmPresentationPanel() {
@@ -93,7 +93,7 @@
 
 (function test_stabilize_unlockSiteSeedsMinesAndRefreshesPanel() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   win.buildLines();
   win.buildMines();
   const beforeCount = win.state.world.mines.length;
@@ -106,7 +106,7 @@
   const manaMine = win.state.world.mines.find(m => m.resource === 'mana');
   check('stabilize: world mine panel shows seeded mines after unlock', !!manaMine && !!wrap.querySelector('[data-secure-mine="' + manaMine.id + '"]'));
   const expandBtn = win.document.querySelector('[data-expand-base]');
-  check('stabilize: base expansion button moves to the following region', expandBtn && expandBtn.textContent.includes('2500G'));
+  check('stabilize: base expansion button moves to the following region', expandBtn && expandBtn.textContent.includes('20000G'));
 })();
 
 (function test_stabilize_autoToggleStartsImmediatelyAndSaves() {
@@ -267,7 +267,7 @@
   const stageIds = [...doc.querySelectorAll('#worldStage [data-world-mine]')].map(e=>e.getAttribute('data-world-mine')).sort().join(',');
   check('Task57: stage mines match world mine list', listIds === stageIds && stageIds.length > 0);
   // Expansion adds mines to both views through renderAll().
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task57: expansion succeeds', win.expandBase() === true);
   win.renderAll();
   const nodes = doc.querySelectorAll('#worldStage [data-world-mine]');
@@ -356,7 +356,7 @@
   stage.querySelector('[data-world-mine="mine_start_coal"]').click();
   stage.querySelector('[data-world-mine="mine_start_iron"]').click();
   check('Task58: secured mine can be selected again', win.getWorldSelection().id === 'mine_start_iron');
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task58: expansion succeeds', win.expandBase() === true);
   win.renderAll();
   check('Task58: selection kept across renderAll', stage.querySelector('[data-world-mine="mine_start_iron"]').classList.contains('is-selected'));
@@ -437,7 +437,7 @@
   check('Task59: base level reads current state', line('level') === '레벨 3');
   win.state.world.base.level = 1;
   // Expansion: new mine info.
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task59: expansion succeeds', win.expandBase() === true);
   win.renderAll();
   check('Task59: base info after expansion shows new level', line('level') === '레벨 2');
@@ -590,7 +590,7 @@
   check('Task60: crafting still works', win.state.products.steel === 1);
   doc.querySelector('[data-sell="steel"]').click();
   check('Task60: selling still works', win.state.gold > 0 && win.state.products.steel === 0);
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task60: expansion still works', win.expandBase() === true && win.state.world.base.level === 2);
   check('Task60: workshop marker remains after the core loop', doc.querySelectorAll('#worldWorkshopLayer .world-workshop-node').length === 1);
   check('Task60: core loop does not create extra workshops', win.state.world.workshops.length === 1 && win.state.world.workshops[0].id === 'workshop_loop');
@@ -779,7 +779,7 @@
 
 (function test_T62_expansionSeedsRelativeToBase() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task62: expansion still works', win.expandBase() === true);
   const mana = win.state.world.mines.find(m => m.resource === 'mana');
   const crystal = win.state.world.mines.find(m => m.resource === 'crystal');
@@ -815,7 +815,7 @@
   // Expanding an older save keeps its old seed layout (relative to its base at 0,0).
   const win2 = newDom(storage).window;
   check('Task62: game boots from the older save', win2.state.world.base.x === 0 && win2.state.world.mines.length === 3);
-  win2.state.gold = 5000;
+  win2.state.gold = 50000; win2.state.products.manaLamp = 3; win2.state.products.crystalLens = 2;
   check('Task62: older save can still expand', win2.expandBase() === true);
   const rare = win2.state.world.mines.find(m => m.resource === 'rareMetal');
   check('Task62: older save expansion uses its own base as origin', !!rare && rare.x === 6 && rare.y === 0);
@@ -922,7 +922,7 @@
   const win = newDom(makeMemoryStorage()).window;
   const w = win.state.world;
   check('Task62b: new-game base and start mines are inside the bounds', [w.base, ...w.mines].every(o => win.isValidWorldX(o.x) && win.isValidWorldY(o.y)));
-  win.state.gold = 20000;
+  win.state.gold = 150000;
   win.expandBase(); win.expandBase(); win.expandBase();
   check('Task62b: every seeded expansion mine is placed inside the bounds', win.state.world.mines.length === 8 && win.state.world.mines.every(m => win.isValidWorldX(m.x) && win.isValidWorldY(m.y)));
   const far = win.state.world.mines.find(m => m.resource === 'cosmicShard');
@@ -1124,7 +1124,7 @@ function t63LayoutProblems(win, base, mines, opts) {
   const dataSrc = fs.readFileSync(path.join(__dirname, '..', 'js', 'data.js'), 'utf8');
   check('Task63: WORLD_MINE_SEEDS still exists for site expansion', /const WORLD_MINE_SEEDS = \{/.test(dataSrc) && /manaVein:/.test(dataSrc));
   check('Task63: new game does not use WORLD_MINE_SEEDS', win.state.world.mines.every(m => m.id.startsWith('mine_start_') || m.id.startsWith('mine_gen_')));
-  win.state.gold = 20000;
+  win.state.gold = 150000;
   check('Task63: site expansion still works', win.expandBase() === true && win.expandBase() === true && win.expandBase() === true);
   const ids = win.state.world.mines.map(m => m.id);
   check('Task63: every site seed is added on expansion (no collision with random starters)', ['mine_manaVein_mana','mine_manaVein_crystal','mine_ruins_rareMetal','mine_ruins_relic','mine_spaceStation_cosmicShard','mine_spaceStation_plasma'].every(id => ids.includes(id)) && ids.length === 8);
@@ -1149,7 +1149,7 @@ function t63LayoutProblems(win, base, mines, opts) {
   check('Task63: crafting works', win.state.products.steel === 1);
   doc.querySelector('[data-sell="steel"]').click();
   check('Task63: selling works', win.state.gold > 0 && win.state.products.steel === 0);
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task63: expansion works', win.expandBase() === true);
   win.renderAll();
   check('Task63: stage shows every mine', doc.querySelectorAll('#worldStage [data-world-mine]').length === win.state.world.mines.length);
@@ -1331,7 +1331,7 @@ function t64Problems(win, base, mines, opts) {
   const btn = doc.querySelector('[data-secure-mine="' + outer.id + '"]');
   check('Task64: its list button is disabled and says the site must be unlocked', btn.disabled === true && btn.textContent.includes('해금 필요'));
   check('Task64: starter (open site) mines can still be secured', win.secureMine('mine_start_iron') === true);
-  win.state.gold = 20000;
+  win.state.gold = 150000;
   win.expandBase(); win.expandBase(); win.expandBase();
   win.renderAll();
   check('Task64: after its site is unlocked the far mine can be secured', win.secureMine(outer.id) === true);
@@ -1343,7 +1343,7 @@ function t64Problems(win, base, mines, opts) {
 (function test_T64_expansionStillAddsEverySeed() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
   const start = win.state.world.mines.length;
-  win.state.gold = 20000;
+  win.state.gold = 150000;
   check('Task64: expansion works on a ring world', win.expandBase() === true && win.state.world.mines.length === start + 2);
   win.expandBase(); win.expandBase();
   const ids = win.state.world.mines.map(m => m.id);
@@ -1392,7 +1392,7 @@ function t64Problems(win, base, mines, opts) {
   check('Task64: crafting works', win.state.products.steel === 1);
   doc.querySelector('[data-sell="steel"]').click();
   check('Task64: selling works', win.state.gold > 0);
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task64: expansion works', win.expandBase() === true);
   win.saveGame();
   const win2 = newDom(storage).window;
@@ -1551,7 +1551,7 @@ function t65MidOk(base, mines) {
 
 (function test_T65_expansionMinesAreDiscovered() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   win.expandBase();
   win.renderAll();
   const seeded = win.state.world.mines.filter(m => m.id.startsWith('mine_manaVein_'));
@@ -1599,7 +1599,7 @@ function t65MidOk(base, mines) {
   doc.querySelector('[data-craft="steel"]').click();
   doc.querySelector('[data-sell="steel"]').click();
   check('Task65: secure / mine / craft / sell loop still works', win.state.products.steel === 0 && win.state.gold > 0 && win.state.resources.iron === 0);
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task65: expansion still works', win.expandBase() === true);
 })();
 
@@ -1837,7 +1837,7 @@ const T66_STEP = 3 / 10; // PLAYER_SPEED / TICKS_PER_SECOND
   win.state.world.player.x = target.x; win.state.world.player.y = target.y;
   win.tickLoop();
   check('Task66: discovery still works (radius rule unchanged)', !win.state.world.hiddenMineIds.includes(target.id));
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task66: expansion still works and its mines are on open ground', win.expandBase() === true && win.state.world.mines.filter(m => m.id.startsWith('mine_manaVein_')).every(m => win.isWorldPointWalkable(m.x, m.y)));
 })();
 
@@ -2425,14 +2425,14 @@ function t69Problems(win, before, after) {
 })();
 
 // =============================================================================
-// TASK 70 — Research. One item for now: "터널 굴착" (tunnelWork) costs 1500 gold
+// TASK 70 — Research. One item for now: "터널 굴착" (tunnelWork) costs 30000 gold
 // + 5 마법 합금 (alloy) and opens the tunnel (Task 68/69). Research is instant,
 // run-scoped (resets with a new run) and saved in state.research.
 // Reference values are hard-coded here, not read back from the game.
 // =============================================================================
 
 function t70Afford(win) {
-  win.state.gold = 1500;
+  win.state.gold = 30000;
   win.state.products.alloy = 5;
 }
 
@@ -2440,7 +2440,7 @@ function t70Afford(win) {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
   const def = win.researchDef('tunnelWork');
   check('Task70: the tunnel research exists with its name', !!def && def.name === '터널 굴착');
-  check('Task70: it costs 1500 gold and 5 magic alloy and needs no other research', def.cost.gold === 1500 && Object.keys(def.cost.products).join() === 'alloy' && def.cost.products.alloy === 5 && def.requires.length === 0);
+  check('Task70: it costs 30000 gold and 5 magic alloy and needs no other research', def.cost.gold === 30000 && Object.keys(def.cost.products).join() === 'alloy' && def.cost.products.alloy === 5 && def.requires.length === 0);
   check('Task70: it opens the tunnel', def.effect === 'unlockTunnel');
   check('Task70: a new game has the research map with nothing done', Object.keys(win.state.research).every(k => win.state.research[k] === false) && win.state.research.tunnelWork === false);
   check('Task70: status of a new game is available, not done', win.researchStatus('tunnelWork') === 'available' && win.isResearchDone('tunnelWork') === false);
@@ -2450,11 +2450,11 @@ function t70Afford(win) {
 (function test_T70_affordability() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
   check('Task70: nothing owned — cannot research', win.canResearch('tunnelWork') === false);
-  win.state.gold = 1500;
+  win.state.gold = 30000;
   check('Task70: gold alone is not enough', win.canResearch('tunnelWork') === false);
-  win.state.gold = 1499; win.state.products.alloy = 5;
+  win.state.gold = 29999; win.state.products.alloy = 5;
   check('Task70: one gold short is not enough', win.canResearch('tunnelWork') === false);
-  win.state.gold = 1500; win.state.products.alloy = 4;
+  win.state.gold = 30000; win.state.products.alloy = 4;
   check('Task70: one alloy short is not enough', win.canResearch('tunnelWork') === false);
   win.state.products.alloy = 5;
   check('Task70: exactly the cost is enough', win.canResearch('tunnelWork') === true);
@@ -2463,7 +2463,7 @@ function t70Afford(win) {
 
 (function test_T70_failureChangesNothing() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  win.state.gold = 1499; win.state.products.alloy = 9; win.state.products.steel = 3; win.state.resources.mana = 2;
+  win.state.gold = 29999; win.state.products.alloy = 9; win.state.products.steel = 3; win.state.resources.mana = 2;
   const snap = JSON.stringify([win.state.gold, win.state.products, win.state.resources, win.state.research, win.state.world.tunnelUnlocked, win.state.world.mines.length]);
   const logs = win.document.getElementById('log').children.length;
   check('Task70: a failed research returns false', win.doResearch('tunnelWork') === false && win.doResearch('nope') === false);
@@ -2472,18 +2472,18 @@ function t70Afford(win) {
 
 (function test_T70_researchTheTunnel() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  win.state.gold = 2000; win.state.products.alloy = 7; win.state.products.steel = 3; win.state.resources.mana = 2;
+  win.state.gold = 32000; win.state.products.alloy = 7; win.state.products.steel = 3; win.state.resources.mana = 2;
   const logEl = win.document.getElementById('log');
   const logs = logEl.children.length;
   check('Task70: researching with enough succeeds', win.doResearch('tunnelWork') === true);
-  check('Task70: it costs exactly 1500 gold and 5 alloy', win.state.gold === 500 && win.state.products.alloy === 2);
+  check('Task70: it costs exactly 30000 gold and 5 alloy', win.state.gold === 2000 && win.state.products.alloy === 2);
   check('Task70: nothing else is spent', win.state.products.steel === 3 && win.state.resources.mana === 2);
   check('Task70: it is marked done and stays done', win.isResearchDone('tunnelWork') === true && win.researchStatus('tunnelWork') === 'done' && win.state.research.tunnelWork === true);
   check('Task70: the tunnel is open and its mines were generated (14 + 8)', win.state.world.tunnelUnlocked === true && win.state.world.mines.length === 22 && win.terrainTunnelOpen() === true);
   check('Task70: two log lines, the research first and the tunnel on top', logEl.children.length === logs + 2 && logEl.children[1].textContent === '연구 완료: 터널 굴착' && logEl.children[0].textContent.includes('터널이 열렸습니다'));
   const afterGold = win.state.gold;
-  win.state.products.alloy = 10; win.state.gold = 5000;
-  check('Task70: a finished research cannot be bought again (nothing spent)', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 5000 && win.state.products.alloy === 10 && win.state.world.mines.length === 22);
+  win.state.products.alloy = 10; win.state.gold = 50000;
+  check('Task70: a finished research cannot be bought again (nothing spent)', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 50000 && win.state.products.alloy === 10 && win.state.world.mines.length === 22);
   check('Task70: the player can now walk through the tunnel', (() => { const p = win.state.world.player; p.x = 0; p.y = 1; t68Hold(win, ['left'], 60); return win.terrainRegionAt(p.x, p.y) === 'beyond'; })());
   void afterGold;
 })();
@@ -2494,7 +2494,7 @@ function t70Afford(win) {
   win.unlockTunnel();
   check('Task70: opening the tunnel directly marks the research done', win.state.research.tunnelWork === true && win.researchStatus('tunnelWork') === 'done');
   t70Afford(win);
-  check('Task70: ...so it cannot be paid for afterwards', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 1500 && win.state.products.alloy === 5);
+  check('Task70: ...so it cannot be paid for afterwards', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 30000 && win.state.products.alloy === 5);
 })();
 
 (function test_T70_prerequisites() {
@@ -2521,17 +2521,17 @@ function t70Afford(win) {
   const btn = doc.querySelector('[data-research="tunnelWork"]');
   check('Task70: one card with name, description, cost line and a button', !!card && card.textContent.includes('터널 굴착') && card.textContent.includes('산을 가로지르는') && card.getAttribute('data-research-status') === 'available' && !!btn);
   const cost = doc.querySelector('[data-research-cost="tunnelWork"]');
-  check('Task70: the cost line shows gold and alloy with what the player has', cost.textContent.includes('1,500G') && cost.textContent.includes('마법 합금 5개') && cost.textContent.includes('보유 0G') && cost.textContent.includes('보유 0개'));
+  check('Task70: the cost line shows gold and alloy with what the player has', cost.textContent.includes('30,000G') && cost.textContent.includes('마법 합금 5개') && cost.textContent.includes('보유 0G') && cost.textContent.includes('보유 0개'));
   check('Task70: the button is disabled while the cost is not met', btn.disabled === true && btn.textContent === '연구하기');
   btn.click();
   check('Task70: clicking a disabled button does nothing', win.state.research.tunnelWork === false && win.state.world.tunnelUnlocked === false);
   t70Afford(win);
   win.updateNumbers();
-  check('Task70: the per-tick refresh enables the button without rebuilding it', doc.querySelector('[data-research="tunnelWork"]') === btn && btn.disabled === false && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 1,500G') && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 5개'));
-  win.state.gold = 1499;
+  check('Task70: the per-tick refresh enables the button without rebuilding it', doc.querySelector('[data-research="tunnelWork"]') === btn && btn.disabled === false && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 30,000G') && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 5개'));
+  win.state.gold = 29999;
   win.updateNumbers();
   check('Task70: ...and disables it again when the cost is no longer met', btn.disabled === true);
-  win.state.gold = 1500;
+  win.state.gold = 30000;
   win.updateNumbers();
   btn.click();
   const done = doc.querySelector('[data-research="tunnelWork"]');
@@ -2613,8 +2613,8 @@ function t70Afford(win) {
   win.renderAll();
   const chk = doc.querySelector('[data-autocraft="coalBrick"]');
   check('Task71: the recipe checkbox is disabled and names the research', chk && chk.disabled === true && /연구/.test(chk.parentNode.textContent));
-  win.state.gold = 150; win.state.products.steel = 10;
-  check('Task71: researching the device costs 150G + 10 steel', win.doResearch('autoCraftDevice') === true && win.state.gold === 0 && win.state.products.steel === 0);
+  win.state.gold = 800; win.state.products.steel = 10;
+  check('Task71: researching the device costs 800G + 10 steel', win.doResearch('autoCraftDevice') === true && win.state.gold === 0 && win.state.products.steel === 0);
   check('Task71: auto-craft opens', win.isAutoCraftUnlocked() === true);
   win.tickLoop();
   check('Task71: the stored auto flag now crafts', win.state.products.coalBrick >= 1);
@@ -2639,20 +2639,20 @@ function t70Afford(win) {
   const doc = win.document;
   check('Task71: building is locked at first', win.isWorkshopBuildUnlocked() === false && win.canBuildWorkshop() === false && win.buildWorkshop() === null);
   check('Task71: the build area points to the research', /제작소 건설/.test(doc.getElementById('workshopBuild').textContent) && !doc.querySelector('[data-build-workshop]'));
-  win.state.gold = 100; win.state.products.steel = 5;
+  win.state.gold = 1000; win.state.products.steel = 5;
   check('Task71: the research is paid and done', win.doResearch('workshopBuild') === true && win.state.gold === 0 && win.state.products.steel === 0);
   win.renderAll();
   const btn = doc.querySelector('[data-build-workshop]');
-  check('Task71: a build button appears, disabled without gold', btn && btn.disabled === true && /100G/.test(btn.textContent));
-  check('Task71: the cost grows with each workshop', win.workshopBuildCost() === 100);
+  check('Task71: a build button appears, disabled without gold', btn && btn.disabled === true && /500G/.test(btn.textContent));
+  check('Task71: the cost grows with each workshop', win.workshopBuildCost() === 500);
   win.state.gold = 1000;
   win.updateNumbers();
   check('Task71: the per-tick refresh enables the button', doc.querySelector('[data-build-workshop]') === btn && btn.disabled === false);
   btn.click();
   const w = win.state.world.workshops;
-  check('Task71: clicking builds one workshop and spends the gold', w.length === 1 && win.state.gold === 900 && w[0].level === 1 && w[0].recipeKey === null && w[0].auto === false);
+  check('Task71: clicking builds one workshop and spends the gold', w.length === 1 && win.state.gold === 500 && w[0].level === 1 && w[0].recipeKey === null && w[0].auto === false);
   check('Task71: it stands next to the base on open ground', Math.max(Math.abs(w[0].x - win.state.world.base.x), Math.abs(w[0].y - win.state.world.base.y)) === 1 && win.isCellOpenForMines(w[0].x, w[0].y));
-  check('Task71: the card is listed and the map shows it', doc.querySelectorAll('#workshops .line').length === 1 && win.workshopBuildCost() === 160);
+  check('Task71: the card is listed and the map shows it', doc.querySelectorAll('#workshops .line').length === 1 && win.workshopBuildCost() === 800);
   const taken = new Set([win.state.world.base.x + ',' + win.state.world.base.y]);
   win.state.world.mines.forEach(m => taken.add(m.x + ',' + m.y));
   win.state.gold = 1e9;
@@ -2692,7 +2692,7 @@ function t70Afford(win) {
 (function test_T71_saveCompat() {
   const storage = makeMemoryStorage();
   const win = newDom(storage).window;
-  win.state.gold = 250; win.state.products.steel = 15;
+  win.state.gold = 1800; win.state.products.steel = 15;
   win.doResearch('workshopBuild'); win.doResearch('autoCraftDevice');
   win.saveGame();
   const saved = JSON.parse(storage.getItem('gachaFactorySave'));
@@ -2905,8 +2905,8 @@ function t83Arrive(win, key) {
   const html = fs.readFileSync('index.html', 'utf8');
   check('Task72: index.html loads delivery.js after research.js and before ui.js', html.indexOf('js/research.js') < html.indexOf('js/delivery.js') && html.indexOf('js/delivery.js') < html.indexOf('js/ui.js'));
   const win = newDom(makeMemoryStorage()).window;
-  check('Task72: the delivery research is in the 납품 branch and costs 200G + 10 steel', win.RESEARCH.some(r => r.key === 'deliveryContract' && r.branch === 'delivery' && r.cost.gold === 200 && r.cost.products.steel === 10));
-  win.state.gold = 200; win.state.products.steel = 10;
+  check('Task72: the delivery research is in the 납품 branch and costs 1200G + 10 steel', win.RESEARCH.some(r => r.key === 'deliveryContract' && r.branch === 'delivery' && r.cost.gold === 1200 && r.cost.products.steel === 10));
+  win.state.gold = 1200; win.state.products.steel = 10;
   check('Task72: researching it opens delivery', win.isDeliveryUnlocked() === false && win.doResearch('deliveryContract') === true && win.isDeliveryUnlocked() === true);
 })();
 
@@ -3312,7 +3312,7 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   const win = newDom(makeMemoryStorage()).window;
   const shop = win.addWorkshop({ id: 'ws79u', x: 4, y: 2, level: 1 });
   const goldAt = (lvl) => { shop.level = lvl; return win.workshopUpgradeCost(shop); };
-  const expected = [[1, 150], [2, 255], [3, 433], [4, 737], [5, 1253], [6, 2130], [7, 3621]];
+  const expected = [[1, 1500], [2, 2550], [3, 4335], [4, 7369], [5, 12528], [6, 21298], [7, 36206]];
   expected.forEach(([lvl, gold]) => check('Task79: upgrading from Lv.' + lvl + ' costs ' + gold + 'G', goldAt(lvl).gold === gold));
   check('Task79: levels 2 to 5 need gold only', [1, 2, 3, 4].every(l => Object.keys(goldAt(l).products).length === 0));
   check('Task79: Lv.6 needs 2 precision parts, Lv.7 3 relic parts, Lv.8 a quantum core', JSON.stringify(goldAt(5).products) === '{"precisionPart":2}' && JSON.stringify(goldAt(6).products) === '{"relicPart":3}' && JSON.stringify(goldAt(7).products) === '{"quantumCore":1}');
@@ -3325,10 +3325,10 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
 (function test_T79_upgradeAction() {
   const win = newDom(makeMemoryStorage()).window;
   const shop = win.addWorkshop({ id: 'ws79a', x: 4, y: 2, level: 1, recipeKey: 'steel' });
-  win.state.gold = 149;
-  check('Task79: not enough gold refuses and changes nothing', win.upgradeWorkshop(shop.id) === false && shop.level === 1 && win.state.gold === 149);
-  win.state.gold = 1000;
-  check('Task79: upgrading spends the gold and adds a level', win.upgradeWorkshop(shop.id) === true && shop.level === 2 && win.state.gold === 850);
+  win.state.gold = 1499;
+  check('Task79: not enough gold refuses and changes nothing', win.upgradeWorkshop(shop.id) === false && shop.level === 1 && win.state.gold === 1499);
+  win.state.gold = 2000;
+  check('Task79: upgrading spends the gold and adds a level', win.upgradeWorkshop(shop.id) === true && shop.level === 2 && win.state.gold === 500);
   win.state.gold = 1e6;
   win.upgradeWorkshop(shop.id); win.upgradeWorkshop(shop.id); win.upgradeWorkshop(shop.id);
   check('Task79: it is Lv.5 after four upgrades', shop.level === 5);
@@ -3355,15 +3355,15 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   const win = newDom(makeMemoryStorage()).window;
   const doc = win.document;
   const shop = win.addWorkshop({ id: 'ws79c', x: 4, y: 2, level: 1 });
-  win.state.gold = 100;
+  win.state.gold = 1000;
   win.renderAll();
   const btn = doc.querySelector('[data-workshop-upgrade="ws79c"]');
-  check('Task79: the card has an upgrade button with its cost, disabled while short of gold', !!btn && btn.disabled === true && /Lv\.2/.test(btn.textContent) && /150G/.test(btn.textContent));
-  win.state.gold = 150;
+  check('Task79: the card has an upgrade button with its cost, disabled while short of gold', !!btn && btn.disabled === true && /Lv\.2/.test(btn.textContent) && /1,?500G/.test(btn.textContent));
+  win.state.gold = 1500;
   win.updateNumbers();
   check('Task79: the per-tick refresh enables it without rebuilding', doc.querySelector('[data-workshop-upgrade="ws79c"]') === btn && btn.disabled === false);
   btn.click();
-  check('Task79: clicking upgrades and shows the new level and next cost', shop.level === 2 && /제작소 Lv\.2/.test(doc.querySelector('#workshops .res-name').textContent) && /255G/.test(doc.querySelector('[data-workshop-upgrade="ws79c"]').textContent));
+  check('Task79: clicking upgrades and shows the new level and next cost', shop.level === 2 && /제작소 Lv\.2/.test(doc.querySelector('#workshops .res-name').textContent) && /2,?550G/.test(doc.querySelector('[data-workshop-upgrade="ws79c"]').textContent));
   shop.level = 6; win.state.products.relicPart = 0; win.renderAll();
   check('Task79: the button names the products a high level needs', /유물 부품 3개/.test(doc.querySelector('[data-workshop-upgrade="ws79c"]').textContent));
   shop.level = 8; win.renderAll();
@@ -3426,11 +3426,11 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
 
 (function test_T80_buy() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 100000;
+  win.state.gold = 200000;
   win.state.research.workshopBuild = true;
-  check('Task80: a research is refused while the products are missing, and nothing is spent', win.canResearch('workshopExpansion') === false && win.doResearch('workshopExpansion') === false && win.state.gold === 100000);
+  check('Task80: a research is refused while the products are missing, and nothing is spent', win.canResearch('workshopExpansion') === false && win.doResearch('workshopExpansion') === false && win.state.gold === 200000);
   win.state.products.steelGear = 6; win.state.products.manaEngine = 2;
-  check('Task80: 제작소 증축 can be bought and spends gold and parts', win.doResearch('workshopExpansion') === true && win.state.gold === 96000 && win.state.products.steelGear === 0 && win.state.products.manaEngine === 0 && win.isResearchDone('workshopExpansion'));
+  check('Task80: 제작소 증축 can be bought and spends gold and parts', win.doResearch('workshopExpansion') === true && win.state.gold === 80000 && win.state.products.steelGear === 0 && win.state.products.manaEngine === 0 && win.isResearchDone('workshopExpansion'));
   check('Task80: fastTrade stays locked until 정기 거래 확대', win.researchStatus('fastTrade') === 'locked');
 })();
 
@@ -3497,7 +3497,7 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
 
 (function test_T80_surveyByResearch() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 10000; win.state.research.tunnelWork = true;
+  win.state.gold = 100000; win.state.research.tunnelWork = true;
   win.state.products.crystalLens = 3; win.state.products.steelGear = 3;
   const before = win.state.world.mines.length;
   check('Task80: buying 지질 조사 creates its mines once', win.doResearch('geologicalSurvey') === true && win.state.world.mines.length === before + 3 && win.doResearch('geologicalSurvey') === false && win.state.world.mines.length === before + 3);
@@ -3507,7 +3507,7 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   const store = makeMemoryStorage();
   const win = newDom(store).window;
   win.state.research.fastTrade = true; win.state.research.tradeExpansion = true;
-  win.state.gold = 10000; win.state.research.tunnelWork = true;
+  win.state.gold = 100000; win.state.research.tunnelWork = true;
   win.state.products.crystalLens = 3; win.state.products.steelGear = 3;
   win.doResearch('geologicalSurvey');
   const mines = win.state.world.mines.length;
@@ -3535,12 +3535,12 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   win.state.gold = 100000;
   check('Task81: gold alone is not enough', win.canUnlockSite(S('manaVein')) === false && win.unlockSite('manaVein') === false && win.state.gold === 100000 && win.state.unlockedSites.manaVein === false);
   win.state.products.steel = 5;
-  check('Task81: with the parts it opens and spends both', win.unlockSite('manaVein') === true && win.state.gold === 99300 && win.state.products.steel === 0 && win.state.unlockedSites.manaVein === true);
+  check('Task81: with the parts it opens and spends both', win.unlockSite('manaVein') === true && win.state.gold === 97000 && win.state.products.steel === 0 && win.state.unlockedSites.manaVein === true);
   win.state.products.manaLamp = 3; win.state.products.crystalLens = 1;
   check('Task81: one part short blocks base expansion and nothing changes', win.expandBase() === false && win.state.products.manaLamp === 3 && win.state.world.base.level === 1);
   win.state.products.crystalLens = 2;
   check('Task81: expansion pays the parts too', win.expandBase() === true && win.state.products.manaLamp === 0 && win.state.products.crystalLens === 0 && win.state.world.base.level === 2);
-  check('Task81: the cost text names gold and parts', win.siteCostText(S('ruins')).includes('2500G') && win.siteCostText(S('ruins')).includes('마정 램프 3개'));
+  check('Task81: the cost text names gold and parts', win.siteCostText(S('ruins')).includes('20000G') && win.siteCostText(S('ruins')).includes('마정 램프 3개'));
 })();
 
 (function test_T81_siteButton() {
@@ -3625,16 +3625,16 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   t72Open(win);
   const p = win.permanent.companies.forge;
   check('Task83: every company starts with its first fixed order open', win.COMPANIES.every((c) => win.openOrders(c.key).length === 1 && win.openOrders(c.key)[0].index === 0));
-  check('Task83: the interval is 300 s at reputation 0 and 60 s at the maximum', win.orderArrivalSec() === 300 && (win.permanent.totalPrestige = 36, win.orderArrivalSec() === 60));
+  check('Task83: the interval is 300 s at reputation 0 and 60 s at the maximum', win.orderArrivalSec() === 1500 && (win.permanent.totalPrestige = 36, win.orderArrivalSec() === 300));
   win.permanent.totalPrestige = 0;
   check('Task83: the cap is 1 open order per company, 2 from reputation 18', win.orderCap() === 1 && (win.permanent.totalPrestige = 18, win.orderCap() === 2));
   win.permanent.totalPrestige = 0;
   check('Task83: with an open order at the cap nothing arrives and the timer stays 0', win.tickOrders().length === 0 && p.orderTimer === 0 && p.open.length === 1);
   win.state.products.steel = 25; win.completeOrder('forge');
-  // the completed order paid 1 reputation, so the interval is now 300 - 240/36 = 293.3 s
-  for (let i = 0; i < 2900; i++) win.tickOrders();
+  // the completed order paid 1 reputation, so the interval is now 1500 - 1200/36 = 1466.7 s
+  for (let i = 0; i < 14600; i++) win.tickOrders();
   check('Task83: nothing arrives before the interval', p.open.length === 0);
-  for (let i = 0; i < 50; i++) win.tickOrders();
+  for (let i = 0; i < 100; i++) win.tickOrders();
   check('Task83: the next fixed order arrives after the interval', p.open.length === 1 && p.open[0].index === 1 && p.open[0].product === 'coalBrick');
   win.permanent.totalPrestige = 18;
   p.orderTimer = 1e9; win.tickOrders();
@@ -3654,7 +3654,7 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   const out = win.completeOrder('forge', 1);
   check('Task83: the second slot can be completed on its own', out > 0 && win.openOrders('forge').length === 1 && win.openOrders('forge')[0].product === 'steel');
   check('Task83: a repeat order pays gold, no reputation', win.permanent.totalPrestige === 18 && Math.abs(win.state.gold - (g0 - win.shippingCost('forge', 'coalBrick', 10) + pay)) < 1e-6 && win.permanent.companies.forge.repeatDone === 1 && win.permanent.companies.forge.lastRepeat === 'coalBrick');
-  check('Task83: the repeat pay is 1.5x the base value', Math.abs(pay - 10 * win.recipeByKey('coalBrick').sell * 1.5 * (1 + win.reputationEffect('tradePrice')) * win.mult()) < 1e-6);
+  check('Task83: the repeat pay is 1.2x the base value', Math.abs(pay - 10 * win.recipeByKey('coalBrick').sell * 1.2 * (1 + win.reputationEffect('tradePrice')) * win.mult()) < 1e-6);
 })();
 
 (function test_T83_repeatOrders() {
@@ -3676,7 +3676,7 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   for (let i = 0; i < 30; i++) { p.open = []; if (win.issueOrder('forge', Math.random).product === 'steel') again = true; }
   check('Task83: the same product is not asked twice in a row', again === false);
   // quantity: grows 20% per lap, capped at 2x and 100
-  const last = def.orders[def.orders.length - 1], base = Math.round(last.qty * win.recipeByKey(last.product).sell / win.recipeByKey('steel').sell);
+  const last = def.orders[def.orders.length - 1], base = Math.max(1, Math.round(last.qty * win.BALANCE.orders.REPEAT_VALUE_SHARE * win.recipeByKey(last.product).sell / win.recipeByKey('steel').sell));
   p.repeatDone = 0;
   const q0 = win.repeatOrderQty(def, p, 'steel');
   p.repeatDone = def.orders.length;
@@ -3747,7 +3747,7 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   win.state.products.steelGear = 2;
   const g0 = win.state.gold;
   win.buildWorkshop();
-  check('Task83: it takes the gold and the parts, and the 8th then needs a mana engine', win.state.world.workshops.length === 7 && win.state.products.steelGear === 0 && win.state.gold === g0 - Math.ceil(100 * Math.pow(1.6, 6)) && win.workshopBuildProducts().manaEngine === 1 && win.canBuildWorkshop() === false);
+  check('Task83: it takes the gold and the parts, and the 8th then needs a mana engine', win.state.world.workshops.length === 7 && win.state.products.steelGear === 0 && win.state.gold === g0 - Math.ceil(500 * Math.pow(1.6, 6)) && win.workshopBuildProducts().manaEngine === 1 && win.canBuildWorkshop() === false);
 })();
 
 (function test_T83_tradeReserve() {

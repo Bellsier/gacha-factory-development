@@ -42,34 +42,44 @@ const BALANCE = {
   // reputation (START at 0, MIN at reputation MAX). Once a company's fixed
   // list is done, its orders are random repeat orders: gold only, no reputation.
   orders: {
-    ARRIVAL_SEC_START: 300,
-    ARRIVAL_SEC_MIN: 60,
+    ARRIVAL_SEC_START: 1500,
+    ARRIVAL_SEC_MIN: 300,
     SECOND_SLOT_AT: 18,         // reputation at which a company can hold 2 open orders (1 before)
-    REPEAT_PAY_MULT: 1.5,       // repeat order pays qty * sell * this * (1 + tradePrice effect) * mult()
+    REPEAT_PAY_MULT: 1.2,       // repeat order pays qty * sell * this * (1 + tradePrice effect) * mult()
+    REPEAT_VALUE_SHARE: 0.3,    // Task 84: a repeat order's base value = this share of the company's last fixed order
     REPEAT_LAP_GROWTH: 0.2,     // repeat quantity grows this much per lap (a lap = the company's fixed order count)
     REPEAT_QTY_CAP_MULT: 2,     // ... but never above this times the base quantity
     REPEAT_MAX_QTY: 100,        // hard cap on one repeat order's quantity
   },
   hq: {
     MULTIPLIER_PER_LEVEL: 0.08, // hqMult(): run-scoped multiplier gained per HQ level
-    COST_BASE: 150,             // hqCost(): base cost of HQ level 0
+    COST_BASE: 1000,            // hqCost(): base cost of HQ level 0
     COST_GROWTH: 1.6,           // hqCost(): cost growth factor per level
+    MAX_LEVEL: 12,              // Task 84
   },
   mining: {
     WORKFORCE_BONUS_MULTIPLIER: 1.5, // autoRate(): auto-mining bonus per workforce level
     FACILITY_COST_BASE: 20,          // facilityCost(): base cost of facility level 0
-    FACILITY_COST_GROWTH: 1.4,       // facilityCost(): cost growth factor per level
+    FACILITY_COST_GROWTH: 1.5,       // facilityCost(): cost growth factor per level
     FACILITY_BONUS_PER_LEVEL: 1,     // manual-yield bonus added per facility level purchased
+    // Task 84: growth levers are capped (balance simulation: uncapped they made resource rates reach 100,000/s).
+    FACILITY_MAX_LEVEL: 12,
+    WORKFORCE_MAX_LEVEL: 12,
     WORKFORCE_COST_BASE: 15,         // workforceCost(): base cost of workforce level 0
-    WORKFORCE_COST_GROWTH: 1.35,     // workforceCost(): cost growth factor per level
+    WORKFORCE_COST_GROWTH: 1.5,      // workforceCost(): cost growth factor per level
     WORKFORCE_BONUS_PER_LEVEL: 1,    // auto-mining bonus added per workforce level purchased
   },
   worker: {
     EFFECTIVE_DIVISOR: 16,       // workerEffective(): (mining*carry*move) / EFFECTIVE_DIVISOR
-    STAT_COST_BASE: {mining:40, carry:60, move:50}, // workerUpgradeCost(): base cost per stat
+    STAT_COST_BASE: {mining:200, carry:300, move:250}, // workerUpgradeCost(): base cost per stat
     STAT_COST_GROWTH: 1.35,      // workerUpgradeCost(): cost growth factor per stat level
     STAT_INCREMENT_PER_UPGRADE: 1, // stat gain per upgrade purchase
     MIN_REQUIRED: 1,             // minimum workers (early-game guidance)
+    // Task 84: how many workers the base can hold = CAP_BASE + CAP_PER_BASE_LEVEL * (base level - 1).
+    // Without a cap, 50G pulls and the free tickets made income grow without limit.
+    STAT_MAX_LEVEL: 3,           // Task 84: upgrades per worker stat (stats multiply: 3 stats each +3 is already x30-x100)
+    CAP_BASE: 8,
+    CAP_PER_BASE_LEVEL: 4,
   },
   selling: {
     AUTO_SELL_COST_MULTIPLIER: 20, // autoSellCost(): recipe.sell * AUTO_SELL_COST_MULTIPLIER
@@ -77,7 +87,7 @@ const BALANCE = {
   // Task 71: building a workshop (research 'workshopBuild' opens it). Cost in
   // gold: BUILD_COST_BASE * BUILD_COST_GROWTH^(workshops already built).
   workshop: {
-    BUILD_COST_BASE: 100,
+    BUILD_COST_BASE: 500,
     BUILD_COST_GROWTH: 1.6,
     MAX_COUNT: 6,
     // Task 83: the 7th and 8th workshop (after 제작소 증축) also take upper parts, keyed by the workshop's number.
@@ -86,15 +96,16 @@ const BALANCE = {
     // Gold: round(UPGRADE_COST_BASE * UPGRADE_COST_GROWTH^(level-1)) to go from `level` to level+1.
     // Products: UPGRADE_PRODUCTS[target level] is paid in addition (only for the high levels).
     MAX_LEVEL: 8,
-    UPGRADE_COST_BASE: 150,
+    UPGRADE_COST_BASE: 1500,
     UPGRADE_COST_GROWTH: 1.7,
     UPGRADE_PRODUCTS: { 6: { precisionPart: 2 }, 7: { relicPart: 3 }, 8: { quantumCore: 1 } },
   },
   crafting: {
     WORKSHOP_LEVEL_SPEED_PER_LEVEL: 0.25,
-    FACILITY_COST_BASE: 100,          // craftFacilityCost(): base gold cost of the first upgrade (level 1 → 2)
+    FACILITY_COST_BASE: 500,          // craftFacilityCost(): base gold cost of the first upgrade (level 1 → 2)
     FACILITY_COST_GROWTH: 1.5,        // craftFacilityCost(): cost growth factor per facility level
     FACILITY_SPEED_PER_LEVEL: 0.1,    // craftSpeed(): +10% timed-craft speed per level above 1
+    FACILITY_MAX_LEVEL: 15,           // Task 84
   },
   world: {
     // expandBase/unlockSite spend SITES[key].unlockCost, not a separate world cost.

@@ -148,11 +148,11 @@ function buildLines(){
           <button data-mine="${r.key}">채굴하기 (+${manualAmount(r.key).toFixed(1)})</button>
           <div class="facility">
             <span>채굴 도구 Lv.${state.facility[r.key]}</span>
-            <button data-fac="${r.key}" class="ghost" ${dis(state.resources[r.key] < facilityCost(r.key))}>강화 (${r.name} ${facilityCost(r.key)}개)</button>
+            <button data-fac="${r.key}" class="ghost" ${dis(facilityAtMax(r.key) || state.resources[r.key] < facilityCost(r.key))}>${facilityAtMax(r.key) ? '강화 (최대)' : `강화 (${r.name} ${facilityCost(r.key)}개)`}</button>
           </div>
           <div class="facility">
             <span>인력 강화 Lv.${state.workforce[r.key]}</span>
-            <button data-train="${r.key}" class="ghost" ${dis(state.resources[r.key] < workforceCost(r.key))}>훈련 (${r.name} ${workforceCost(r.key)}개)</button>
+            <button data-train="${r.key}" class="ghost" ${dis(workforceAtMax(r.key) || state.resources[r.key] < workforceCost(r.key))}>${workforceAtMax(r.key) ? '훈련 (최대)' : `훈련 (${r.name} ${workforceCost(r.key)}개)`}</button>
           </div>
         </div>
       `;
@@ -681,9 +681,9 @@ function buildWorkers(){
         <span class="sum">종합 +${workerEffective(c).toFixed(2)}/초</span>
       </div>
       <div class="worker-upgrades">
-        <button class="ghost" data-upstat="mining" data-worker-id="${c.id}" ${dis(state.gold<workerUpgradeCost(c,'mining'))}>채굴속도 강화 (${workerUpgradeCost(c,'mining')}G)</button>
-        <button class="ghost" data-upstat="carry" data-worker-id="${c.id}" ${dis(state.gold<workerUpgradeCost(c,'carry'))}>이동량 강화 (${workerUpgradeCost(c,'carry')}G)</button>
-        <button class="ghost" data-upstat="move" data-worker-id="${c.id}" ${dis(state.gold<workerUpgradeCost(c,'move'))}>이동속도 강화 (${workerUpgradeCost(c,'move')}G)</button>
+        <button class="ghost" data-upstat="mining" data-worker-id="${c.id}" ${dis(workerStatAtMax(c,'mining') || state.gold<workerUpgradeCost(c,'mining'))}>채굴속도 강화 (${workerStatAtMax(c,'mining') ? '최대' : workerUpgradeCost(c,'mining') + 'G'})</button>
+        <button class="ghost" data-upstat="carry" data-worker-id="${c.id}" ${dis(workerStatAtMax(c,'carry') || state.gold<workerUpgradeCost(c,'carry'))}>이동량 강화 (${workerStatAtMax(c,'carry') ? '최대' : workerUpgradeCost(c,'carry') + 'G'})</button>
+        <button class="ghost" data-upstat="move" data-worker-id="${c.id}" ${dis(workerStatAtMax(c,'move') || state.gold<workerUpgradeCost(c,'move'))}>이동속도 강화 (${workerStatAtMax(c,'move') ? '최대' : workerUpgradeCost(c,'move') + 'G'})</button>
       </div>
     `;
     wrap.appendChild(div);
@@ -705,22 +705,18 @@ function buildWorkers(){
 }
 
 document.getElementById('gachaTicketBtn').onclick = ()=>{
-  if(permanent.tickets < BALANCE.gacha.PULL_COST_TICKET) return;
+  if(!canPullWorker() || permanent.tickets < BALANCE.gacha.PULL_COST_TICKET) return;
   permanent.tickets -= BALANCE.gacha.PULL_COST_TICKET;
   pullGacha();
 };
 document.getElementById('gachaGoldBtn').onclick = ()=>{
-  if(state.gold < BALANCE.gacha.PULL_COST_GOLD) return;
+  if(!canPullWorker() || state.gold < BALANCE.gacha.PULL_COST_GOLD) return;
   state.gold -= BALANCE.gacha.PULL_COST_GOLD;
   pullGacha();
 };
 
 document.getElementById('hqBtn').onclick = ()=>{
-  const cost = hqCost();
-  if(state.gold < cost) return;
-  state.gold -= cost;
-  state.hqLevel++;
-  log(`본사 투자 Lv.${state.hqLevel} (배율 ×${hqMult().toFixed(2)})`);
+  if(!investHQ()) return;
   buildLines(); // mine-button labels and rates depend on mult(), which just changed
   updateNumbers();
 };
@@ -737,18 +733,19 @@ function updateNumbers(){
   updateNextHint();
   const hint = document.getElementById('firstGachaHint');
   hint.textContent = permanent.firstGachaGranted
-    ? '일반 60% · 희귀 25% · 영웅 12% · 전설 3%'
+    ? '일반 60% · 희귀 25% · 영웅 12% · 전설 3% · 인부 ' + state.characters.length + '/' + workerCap() + (canPullWorker() ? '' : ' (거점을 확장하면 늘어나요)')
     : `첫 골드 ${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G를 모으면 첫 가챠권을 드려요 (현재 ${fmt(state.gold)}/${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G)`;
-  document.getElementById('gachaTicketBtn').disabled = permanent.tickets < BALANCE.gacha.PULL_COST_TICKET;
+  document.getElementById('gachaTicketBtn').disabled = !canPullWorker() || permanent.tickets < BALANCE.gacha.PULL_COST_TICKET;
+  document.getElementById('gachaGoldBtn').disabled = !canPullWorker() || state.gold < BALANCE.gacha.PULL_COST_GOLD;
   RESOURCES.forEach(r=>{
     const sharedEl = document.querySelector(`[data-shared-amt="${r.key}"]`);
     if(sharedEl) sharedEl.textContent = fmt(state.resources[r.key]);
     const el = document.querySelector(`[data-amt="${r.key}"]`);
     if(el) el.textContent = fmt(state.resources[r.key]);
     const trainBtn = document.querySelector(`[data-train="${r.key}"]`);
-    if(trainBtn) trainBtn.disabled = state.resources[r.key] < workforceCost(r.key);
+    if(trainBtn) trainBtn.disabled = workforceAtMax(r.key) || state.resources[r.key] < workforceCost(r.key);
     const facBtn = document.querySelector(`[data-fac="${r.key}"]`);
-    if(facBtn) facBtn.disabled = state.resources[r.key] < facilityCost(r.key);
+    if(facBtn) facBtn.disabled = facilityAtMax(r.key) || state.resources[r.key] < facilityCost(r.key);
   });
   SITES.forEach(s=>{
     const unlockBtn = document.querySelector(`[data-unlocksite="${s.key}"]`);
@@ -811,16 +808,16 @@ function updateNumbers(){
     const workerId = btn.dataset.workerId;
     const stat = btn.dataset.upstat;
     const worker = workerById(workerId);
-    if(worker) btn.disabled = state.gold < workerUpgradeCost(worker, stat);
+    if(worker) btn.disabled = workerStatAtMax(worker, stat) || state.gold < workerUpgradeCost(worker, stat);
   });
   const hqBtn = document.getElementById('hqBtn');
-  hqBtn.textContent = `투자하기 (${hqCost()}G)`;
-  hqBtn.disabled = state.gold < hqCost();
+  hqBtn.textContent = hqAtMax() ? '투자하기 (최대)' : `투자하기 (${hqCost()}G)`;
+  hqBtn.disabled = hqAtMax() || state.gold < hqCost();
   document.getElementById('hqMultVal').textContent = '×' + hqMult().toFixed(2);
   document.getElementById('craftFacilityVal').textContent = String(state.craftFacility);
   const craftFacilityBtn = document.getElementById('craftFacilityBtn');
-  craftFacilityBtn.textContent = `제작 시설 강화 — ${craftFacilityCost()}G`;
-  craftFacilityBtn.disabled = state.gold < craftFacilityCost();
+  craftFacilityBtn.textContent = craftFacilityAtMax() ? '제작 시설 강화 — 최대' : `제작 시설 강화 — ${craftFacilityCost()}G`;
+  craftFacilityBtn.disabled = craftFacilityAtMax() || state.gold < craftFacilityCost();
   renderCurrencies();
 }
 

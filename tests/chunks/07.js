@@ -311,7 +311,7 @@
 
 (function test_T47_expandBaseUnlocksNextRegion() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   const beforeLevel = win.state.world.base.level;
   check('Task47: base expansion succeeds with next region cost', win.expandBase() === true);
   check('Task47: base level increases', win.state.world.base.level === beforeLevel + 1);
@@ -321,7 +321,7 @@
 
 (function test_T48_expansionSeedsWorldMines() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.gold = 700;
+  win.state.gold = 3000;
   check('Task48: expansion seeds new world mines', win.expandBase() === true && win.state.world.mines.length === 4);
   const manaMines = win.state.world.mines.filter(m => m.resource === 'mana' || m.resource === 'crystal');
   check('Task48: seeded mines use expanded region resources', manaMines.length === 2);

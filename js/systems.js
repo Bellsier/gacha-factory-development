@@ -171,6 +171,23 @@ function expandBase(){
   return true;
 }
 
+// Task 84: level caps. One predicate per growth lever; the upgrade functions
+// refuse at the cap and the UI shows "최대".
+function facilityAtMax(key){ return state.facility[key] >= BALANCE.mining.FACILITY_MAX_LEVEL; }
+function workforceAtMax(key){ return state.workforce[key] >= BALANCE.mining.WORKFORCE_MAX_LEVEL; }
+function workerStatAtMax(worker, stat){ return worker[stat + 'Lvl'] >= BALANCE.worker.STAT_MAX_LEVEL; }
+function hqAtMax(){ return state.hqLevel >= BALANCE.hq.MAX_LEVEL; }
+function craftFacilityAtMax(){ return state.craftFacility >= BALANCE.crafting.FACILITY_MAX_LEVEL; }
+
+function investHQ(){
+  const cost = hqCost();
+  if(hqAtMax() || state.gold < cost) return false;
+  state.gold -= cost;
+  state.hqLevel++;
+  log(`본사 투자 Lv.${state.hqLevel} (배율 ×${hqMult().toFixed(2)})`);
+  return true;
+}
+
 function mineResource(key){
   state.resources[key] += manualAmount(key);
   return true;
@@ -178,7 +195,7 @@ function mineResource(key){
 
 function upgradeFacility(key){
   const cost = facilityCost(key);
-  if(state.resources[key] < cost) return false;
+  if(facilityAtMax(key) || state.resources[key] < cost) return false;
   state.resources[key] -= cost;
   state.facility[key] += BALANCE.mining.FACILITY_BONUS_PER_LEVEL;
   log(`채굴 도구 강화: ${resName(key)} 라인 Lv.${state.facility[key]} (${resName(key)} ${cost}개 소모)`);
@@ -187,7 +204,7 @@ function upgradeFacility(key){
 
 function upgradeWorkforce(key){
   const cost = workforceCost(key);
-  if(state.resources[key] < cost) return false;
+  if(workforceAtMax(key) || state.resources[key] < cost) return false;
   state.resources[key] -= cost;
   state.workforce[key] += BALANCE.mining.WORKFORCE_BONUS_PER_LEVEL;
   log(`인력 강화: ${resName(key)} 라인 Lv.${state.workforce[key]} (${resName(key)} ${cost}개 소모)`);
@@ -196,7 +213,7 @@ function upgradeWorkforce(key){
 
 function upgradeCraftFacility(){
   const cost = craftFacilityCost();
-  if(state.gold < cost) return false;
+  if(craftFacilityAtMax() || state.gold < cost) return false;
   state.gold -= cost;
   state.craftFacility += 1;
   log(`제작 시설 강화: Lv.${state.craftFacility}`);
@@ -304,13 +321,19 @@ function upgradeWorkerStat(workerId, stat){
   if(!worker) return false;
   const idx = state.characters.indexOf(worker);
   const cost = workerUpgradeCost(worker, stat);
-  if(state.gold < cost) return false;
+  if(workerStatAtMax(worker, stat) || state.gold < cost) return false;
   state.gold -= cost;
   worker[stat] += BALANCE.worker.STAT_INCREMENT_PER_UPGRADE;
   worker[stat+'Lvl']++;
   log(`일꾼 강화: #${idx+1} ${STAT_LABEL[stat]} 상승 (Lv.${worker[stat+'Lvl']})`);
   return true;
 }
+
+// Task 84: the base only holds so many workers (grows with the base level).
+function workerCap(){
+  return BALANCE.worker.CAP_BASE + BALANCE.worker.CAP_PER_BASE_LEVEL * Math.max(0, state.world.base.level - 1);
+}
+function canPullWorker(){ return state.characters.length < workerCap(); }
 
 function pullGacha(){
   const wasEmpty = state.characters.length === 0;

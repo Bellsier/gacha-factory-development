@@ -6,12 +6,12 @@
     prestigeMultPerPoint: 0.15,
     prestigeGoldDivisor: 200,
     hqMultPerLevel: 0.08,
-    hqCostBase: 150, hqCostGrowth: 1.6,
+    hqCostBase: 1000, hqCostGrowth: 1.6,
     workforceBonusMult: 1.5,
-    facilityCostBase: 20, facilityCostGrowth: 1.4,
-    workforceCostBase: 15, workforceCostGrowth: 1.35,
+    facilityCostBase: 20, facilityCostGrowth: 1.5,
+    workforceCostBase: 15, workforceCostGrowth: 1.5,
     workerEffectiveDivisor: 16,
-    statCostBase: { mining: 40, carry: 60, move: 50 }, statCostGrowth: 1.35,
+    statCostBase: { mining: 200, carry: 300, move: 250 }, statCostGrowth: 1.35,
     autoSellMult: 20,
   };
 

@@ -202,7 +202,7 @@ function repeatOrderQty(def, p, productKey){
   const o = BALANCE.orders;
   const last = def.orders[def.orders.length - 1];
   const sell = recipeByKey(productKey).sell;
-  const base = Math.max(1, Math.round(last.qty * recipeByKey(last.product).sell / sell));
+  const base = Math.max(1, Math.round(o.REPEAT_VALUE_SHARE * last.qty * recipeByKey(last.product).sell / sell));
   const lap = Math.floor(p.repeatDone / def.orders.length);
   const factor = Math.min(o.REPEAT_QTY_CAP_MULT, 1 + o.REPEAT_LAP_GROWTH * lap);
   return Math.min(o.REPEAT_MAX_QTY, Math.max(1, Math.round(base * factor)));

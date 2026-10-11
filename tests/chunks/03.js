@@ -108,7 +108,7 @@ function stockCrystalAlloyInputs(win) {
 (function test_T16_upgradeCostAndLevel() {
   const win = newDom(makeMemoryStorage()).window;
   function refExpCost(base, growth, level) { return Math.round(base * Math.pow(growth, level)); }
-  const REF_BASE = 100;
+  const REF_BASE = 500;
   const REF_GROWTH = 1.5;
 
   check('Task16: upgradeCraftFacility exists', typeof win.upgradeCraftFacility === 'function');

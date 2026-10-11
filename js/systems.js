@@ -384,6 +384,19 @@ function tickMining(){
   });
 }
 
+// Task 86: auto-craft pauses while the stock has reached the player's target (0 = no limit).
+function atCraftTarget(key){
+  const t = state.craftTarget && state.craftTarget[key];
+  return t > 0 && stockOfProduct(key) >= t;
+}
+function stockOfProduct(key){ return state.products[key] || 0; }
+function setCraftTarget(key, value){
+  if(!(key in state.products)) return false;
+  const n = Math.floor(Number(value));
+  state.craftTarget[key] = Number.isFinite(n) && n > 0 ? Math.min(n, 999999) : 0;
+  return true;
+}
+
 function tickCrafting(){
   RECIPES.forEach(r=>{
     if(state.craftQueue[r.key] !== null){
@@ -392,7 +405,7 @@ function tickCrafting(){
         state.craftQueue[r.key] = null;
         state.products[r.key] += r.out;
       }
-    } else if(state.autoCraft[r.key] && isAutoCraftUnlocked() && !r.workshopOnly){
+    } else if(state.autoCraft[r.key] && isAutoCraftUnlocked() && !r.workshopOnly && !atCraftTarget(r.key)){
       startCraft(r);
     }
   });

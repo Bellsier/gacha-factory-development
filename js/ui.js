@@ -208,8 +208,14 @@ function workshopProgressLabel(workshop, recipe){
   if(!recipe) return '레시피를 선택하세요';
   const st = workshopStatus(workshop);
   const auto = workshop.auto === true;
+  if(st.state === 'full') return '목표 재고 도달 · 쉬는 중';
   if(st.state === 'blocked') return auto ? '자동 제작 중 · 재료 부족' : '재료 부족';
   return auto ? '자동 제작 중' : '대기 중';
+}
+// Task 86: stock target input (auto-craft and workshops pause at this stock; empty = no limit).
+function targetInputHtml(key){
+  const t = state.craftTarget[key] || '';
+  return '<label class="toggle-auto">목표 재고 <input type="number" min="0" step="1" class="target-input" data-craft-target="' + key + '" value="' + t + '" placeholder="제한 없음"> 개에서 멈춤</label>';
 }
 // Task 79: workshop upgrade button (cost = gold + any high-tier products).
 function workshopUpgradeCostText(workshop){
@@ -256,7 +262,7 @@ function bottleneckHtml(){
   if(state.world.workshops.length === 0) return '';
   const rep = bottleneckReport();
   if(rep.idle.length === 0) return '<div class="rate">모든 제작소가 일하고 있습니다.</div>';
-  const label = { noRecipe: '레시피를 정하지 않았어요', waiting: '재료는 있지만 제작을 시작하지 않았어요' };
+  const label = { noRecipe: '레시피를 정하지 않았어요', waiting: '재료는 있지만 제작을 시작하지 않았어요', full: '목표 재고에 도달해 쉬고 있어요' };
   const lines = rep.idle.map(w => '<div class="rate" data-idle-workshop="' + w.id + '">제작소 ' + w.index + ': ' +
     (w.state === 'blocked'
       ? w.recipe.name + ' — ' + w.shortages.map(s => s.name + ' ' + (s.need - s.have) + '개 부족').join(', ')
@@ -593,6 +599,7 @@ function buildRecipes(){
       <div class="stock" data-stock="${r.key}">${fmt(state.products[r.key])}개 보유</div>
       <div class="rate" data-workshop-only="${r.key}">제작소에서 만들 수 있어요 (개발 탭의 제작소)</div>
       <div class="row">${sellButton}</div>
+      ${targetInputHtml(r.key)}
     `;
     } else div.innerHTML = `
       <div class="name">${r.name}</div>
@@ -606,6 +613,7 @@ function buildRecipes(){
         <input type="checkbox" data-autocraft="${r.key}" ${state.autoCraft[r.key]?'checked':''} ${dis(!autoUnlocked)}>
         ${autoUnlocked ? '자동 제작' : '자동 제작 (연구: 자동 제작 장치)'}
       </label>
+      ${targetInputHtml(r.key)}
       ${state.autoSell[r.key] ? `
       <label class="toggle-auto">
         <input type="checkbox" data-autoselltoggle="${r.key}" ${state.autoSellOn[r.key]?'checked':''}>
@@ -625,6 +633,9 @@ function buildRecipes(){
   });
   wrap.querySelectorAll('[data-sell]').forEach(btn=>{
     btn.onclick=()=>{ sellAll(recipeByKey(btn.dataset.sell)); updateNumbers(); renderCurrencies(); };
+  });
+  wrap.querySelectorAll('[data-craft-target]').forEach(inp=>{
+    inp.onchange=()=>{ setCraftTarget(inp.dataset.craftTarget, inp.value); inp.value = state.craftTarget[inp.dataset.craftTarget] || ''; };
   });
   wrap.querySelectorAll('[data-autocraft]').forEach(chk=>{
     chk.onchange=()=>{ state.autoCraft[chk.dataset.autocraft] = chk.checked; };

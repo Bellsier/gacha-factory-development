@@ -56,8 +56,8 @@ function freshRunState(){
   SITES.forEach(s=>{ unlockedSites[s.key] = s.unlockCost === 0; });
   const research = {};
   RESEARCH.forEach(r=>{ research[r.key] = false; });
-  const products = {}, autoCraft = {}, autoSell = {}, autoSellOn = {}, craftQueue = {};
-  RECIPES.forEach(r=>{ products[r.key]=0; autoCraft[r.key]=false; autoSell[r.key]=false; autoSellOn[r.key]=true; craftQueue[r.key]=null; });
+  const products = {}, autoCraft = {}, craftTarget = {}, autoSell = {}, autoSellOn = {}, craftQueue = {};
+  RECIPES.forEach(r=>{ products[r.key]=0; autoCraft[r.key]=false; craftTarget[r.key]=0; autoSell[r.key]=false; autoSellOn[r.key]=true; craftQueue[r.key]=null; });
   return {
     resources, products, gold:0,
     characters:[], // {id, rarity, resource, mining, carry, move, miningLvl, carryLvl, moveLvl}
@@ -67,6 +67,7 @@ function freshRunState(){
     unlockedSites, // which mining sites are unlocked
     research,   // Task 70: research key -> bool (run-scoped, see js/research.js)
     autoCraft,
+    craftTarget, // Task 86: recipe key -> stock at which auto-craft pauses (0 = no limit)
     autoSell,   // recipe key -> bool, gold-purchased
     autoSellOn, // recipe key -> bool, toggle while owned
     craftQueue, // recipe key -> seconds remaining while processing, else null
@@ -305,6 +306,7 @@ function sanitizeRunState(raw){
     unlockedSites: sanitizeUnlockedSites(raw.unlockedSites),
     research: researchSyncFromState(sanitizeBoolMap(raw.research, RESEARCH.map(r=>r.key), false), world, autoCraft), // Task 70/71: additive field; missing -> all false (usage grandfathers old saves)
     autoCraft,
+    craftTarget: sanitizeNumberMap(raw.craftTarget, recipeKeys, 0, isNonNegativeInt),
     autoSell: sanitizeBoolMap(raw.autoSell, recipeKeys, false),
     autoSellOn: sanitizeBoolMap(raw.autoSellOn, recipeKeys, true),
     craftQueue: sanitizeCraftQueueMap(raw.craftQueue, recipeKeys), // paused countdowns restored as-is

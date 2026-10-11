@@ -192,6 +192,7 @@ function workshopStatus(workshop){
   const recipe = recipeByKey(workshop.recipeKey);
   if(workshop.progress !== null && recipe) return { state: 'working', recipe, shortages: [] };
   if(!recipe) return { state: 'noRecipe', recipe: null, shortages: [] };
+  if(workshop.auto && isAutoCraftUnlocked() && atCraftTarget(recipe.key)) return { state: 'full', recipe, shortages: [] };
   const shortages = recipeShortages(recipe);
   if(shortages.length) return { state: 'blocked', recipe, shortages };
   return { state: workshop.auto && isAutoCraftUnlocked() ? 'working' : 'waiting', recipe, shortages: [] };
@@ -260,6 +261,7 @@ function tickWorkshops(){
   state.world.workshops.forEach(workshop=>{
     if(!workshop || !workshop.auto || workshop.progress !== null) return;
     if(!isAutoCraftUnlocked()) return; // Task 71: the device research gates auto-craft
+    if(workshop.recipeKey && atCraftTarget(workshop.recipeKey)) return; // Task 86
     craftWorkshop(workshop.id);
   });
 }

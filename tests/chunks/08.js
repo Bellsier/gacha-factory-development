@@ -3736,6 +3736,45 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
 })();
 
 
+
+(function test_T86_craftTarget() {
+  const win = newDom(makeMemoryStorage()).window;
+  const doc = win.document;
+  win.state.research.autoCraftDevice = true;
+  check('Task86: a new game has no targets', Object.values(win.state.craftTarget).every((v) => v === 0));
+  check('Task86: setting a target stores a whole number, bad values mean no limit', win.setCraftTarget('steel', '5.7') === true && win.state.craftTarget.steel === 5 && win.setCraftTarget('steel', -3) && win.state.craftTarget.steel === 0 && win.setCraftTarget('nope', 3) === false);
+  win.setCraftTarget('coalBrick', 2);
+  win.state.autoCraft.coalBrick = true;
+  win.state.resources.coal = 1000;
+  for (let i = 0; i < 400; i++) win.tickCrafting();
+  check('Task86: card auto-craft stops once the stock reaches the target', win.state.products.coalBrick >= 2 && win.state.products.coalBrick <= 2 + win.recipeByKey('coalBrick').out);
+  const stock = win.state.products.coalBrick;
+  for (let i = 0; i < 100; i++) win.tickCrafting();
+  check('Task86: it stays stopped', win.state.products.coalBrick === stock);
+  win.setCraftTarget('coalBrick', stock + 10);
+  for (let i = 0; i < 100; i++) win.tickCrafting();
+  check('Task86: raising the target lets it craft again', win.state.products.coalBrick > stock);
+  win.setCraftTarget('coalBrick', 0);
+  check('Task86: 0 means no limit', win.atCraftTarget('coalBrick') === false);
+  // workshop
+  const shop = win.addWorkshop({ id: 'ws86', x: 4, y: 2, level: 1, recipeKey: 'coalBrick', auto: true });
+  win.state.autoCraft.coalBrick = false;
+  win.state.products.coalBrick = 5; win.setCraftTarget('coalBrick', 5);
+  win.tickWorkshops();
+  check('Task86: a workshop at its target does not start', shop.progress === null && win.workshopStatus(shop).state === 'full' && win.state.products.coalBrick === 5);
+  check('Task86: the card says it is resting', /목표 재고/.test(win.workshopProgressLabel(shop, win.recipeByKey('coalBrick'))));
+  check('Task86: the bottleneck panel names it', /목표 재고/.test(win.bottleneckHtml()));
+  win.craftWorkshop(shop.id);
+  check('Task86: hand crafting ignores the target', shop.progress !== null || win.state.products.coalBrick > 5);
+  win.renderAll();
+  const inp = doc.querySelector('[data-craft-target="steel"]');
+  inp.value = '7'; inp.dispatchEvent(new win.Event('change'));
+  check('Task86: the card input sets the target', win.state.craftTarget.steel === 7);
+  const storage = makeMemoryStorage();
+  const w1 = newDom(storage).window; w1.setCraftTarget('steel', 9); w1.saveGame();
+  check('Task86: the target is saved and loaded', newDom(storage).window.state.craftTarget.steel === 9);
+})();
+
 // SUMMARY
 // =============================================================================
 

@@ -96,6 +96,7 @@
   .recipe .row{display:flex; gap:6px; flex-wrap:wrap;}
   .recipe .row button{flex:1; min-width:120px;}
   .toggle-auto{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:0.68rem; color:var(--dim);}
+  .target-input{width:70px; padding:2px 4px; font-size:0.68rem;}
 
   .gacha-box{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; text-align:center;}
   .gacha-box .rates{color:var(--dim); font-size:0.68rem; margin-top:10px; line-height:1.6;}

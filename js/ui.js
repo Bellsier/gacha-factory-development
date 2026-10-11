@@ -1031,6 +1031,7 @@ function renderWorldTerrain(){
     placeOnStage(el, pk.x, pk.y);
     layer.appendChild(el);
   });
+  renderBeyondProps(layer);
   const t = terrainTunnel();
   const tunnel = document.createElement('div');
   tunnel.className = 'world-tunnel ' + (t.locked ? 'is-locked' : 'is-open');
@@ -1049,6 +1050,26 @@ function renderWorldTerrain(){
   placeOnStage(label, t.mouthX + 0.2, t.y + t.halfWidth);
   label.style.zIndex = '4500';
   layer.appendChild(label);
+}
+
+// Task 89: scenery on the land beyond the range — shown once the tunnel is open.
+// Pieces standing on a mine are left out so a mine is always readable.
+function renderBeyondProps(layer){
+  if(!terrainTunnelOpen()) return;
+  const mines = state.world.mines.filter(m => m);
+  terrainBeyondProps().forEach(pr => {
+    if(mines.some(m => Math.hypot(m.x - pr.x, m.y - pr.y) < 0.9)) return;
+    const el = document.createElement('div');
+    el.className = 'world-prop prop-' + pr.kind;
+    el.setAttribute('data-prop', pr.kind);
+    el.setAttribute('data-zone', pr.zone);
+    el.setAttribute('data-x', pr.x.toFixed(2));
+    el.setAttribute('data-y', pr.y.toFixed(2));
+    if(pr.name) el.title = pr.name;
+    el.style.setProperty('--prop-size', pr.size.toFixed(2));
+    placeOnStage(el, pr.x, pr.y, pr.kind === 'clearing' ? -1 : undefined);
+    layer.appendChild(el);
+  });
 }
 
 // Task 57: draws the base and every mine in state.world.mines onto the

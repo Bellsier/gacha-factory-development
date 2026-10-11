@@ -3810,6 +3810,32 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   check('Task88: the cap still holds', win.issueOrder('forge', Math.random) === null && p.open.length === 2);
 })();
 
+
+(function test_T89_beyondProps() {
+  const win = newDom(makeMemoryStorage()).window;
+  const doc = win.document;
+  const props = win.terrainBeyondProps();
+  check('Task89: there is scenery, the same list every time', props.length >= 40 && JSON.stringify(props) === JSON.stringify(win.terrainBeyondProps()));
+  check('Task89: every piece stands on the land beyond, in its zone, clear of the tunnel exit', props.every((p) => win.terrainRegionAt(p.x, p.y) === 'beyond' && win.terrainBeyondZoneAt(p.x, p.y) === p.zone && Math.hypot(p.x - win.terrainTunnelExit().x, p.y - win.terrainTunnelExit().y) >= win.WORLD_TERRAIN.BEYOND.PROPS.CLEAR_EXIT - 1e-9));
+  const feats = {}; win.WORLD_TERRAIN.BEYOND.ZONES.forEach((z) => { feats[z.key] = z.features; });
+  check('Task89: each zone only gets what the blueprint lists for it', props.every((p) => feats[p.zone].includes(p.kind)));
+  check('Task89: all four zones are dressed', ['deepForest', 'rockyGround', 'halfDugMine', 'rareDeep'].every((z) => props.some((p) => p.zone === z)));
+  check('Task89: the half-dug mine has its shaft entrance, timber supports, cart and digging marks', ['oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks'].every((k) => props.some((p) => p.zone === 'halfDugMine' && p.kind === k)));
+  check('Task89: landmark counts stay within their caps', props.filter((p) => p.kind === 'mineCart').length <= 2 && props.filter((p) => p.kind === 'oldShaftEntrance').length <= 2);
+  win.renderAll();
+  check('Task89: nothing is drawn while the tunnel is closed', doc.querySelectorAll('[data-prop]').length === 0);
+  win.state.research.tunnelWork = true;
+  win.unlockTunnel();
+  win.renderAll();
+  const drawn = doc.querySelectorAll('[data-prop]');
+  check('Task89: once the tunnel is open the scenery appears, click-through', drawn.length >= 30 && drawn.length <= props.length);
+  check('Task89: no drawn piece stands on a mine', win.state.world.mines.every((m) => Array.from(doc.querySelectorAll('[data-prop]')).every((e) => Math.hypot(m.x - Number(e.getAttribute('data-x')), m.y - Number(e.getAttribute('data-y'))) >= 0.9)));
+  check('Task89: named landmarks carry a title', Array.from(drawn).filter((e) => e.getAttribute('data-prop') === 'oldShaftEntrance').every((e) => e.title === '버려진 갱도 입구'));
+  const before = win.isWorldPointWalkable(-8, 4);
+  win.renderAll();
+  check('Task89: scenery does not change walkability', win.isWorldPointWalkable(-8, 4) === before);
+})();
+
 // SUMMARY
 // =============================================================================
 

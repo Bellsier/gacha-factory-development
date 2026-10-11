@@ -54,17 +54,29 @@ const WORLD_TERRAIN = {
   },
   // Task 67: the land beyond the range. Environment zones, nearest the tunnel
   // exit first, by distance from the exit [previous maxDist, maxDist).
-  // `features` name what the zone will be dressed with later (no objects are
-  // created yet). No NPCs, combat, dungeons or quests — scenery for
+  // `features` name what the zone is dressed with (Task 89: PROPS below places them). No NPCs, combat, dungeons or quests — scenery for
   // exploring and mining only.
   BEYOND: {
     ZONES: [
       { key: 'deepForest',    name: '깊은 산림',            maxDist: 3.5,      features: ['bigTree', 'grass', 'rock', 'clearing'] },
       { key: 'rockyGround',   name: '암석 지대',            maxDist: 6.5,      features: ['rock', 'sparseTree', 'exposedVein'] },
       // key differs from SITES' 'abandonedMine' (the starting site) on purpose
-      { key: 'halfDugMine',   name: '개발되다 만 광산',     maxDist: 9,        features: ['oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks', 'undevelopedVein'] },
-      { key: 'rareDeep',      name: '먼 희귀 광맥 지역',    maxDist: Infinity, features: ['rareVein'] },
+      { key: 'halfDugMine',   name: '개발되다 만 광산',     maxDist: 9,        features: ['oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks', 'undevelopedVein', 'rock'] },
+      { key: 'rareDeep',      name: '먼 희귀 광맥 지역',    maxDist: Infinity, features: ['rareVein', 'crystal', 'rock'] },
     ],
+    // Task 89: scenery on the land beyond, per zone. Each candidate cell (STEP
+    // apart) rolls once against the cumulative `p` of its zone's kinds; MAX caps
+    // single-piece landmarks. Purely visual — nothing here blocks walking.
+    PROPS: {
+      STEP: 0.5,
+      CLEAR_EXIT: 1.1,       // nothing stands this close to the tunnel exit
+      deepForest:  [{ kind: 'bigTree', p: 0.30 }, { kind: 'grass', p: 0.22 }, { kind: 'rock', p: 0.06 }, { kind: 'clearing', p: 0.03 }],
+      rockyGround: [{ kind: 'rock', p: 0.26 }, { kind: 'sparseTree', p: 0.07 }, { kind: 'exposedVein', p: 0.05 }],
+      halfDugMine: [{ kind: 'timberSupport', p: 0.08 }, { kind: 'diggingMarks', p: 0.10 }, { kind: 'mineCart', p: 0.03 }, { kind: 'oldShaftEntrance', p: 0.03 }, { kind: 'rock', p: 0.05 }],
+      rareDeep:    [{ kind: 'crystal', p: 0.28 }, { kind: 'rock', p: 0.08 }],
+      MAX: { mineCart: 2, oldShaftEntrance: 2, clearing: 3 },
+      NAMES: { oldShaftEntrance: '버려진 갱도 입구', mineCart: '낡은 광산 수레', timberSupport: '목재 지지대', diggingMarks: '채굴 흔적', exposedVein: '드러난 광맥', crystal: '결정 군락', clearing: '작은 빈터' },
+    },
   },
 };
 
@@ -125,6 +137,37 @@ function terrainBeyondZoneAt(x, y){
   const d = Math.hypot(x - exit.x, y - exit.y);
   const zone = WORLD_TERRAIN.BEYOND.ZONES.find(z => d < z.maxDist);
   return zone ? zone.key : null;
+}
+
+// Task 89: the scenery of the land beyond the range — the same list in every
+// game (fixed hash, no saved data). Returns [{kind, x, y, zone, size, name?}].
+function terrainBeyondProps(){
+  const b = BALANCE.world, cfg = WORLD_TERRAIN.BEYOND.PROPS;
+  const exit = terrainTunnelExit();
+  const hash = (a, c, s) => { // integer mix of the (half-unit) cell and a salt -> [0,1)
+    let h = (Math.round(a * 2) * 374761393 + Math.round(c * 2) * 668265263 + s * 2147483647) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
+  const props = [], counts = {};
+  for(let y = b.BOUNDS_MIN_Y + 0.5; y <= b.BOUNDS_MAX_Y - 0.5; y += cfg.STEP){
+    for(let x = b.BOUNDS_MIN_X + 0.4; x <= b.BOUNDS_MAX_X; x += cfg.STEP){
+      if(terrainRegionAt(x, y) !== 'beyond') continue;
+      const jx = x + (hash(x, y, 1) - 0.5) * 0.4, jy = y + (hash(x, y, 2) - 0.5) * 0.4;
+      if(terrainRegionAt(jx, jy) !== 'beyond' || terrainRegionAt(jx - 0.3, jy) !== 'beyond' && jx - 0.3 < b.BOUNDS_MIN_X) continue;
+      if(Math.hypot(jx - exit.x, jy - exit.y) < cfg.CLEAR_EXIT) continue;
+      const zone = terrainBeyondZoneAt(jx, jy);
+      const table = zone && cfg[zone];
+      if(!table) continue;
+      let roll = hash(x, y, 3), pick = null;
+      for(const row of table){ if(roll < row.p){ pick = row.kind; break; } roll -= row.p; }
+      if(!pick) continue;
+      if(cfg.MAX[pick] !== undefined && (counts[pick] || 0) >= cfg.MAX[pick]) continue;
+      counts[pick] = (counts[pick] || 0) + 1;
+      props.push({ kind: pick, x: jx, y: jy, zone, size: 0.8 + hash(x, y, 4) * 0.5, name: cfg.NAMES[pick] || null });
+    }
+  }
+  return props;
 }
 
 // Task 68: has the tunnel been opened in this game? The terrain itself is

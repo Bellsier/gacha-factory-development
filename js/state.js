@@ -1,18 +1,3 @@
-// ---------------------------------------------------------------------------
-// Task 21: minimal Factory DATA MODEL only — no behavior, no UI, no tick.
-// Nothing else in the file reads `state.factory` yet: tickLoop() does not
-// call a factory tick, renderAll() does not render it, and no recipe/craft
-// logic touches it. It exists purely as a data skeleton future Tasks build
-// on, exactly like craftFacility existed as plain data before craftSpeed()
-// used it. Declared as consts (not inside freshFactoryState()) so they're
-// initialized before `let state = freshRunState()` below runs.
-// ---------------------------------------------------------------------------
-const FACTORY_GRID_WIDTH = 25;
-const FACTORY_GRID_HEIGHT = 25;
-const FACTORY_NODE_MIN_SIZE = 1;
-const FACTORY_NODE_MAX_SIZE = 3; // per the design blueprint: facilities are 1x1..3x3
-const FACTORY_NODE_TYPES = ['production', 'storage']; // splitter/merger are NOT nodes (they're belt-attached modules per the blueprint) — not added here
-
 const MINE_DEVELOPMENT_STATES = ['unsecured', 'secured'];
 
 const PLAYER_FACINGS = ['up', 'down', 'left', 'right'];
@@ -48,22 +33,12 @@ function freshWorldState(){
   };
 }
 
-function freshFactoryState(){
-  return {
-    grid: { width: FACTORY_GRID_WIDTH, height: FACTORY_GRID_HEIGHT },
-    nodes: [], // {id, type:'production'|'storage', x, y, width, height}
-    links: [], // {id, from:nodeId, to:nodeId} — abstract connection only, no belt path/direction/throughput
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Task 20/21/74: `state` is the run (what a new game starts with);
 // `permanent` holds what is kept across games: reputation, company progress,
 // tickets. There is no prestige reset any more (Task 74): a new run state is
-// built only for a new game or a save that has none. Factory data is an
-// ADDITIVE key (`factory`) on the object freshRunState() returns, using the
-// same additive-field pattern sanitizeRunState() applies to craftFacility
-// (missing/invalid -> safe default), so old saves without it keep loading.
+// built only for a new game or a save that has none. Old saves may carry a
+// leftover `factory` key; sanitizeRunState() simply ignores it.
 // ---------------------------------------------------------------------------
 let state = freshRunState();
 // Permanent state — totalPrestige (reputation)/runCount/tickets/
@@ -98,7 +73,6 @@ function freshRunState(){
     hqLevel:0,  // gold-funded run-scoped multiplier
     craftFacility:1, // gold-funded run-scoped timed-craft speed level (1 = current craft times)
     autoLineLogged:false, // Task 6: has the one-time "both iron+coal automated" log fired this run?
-    factory: freshFactoryState(), // Task 21–26: Factory Node/Link data kept for Blueprint V3; no Factory UI yet
     world: freshWorldState(), // Task 27+: base, world mines, workshops
   };
 }
@@ -187,22 +161,6 @@ function sanitizeCharacters(raw){
   return chars;
 }
 
-// ---------------------------------------------------------------------------
-// Task 21: Factory sanitize helpers — same defensive pattern as the rest of
-// this file (single bad field -> safe default, everything else kept). None
-// of this is read by gameplay yet; it only guarantees save/load never
-// breaks on Factory data, present or absent.
-// ---------------------------------------------------------------------------
-function isValidNodeSize(v){
-  return isNonNegativeInt(v) && v >= FACTORY_NODE_MIN_SIZE && v <= FACTORY_NODE_MAX_SIZE;
-}
-function isValidGridCoord(v){
-  return Number.isInteger(v) && v >= 0;
-}
-// Task 62: world coordinates (base, mines, workshops) are integers inside the
-// world bounds from BALANCE.world (currently -10..10 on both axes). Each axis
-// is checked against its own bounds so X and Y may differ later.
-// isValidGridCoord stays for the non-negative Factory grid only.
 function isValidWorldCoord(v, axis){
   const b = BALANCE.world;
   const min = axis === 'y' ? b.BOUNDS_MIN_Y : b.BOUNDS_MIN_X;
@@ -211,62 +169,6 @@ function isValidWorldCoord(v, axis){
 }
 function isValidWorldX(v){ return isValidWorldCoord(v, 'x'); }
 function isValidWorldY(v){ return isValidWorldCoord(v, 'y'); }
-function sanitizeFactoryNode(n){
-  if(!isPlainObject(n)) return null;
-  if(!FACTORY_NODE_TYPES.includes(n.type)) return null;
-  const result = {
-    type: n.type,
-    x: isValidGridCoord(n.x) ? n.x : 0,
-    y: isValidGridCoord(n.y) ? n.y : 0,
-    width: isValidNodeSize(n.width) ? n.width : FACTORY_NODE_MIN_SIZE,
-    height: isValidNodeSize(n.height) ? n.height : FACTORY_NODE_MIN_SIZE,
-  };
-  // Preserve an existing valid id as-is; leave it unset otherwise so
-  // sanitizeFactoryNodes (which sees the whole array at once) can backfill it
-  // — same approach as sanitizeCharacter()/sanitizeCharacters() above.
-  if(typeof n.id === 'string' && n.id.length > 0) result.id = n.id;
-  return result;
-}
-function sanitizeFactoryNodes(raw){
-  if(!Array.isArray(raw)) return [];
-  const nodes = raw.map(sanitizeFactoryNode).filter(n=>n!==null);
-  const seenIds = new Set();
-  nodes.forEach(n=>{
-    if(typeof n.id !== 'string' || n.id.length === 0 || seenIds.has(n.id)){
-      n.id = makeEntityId('node_', seenIds);
-    }
-    seenIds.add(n.id);
-  });
-  return nodes;
-}
-function sanitizeFactoryLink(l){
-  if(!isPlainObject(l)) return null;
-  if(typeof l.from !== 'string' || l.from.length === 0) return null;
-  if(typeof l.to !== 'string' || l.to.length === 0) return null;
-  const result = { from: l.from, to: l.to };
-  if(typeof l.id === 'string' && l.id.length > 0) result.id = l.id;
-  return result;
-}
-function sanitizeFactoryLinks(raw){
-  if(!Array.isArray(raw)) return [];
-  const links = raw.map(sanitizeFactoryLink).filter(l=>l!==null);
-  const seenIds = new Set();
-  links.forEach(l=>{
-    if(typeof l.id !== 'string' || l.id.length === 0 || seenIds.has(l.id)){
-      l.id = makeEntityId('link_', seenIds);
-    }
-    seenIds.add(l.id);
-  });
-  return links;
-}
-function sanitizeFactoryGrid(raw){
-  const width = (isPlainObject(raw) && isNonNegativeInt(raw.width) && raw.width > 0) ? raw.width : FACTORY_GRID_WIDTH;
-  const height = (isPlainObject(raw) && isNonNegativeInt(raw.height) && raw.height > 0) ? raw.height : FACTORY_GRID_HEIGHT;
-  return { width, height };
-}
-// No `factory` field at all (every pre-Task-21 save) is exactly the
-// legacy-save case: falls straight to freshFactoryState(), same as any other
-// additive field defaulting when missing.
 function sanitizeMine(m){
   if(!isPlainObject(m)) return null;
   const result = {
@@ -382,15 +284,6 @@ function sanitizeHiddenMineIds(raw, mines){
   return [...new Set(raw.filter(id => typeof id === 'string' && ids.has(id)))];
 }
 
-function sanitizeFactoryState(raw){
-  if(!isPlainObject(raw)) return freshFactoryState();
-  return {
-    grid: sanitizeFactoryGrid(raw.grid),
-    nodes: sanitizeFactoryNodes(raw.nodes),
-    links: sanitizeFactoryLinks(raw.links),
-  };
-}
-
 // Rebuilds a fully-valid run state from (possibly malformed) saved data.
 // Any single bad field falls back to its default; every other, valid field
 // is kept — a corrupted `characters` array doesn't wipe out `resources`, etc.
@@ -418,7 +311,6 @@ function sanitizeRunState(raw){
     hqLevel: isNonNegativeInt(raw.hqLevel) ? raw.hqLevel : 0, // hqLevel is always a whole level in normal play
     craftFacility: (isNonNegativeInt(raw.craftFacility) && raw.craftFacility >= 1) ? raw.craftFacility : 1, // Task 16: additive field, missing/invalid → default 1 (preserves current craft times)
     autoLineLogged: typeof raw.autoLineLogged === 'boolean' ? raw.autoLineLogged : false, // Task 6: additive field, no saveVersion bump needed
-    factory: sanitizeFactoryState(raw.factory), // Task 21: additive field; missing (legacy save) → fresh default Factory state
     world, // Task 27: additive field; missing (legacy save) -> fresh world state
   };
 }

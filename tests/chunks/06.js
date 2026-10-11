@@ -1,61 +1,3 @@
-(function test_T26_removedLinkFromToCanBeRecreated() {
-  const win = newDom(makeMemoryStorage()).window;
-  const source = win.addFactoryNode({ id: 'node_source', type: 'production', x: 0, y: 0, width: 1, height: 1 });
-  const target = win.addFactoryNode({ id: 'node_target', type: 'storage', x: 2, y: 0, width: 1, height: 1 });
-  const original = win.addFactoryLink({ from: source.id, to: target.id });
-  check('Task26: original A -> B link created', !!original);
-
-  // Before removal, addFactoryLink already rejects this exact duplicate
-  // (Task 25 behavior, unchanged by this task).
-  check('Task26: duplicate A -> B is still rejected before removal', win.addFactoryLink({ from: source.id, to: target.id }) === null);
-
-  const removed = win.removeFactoryLink(original.id);
-  check('Task26: original link removed successfully', !!removed);
-
-  const recreated = win.addFactoryLink({ from: source.id, to: target.id });
-  check('Task26: the same A -> B link can be recreated after removal', !!recreated);
-  check('Task26: the recreated link gets a fresh id, not the old one', recreated.id !== original.id);
-  check('Task26: exactly one A -> B link exists after recreation', win.state.factory.links.length === 1 && win.state.factory.links[0].from === source.id && win.state.factory.links[0].to === target.id);
-})();
-
-(function test_T26_saveLoadUnaffectedByRemoval() {
-  const storage = makeMemoryStorage();
-  let win = newDom(storage).window;
-  const source = win.addFactoryNode({ id: 'node_source', type: 'production', x: 0, y: 0, width: 1, height: 1 });
-  const target = win.addFactoryNode({ id: 'node_target', type: 'storage', x: 2, y: 0, width: 1, height: 1 });
-  const keep = win.addFactoryNode({ id: 'node_keep', type: 'storage', x: 4, y: 0, width: 1, height: 1 });
-  const toRemove = win.addFactoryLink({ from: source.id, to: target.id });
-  const toKeep = win.addFactoryLink({ from: source.id, to: keep.id });
-
-  win.removeFactoryLink(toRemove.id);
-  check('Task26: one link remains before save', win.state.factory.links.length === 1);
-  const saved = win.saveGame();
-  check('Task26: saveGame succeeds after a Link removal', saved === true);
-
-  win = newDom(storage).window;
-  check('Task26: removed link stays removed after reload', win.state.factory.links.length === 1);
-  check('Task26: the surviving link is the one that was kept', win.state.factory.links[0].id === toKeep.id && win.state.factory.links[0].from === source.id && win.state.factory.links[0].to === keep.id);
-
-  // saveVersion/save shape is unchanged by this task.
-  check('Task26: saveVersion is still 1', (() => { win.saveGame(); return JSON.parse(win.localStorage.getItem('gachaFactorySave')).saveVersion === 1; })());
-})();
-
-(function test_T26_existingRegressionUntouched() {
-  // Sanity check that Task 25's addFactoryLink/validation are unaffected by
-  // removeFactoryLink existing alongside them.
-  const win = newDom(makeMemoryStorage()).window;
-  const source = win.addFactoryNode({ id: 'node_a', type: 'production', x: 0, y: 0, width: 1, height: 1 });
-  const target = win.addFactoryNode({ id: 'node_b', type: 'storage', x: 2, y: 0, width: 1, height: 1 });
-  const link = win.addFactoryLink({ from: source.id, to: target.id });
-  check('Task26: addFactoryLink still works standalone (unrelated to removeFactoryLink)', !!link);
-  check('Task26: self-link is still rejected', win.addFactoryLink({ from: source.id, to: source.id }) === null);
-})();
-
-// =============================================================================
-// TASK 27 — Minimal World/Base/Mine data model.
-// Data only: no mining tick, no world UI, no region expansion behavior.
-// =============================================================================
-
 (function test_T27_freshWorldDefaults() {
   const win = newDom(makeMemoryStorage()).window;
   check('Task27: fresh run has world state', !!win.state.world);
@@ -131,20 +73,6 @@
   check('Task27: mine values survive save/load', loaded.ok === true && loaded.run.world.mines[0].resource === 'iron' && loaded.run.world.mines[0].grade === 3 && loaded.run.world.mines[0].miningPower === 8 && loaded.run.world.mines[0].developmentState === 'secured');
 })();
 
-(function test_T27_existingFactoryRegressionUntouched() {
-  const win = newDom(makeMemoryStorage()).window;
-  const source = win.addFactoryNode({ id: 'node_a', type: 'production', x: 0, y: 0, width: 1, height: 1 });
-  const target = win.addFactoryNode({ id: 'node_b', type: 'storage', x: 2, y: 0, width: 1, height: 1 });
-  check('Task27: existing Factory Node API still works', !!source && !!target);
-  check('Task27: existing Factory Link API still works', !!win.addFactoryLink({ from: source.id, to: target.id }));
-  check('Task27: existing Link removal still works', !!win.removeFactoryLink(win.state.factory.links[0].id));
-})();
-
-// =============================================================================
-// TASK 28 — Mine registration.
-// Validates a mine as a unique world point and adds it to state.world.mines.
-// =============================================================================
-
 (function test_T28_addMineValidAndIdGeneration() {
   const win = newDom(makeMemoryStorage()).window;
   const mine = win.addMine({
@@ -204,26 +132,6 @@
   check('Task28: colliding id is replaced with a generated id', second && second.id !== 'mine_same' && second.id.startsWith('mine_'));
 })();
 
-(function test_T28_addMineSaveLoadAndFactoryRegression() {
-  const storage = makeMemoryStorage();
-  const win = newDom(storage).window;
-  const mine = win.addMine({
-    id: 'mine_save', x: 9, y: 3, resource: 'iron', grade: 3, miningPower: 7, developmentState: 'secured'
-  });
-  check('Task28: save test mine was added', !!mine);
-  win.saveGame();
-  const loaded = win.loadGame();
-  const savedMine = loaded.ok ? loaded.run.world.mines.find(m => m.id === 'mine_save') : null;
-  check('Task28: mine survives save/load', loaded.ok === true && loaded.run.world.mines.length === 3 && !!savedMine);
-  check('Task28: mine gameplay data survives save/load', !!savedMine && savedMine.resource === 'iron' && savedMine.grade === 3 && savedMine.miningPower === 7 && savedMine.developmentState === 'secured');
-
-  const source = win.addFactoryNode({ id: 'node_a', type: 'production', x: 0, y: 0, width: 1, height: 1 });
-  check('Task28: Factory Node API remains available', !!source);
-})();
- 
-// =============================================================================
-// TASK 30 — Mine securing.
-// =============================================================================
 (function test_T30_secureMine() {
   const win = newDom(makeMemoryStorage()).window;
   const mine = win.addMine({ id:'mine_secure', x:5, y:5, resource:'iron', grade:1, miningPower:1, developmentState:'unsecured' });

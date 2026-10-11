@@ -72,7 +72,7 @@ function siteRelatedRecipeNames(site){
 // (a Set) is checked and regenerated on collision, so callers are always
 // guaranteed a fresh, unique id.
 // One collision-safe id generator for everything (prefix = id namespace:
-// 'w_' workers, 'node_'/'link_' factory, 'workshop_', ...).
+// 'w_' workers, 'workshop_', ...).
 function makeEntityId(prefix, existingIds){
   let id;
   do{

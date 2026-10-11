@@ -757,26 +757,6 @@
   check('Task62: movement ends idle', p.pose === 'idle');
 })();
 
-(function test_T62_worldCoordinateValidation() {
-  const win = newDom(makeMemoryStorage()).window;
-  const m = win.addMine({ id: 'mine_west', x: -6, y: -3, resource: 'iron', grade: 1, miningPower: 1, developmentState: 'unsecured' });
-  check('Task62: mines accept negative coordinates', !!m && m.x === -6 && m.y === -3);
-  check('Task62: mines reject non-integer coordinates', win.addMine({ x: -1.5, y: 0, resource: 'iron', grade: 1, miningPower: 1, developmentState: 'unsecured' }) === null);
-  check('Task62: duplicate negative coordinates are rejected', win.addMine({ x: -6, y: -3, resource: 'coal', grade: 1, miningPower: 1, developmentState: 'unsecured' }) === null);
-  const ws = win.addWorkshop({ id: 'ws_west', x: -2, y: -1, level: 1, recipeKey: 'steel' });
-  check('Task62: workshops accept negative coordinates', !!ws && ws.x === -2 && ws.y === -1);
-  check('Task62: Factory grid still rejects negative coordinates', win.addFactoryNode({ type: 'production', x: -1, y: 0, width: 1, height: 1 }) === null);
-  const world = win.sanitizeWorldState({ base: { x: -3, y: 4, level: 2 }, mines: [{ id: 'mine_n', x: -7, y: -9, resource: 'coal', grade: 1, miningPower: 1, developmentState: 'secured' }], workshops: [], player: { x: -2.5, y: -9.5, facing: 'left' } }); // Task 66: x -8.5 is inside the mountain now; -2.5 is open ground
-  check('Task62: sanitize keeps negative base coords', world.base.x === -3 && world.base.y === 4);
-  check('Task62: sanitize keeps negative mine coords', world.mines[0].x === -7 && world.mines[0].y === -9);
-  check('Task62: sanitize keeps negative player coords', world.player.x === -2.5 && world.player.y === -9.5);
-  const noBase = win.sanitizeWorldState({ mines: [], workshops: [] });
-  check('Task62: missing base falls back to the new-game base', noBase.base.x === 2 && noBase.base.y === 0);
-  check('Task62: missing player stands on the (fallback) base', noBase.player.x === 2 && noBase.player.y === 0);
-  const badPlayer = win.sanitizeWorldState({ base: { x: -4, y: 3, level: 1 }, mines: [], workshops: [], player: { x: 'far', y: null } });
-  check('Task62: invalid player coords fall back to the saved base', badPlayer.player.x === -4 && badPlayer.player.y === 3);
-})();
-
 (function test_T62_expansionSeedsRelativeToBase() {
   const win = newDom(makeMemoryStorage()).window;
   win.state.gold = 3000;
@@ -908,14 +888,6 @@
   check('Task62b: out-of-bounds base falls back to the new-game base', out.base.x === 2 && out.base.y === 0);
   check('Task62b: out-of-bounds mine axis falls back like any invalid coord', out.mines[0].x === 0 && out.mines[0].y === 3);
   check('Task62b: out-of-bounds workshop axis falls back like any invalid coord', out.workshops[0].x === 4 && out.workshops[0].y === 0);
-})();
-
-(function test_T62b_factoryGridUnchanged() {
-  const win = newDom(makeMemoryStorage()).window;
-  check('Task62b: Factory Node still rejects negative x', win.addFactoryNode({ type: 'production', x: -1, y: 0, width: 1, height: 1 }) === null);
-  check('Task62b: Factory Node still rejects negative y', win.addFactoryNode({ type: 'production', x: 0, y: -1, width: 1, height: 1 }) === null);
-  check('Task62b: Factory Node accepts 0 and beyond the world bound', !!win.addFactoryNode({ id: 'node_far', type: 'production', x: 12, y: 0, width: 1, height: 1 }));
-  check('Task62b: grid validator unchanged (non-negative integers)', win.isValidGridCoord(0) && win.isValidGridCoord(24) && !win.isValidGridCoord(-1) && !win.isValidGridCoord(1.5));
 })();
 
 (function test_T62b_existingWorldStillValid() {

@@ -3836,6 +3836,25 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   check('Task89: scenery does not change walkability', win.isWorldPointWalkable(-8, 4) === before);
 })();
 
+
+(function test_T90_lateHints() {
+  const win = newDom(makeMemoryStorage()).window;
+  const hint = () => { win.updateNextHint(); return win.document.getElementById('nextHint').textContent; };
+  win.permanent.firstGachaGranted = true;
+  win.state.characters.push(makeTestWorker('h1', 'iron'), makeTestWorker('h2', 'coal'));
+  win.state.autoCraft.steel = true;
+  win.state.research.deliveryContract = true;
+  check('Task90: before any reputation the hint stays on the first order', /수주/.test(hint()));
+  win.permanent.totalPrestige = 1;
+  check('Task90: then it points to the workshop research', /제작소 건설/.test(hint()));
+  win.state.research.workshopBuild = true;
+  check('Task90: then to building one', /제작소를 지어/.test(hint()));
+  const shop = win.addWorkshop({ id: 'ws90', x: 4, y: 2, level: 1 });
+  check('Task90: a workshop without a recipe is called out', /레시피를 정하지 않은/.test(hint()));
+  shop.recipeKey = 'steelGear';
+  check('Task90: a stalled workshop names the missing material', /멈춰 있어요/.test(hint()) && win.bottleneckReport().items.length > 0 && hint().includes(win.bottleneckReport().items[0].name));
+})();
+
 // SUMMARY
 // =============================================================================
 

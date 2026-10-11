@@ -17,8 +17,27 @@ function updateNextHint(){
   } else if(!isDeliveryUnlocked()){
     el.textContent = '연구 탭에서 "납품 계약"을 연구하면 회사에 제품을 보내고 명성을 얻을 수 있어요.';
   } else {
-    el.textContent = '납품 탭의 수주를 완수하면 명성을 얻어요. 명성이 오르면 더 많은 회사와 거래할 수 있습니다.';
+    el.textContent = lateGameHint();
   }
+}
+
+// Task 90: what to do next once delivery is open. Until the first reputation the
+// hint stays on the first order; after that it walks through the systems the
+// player has not used yet, first match wins.
+function lateGameHint(){
+  const orderHint = '납품 탭의 수주를 완수하면 명성을 얻어요. 명성이 오르면 더 많은 회사와 거래할 수 있습니다.';
+  if(permanent.totalPrestige < 1) return orderHint;
+  const workshops = state.world.workshops.filter(w => w);
+  if(!isResearchDone('workshopBuild')) return '연구 탭의 "제작소 건설"로 제작소를 지으면 상위 제품을 따로 만들 수 있어요.';
+  if(workshops.length === 0) return '개발 탭에서 제작소를 지어 보세요. 레시피를 정해 두면 따로 물건을 만들어 줘요.';
+  if(workshops.some(w => !w.recipeKey)) return '레시피를 정하지 않은 제작소가 있어요. 제작소에 만들 제품을 골라 주세요.';
+  const bottleneck = bottleneckReport();
+  if(bottleneck.items.length) return '제작소가 재료 때문에 멈춰 있어요. 가장 필요한 재료는 ' + bottleneck.items[0].name + '입니다. 채굴 탭이나 일꾼 배치를 살펴보세요.';
+  const site = nextExpansionSite();
+  if(site && canUnlockSite(site)) return '채굴 탭에서 ' + site.name + '을(를) 열 수 있어요. 새 자원으로 더 높은 제품을 만들 수 있습니다.';
+  if(!state.world.tunnelUnlocked && researchStatus('tunnelWork') === 'available') return '연구 탭의 "터널 굴착"으로 산 너머의 희귀한 광맥으로 가는 길을 열 수 있어요.';
+  if(state.world.tunnelUnlocked && state.world.mines.some(m => m && !isMineDiscovered(m))) return '아직 발견하지 못한 광맥이 있어요. 맵을 돌아다니며 찾아보세요.';
+  return orderHint;
 }
 
 function renderCurrencies(){

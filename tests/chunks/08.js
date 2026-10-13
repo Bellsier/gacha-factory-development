@@ -1776,7 +1776,7 @@ const T66_STEP = 3 / 10; // PLAYER_SPEED / TICKS_PER_SECOND
   win.saveGame();
   const raw = storage.getItem('gachaFactorySave');
   // Task 68: the terrain is never saved; only the player's tunnelUnlocked progress flag is.
-  check('Task66: terrain is not written to the save', !/terrain|mountain|tunnel|peak/i.test(raw.replace('"tunnelUnlocked":false', '').replace('"tunnelWork":false', '')));
+  check('Task66: terrain is not written to the save', !/terrain|mountain|tunnel|peak/i.test(raw.replace('"tunnelUnlocked":false', '').replace('"tunnelContract":null', '').replace('"tunnelWork":false', '')));
   check('Task66: saveVersion stays 1', JSON.parse(raw).saveVersion === 1);
   const win2 = newDom(storage).window;
   const w2 = win2.state.world;
@@ -2396,24 +2396,30 @@ function t69Problems(win, before, after) {
   check('Task69: an order keeps the tunnel open and the beyond mines (nothing is reset or generated again)', win.state.world.tunnelUnlocked === true && t69Beyond(win, win.state.world.mines).length > 0 && win.state.world.mines.length === count);
 })();
 
-// =============================================================================
-// TASK 70 — Research. One item for now: "터널 굴착" (tunnelWork) costs 30000 gold
-// + 5 마법 합금 (alloy) and opens the tunnel (Task 68/69). Research is instant,
-// run-scoped (resets with a new run) and saved in state.research.
+// TASK 70 / 93 — Research. "터널 굴착" (tunnelWork) costs 1000 gold and only unlocks
+// the commission of the tunnel contractor (Task 93); the tunnel opens when the
+// construction is done. Research is instant, one-time and saved in state.research.
 // Reference values are hard-coded here, not read back from the game.
 // =============================================================================
 
 function t70Afford(win) {
-  win.state.gold = 30000;
-  win.state.products.alloy = 5;
+  win.state.gold = 1000;
+}
+// Task 93: runs the whole flow — research, commission, wait out the job — and opens the tunnel.
+function t93OpenTunnel(win) {
+  win.state.gold = Math.max(win.state.gold, 6000) + 1000;
+  win.state.products.alloy = Math.max(win.state.products.alloy, 5);
+  if (!win.isResearchDone('tunnelWork')) win.doResearch('tunnelWork');
+  win.orderTunnelWork(0);
+  return win.tickTunnelWork(600 * 1000);
 }
 
 (function test_T70_dataAndNewGame() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
   const def = win.researchDef('tunnelWork');
   check('Task70: the tunnel research exists with its name', !!def && def.name === '터널 굴착');
-  check('Task70: it costs 30000 gold and 5 magic alloy and needs no other research', def.cost.gold === 30000 && Object.keys(def.cost.products).join() === 'alloy' && def.cost.products.alloy === 5 && def.requires.length === 0);
-  check('Task70: it opens the tunnel', def.effect === 'unlockTunnel');
+  check('Task93: it costs 1000 gold only and needs no other research', def.cost.gold === 1000 && Object.keys(def.cost.products).length === 0 && def.requires.length === 0);
+  check('Task93: it unlocks the contractor and does not open the tunnel itself', def.effect === 'unlockTunnelContractor');
   check('Task70: a new game has the research map with nothing done', Object.keys(win.state.research).every(k => win.state.research[k] === false) && win.state.research.tunnelWork === false);
   check('Task70: status of a new game is available, not done', win.researchStatus('tunnelWork') === 'available' && win.isResearchDone('tunnelWork') === false);
   check('Task70: unknown / non-string keys have no definition', win.researchDef('nope') === null && win.researchDef(null) === null && win.researchDef(5) === null && win.researchStatus('nope') === null);
@@ -2422,42 +2428,34 @@ function t70Afford(win) {
 (function test_T70_affordability() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
   check('Task70: nothing owned — cannot research', win.canResearch('tunnelWork') === false);
-  win.state.gold = 30000;
-  check('Task70: gold alone is not enough', win.canResearch('tunnelWork') === false);
-  win.state.gold = 29999; win.state.products.alloy = 5;
+  win.state.gold = 999;
   check('Task70: one gold short is not enough', win.canResearch('tunnelWork') === false);
-  win.state.gold = 30000; win.state.products.alloy = 4;
-  check('Task70: one alloy short is not enough', win.canResearch('tunnelWork') === false);
-  win.state.products.alloy = 5;
+  win.state.gold = 1000;
   check('Task70: exactly the cost is enough', win.canResearch('tunnelWork') === true);
   check('Task70: invalid keys can never be researched', win.canResearch('nope') === false && win.canResearch(undefined) === false && win.canResearch({}) === false);
 })();
 
 (function test_T70_failureChangesNothing() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  win.state.gold = 29999; win.state.products.alloy = 9; win.state.products.steel = 3; win.state.resources.mana = 2;
+  win.state.gold = 999; win.state.products.alloy = 9; win.state.products.steel = 3; win.state.resources.mana = 2;
   const snap = JSON.stringify([win.state.gold, win.state.products, win.state.resources, win.state.research, win.state.world.tunnelUnlocked, win.state.world.mines.length]);
   const logs = win.document.getElementById('log').children.length;
   check('Task70: a failed research returns false', win.doResearch('tunnelWork') === false && win.doResearch('nope') === false);
   check('Task70: ...and spends and changes nothing (no log, tunnel still closed)', JSON.stringify([win.state.gold, win.state.products, win.state.resources, win.state.research, win.state.world.tunnelUnlocked, win.state.world.mines.length]) === snap && win.document.getElementById('log').children.length === logs);
 })();
 
-(function test_T70_researchTheTunnel() {
+(function test_T70_researchTheContractor() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  win.state.gold = 32000; win.state.products.alloy = 7; win.state.products.steel = 3; win.state.resources.mana = 2;
+  win.state.gold = 3000; win.state.products.alloy = 7; win.state.products.steel = 3; win.state.resources.mana = 2;
   const logEl = win.document.getElementById('log');
   const logs = logEl.children.length;
   check('Task70: researching with enough succeeds', win.doResearch('tunnelWork') === true);
-  check('Task70: it costs exactly 30000 gold and 5 alloy', win.state.gold === 2000 && win.state.products.alloy === 2);
-  check('Task70: nothing else is spent', win.state.products.steel === 3 && win.state.resources.mana === 2);
+  check('Task93: it costs exactly 1000 gold and nothing else', win.state.gold === 2000 && win.state.products.alloy === 7 && win.state.products.steel === 3 && win.state.resources.mana === 2);
   check('Task70: it is marked done and stays done', win.isResearchDone('tunnelWork') === true && win.researchStatus('tunnelWork') === 'done' && win.state.research.tunnelWork === true);
-  check('Task70: the tunnel is open and its mines were generated (14 + 8)', win.state.world.tunnelUnlocked === true && win.state.world.mines.length === 22 && win.terrainTunnelOpen() === true);
-  check('Task70: two log lines, the research first and the tunnel on top', logEl.children.length === logs + 2 && logEl.children[1].textContent === '연구 완료: 터널 굴착' && logEl.children[0].textContent.includes('터널이 열렸습니다'));
-  const afterGold = win.state.gold;
-  win.state.products.alloy = 10; win.state.gold = 50000;
-  check('Task70: a finished research cannot be bought again (nothing spent)', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 50000 && win.state.products.alloy === 10 && win.state.world.mines.length === 22);
-  check('Task70: the player can now walk through the tunnel', (() => { const p = win.state.world.player; p.x = 0; p.y = 1; t68Hold(win, ['left'], 60); return win.terrainRegionAt(p.x, p.y) === 'beyond'; })());
-  void afterGold;
+  check('Task93: the tunnel is still closed, no job exists and no beyond mines were made (14)', win.state.world.tunnelUnlocked === false && win.state.world.tunnelContract === null && win.state.world.mines.length === 14 && win.terrainTunnelOpen() === false);
+  check('Task93: one log line for the research and one for the contract', logEl.children.length === logs + 2 && logEl.textContent.includes('연구 완료: 터널 굴착') && logEl.textContent.includes('전문 굴착 업체와 계약'));
+  win.state.gold = 50000;
+  check('Task70: a finished research cannot be bought again (nothing spent)', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 50000);
 })();
 
 (function test_T70_effectOpensItsOwnResearch() {
@@ -2466,13 +2464,13 @@ function t70Afford(win) {
   win.unlockTunnel();
   check('Task70: opening the tunnel directly marks the research done', win.state.research.tunnelWork === true && win.researchStatus('tunnelWork') === 'done');
   t70Afford(win);
-  check('Task70: ...so it cannot be paid for afterwards', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 30000 && win.state.products.alloy === 5);
+  check('Task70: ...so it cannot be paid for afterwards', win.canResearch('tunnelWork') === false && win.doResearch('tunnelWork') === false && win.state.gold === 1000);
 })();
 
 (function test_T70_prerequisites() {
   // Add a second research that requires the first, to check the prerequisite rule.
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  win.RESEARCH.push({ key: 't70_second', name: '테스트 연구', desc: '', effect: 'unlockTunnel', cost: { gold: 10 }, requires: ['tunnelWork'] });
+  win.RESEARCH.push({ key: 't70_second', name: '테스트 연구', desc: '', effect: 'unlockWorkshopBuild', cost: { gold: 10 }, requires: ['tunnelWork'] });
   win.state.gold = 10;
   check('Task70: a research whose requirement is missing is locked and cannot be bought', win.researchStatus('t70_second') === 'locked' && win.canResearch('t70_second') === false && win.doResearch('t70_second') === false && win.state.gold === 10);
   win.state.research.tunnelWork = true;
@@ -2491,33 +2489,32 @@ function t70Afford(win) {
   check('Task70: clicking the tab shows the research panel', doc.getElementById('tab-research').classList.contains('active') && !doc.getElementById('tab-mining').classList.contains('active'));
   const card = doc.querySelector('[data-research-card="tunnelWork"]');
   const btn = doc.querySelector('[data-research="tunnelWork"]');
-  check('Task70: one card with name, description, cost line and a button', !!card && card.textContent.includes('터널 굴착') && card.textContent.includes('산을 가로지르는') && card.getAttribute('data-research-status') === 'available' && !!btn);
+  check('Task70: one card with name, description, cost line and a button', !!card && card.textContent.includes('터널 굴착') && card.textContent.includes('전문 굴착 업체') && card.getAttribute('data-research-status') === 'available' && !!btn);
   const cost = doc.querySelector('[data-research-cost="tunnelWork"]');
-  check('Task70: the cost line shows gold and alloy with what the player has', cost.textContent.includes('30,000G') && cost.textContent.includes('마법 합금 5개') && cost.textContent.includes('보유 0G') && cost.textContent.includes('보유 0개'));
+  check('Task70: the cost line shows the gold with what the player has', cost.textContent.includes('1,000G') && cost.textContent.includes('보유 0G') && !cost.textContent.includes('합금'));
   check('Task70: the button is disabled while the cost is not met', btn.disabled === true && btn.textContent === '연구하기');
   btn.click();
   check('Task70: clicking a disabled button does nothing', win.state.research.tunnelWork === false && win.state.world.tunnelUnlocked === false);
   t70Afford(win);
   win.updateNumbers();
-  check('Task70: the per-tick refresh enables the button without rebuilding it', doc.querySelector('[data-research="tunnelWork"]') === btn && btn.disabled === false && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 30,000G') && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 5개'));
-  win.state.gold = 29999;
+  check('Task70: the per-tick refresh enables the button without rebuilding it', doc.querySelector('[data-research="tunnelWork"]') === btn && btn.disabled === false && doc.querySelector('[data-research-cost="tunnelWork"]').textContent.includes('보유 1,000G'));
+  win.state.gold = 999;
   win.updateNumbers();
   check('Task70: ...and disables it again when the cost is no longer met', btn.disabled === true);
-  win.state.gold = 30000;
+  win.state.gold = 1000;
   win.updateNumbers();
   btn.click();
   const done = doc.querySelector('[data-research="tunnelWork"]');
-  check('Task70: clicking it researches, spends the cost and rebuilds the card as done', win.state.research.tunnelWork === true && win.state.gold === 0 && win.state.products.alloy === 0 && doc.querySelector('[data-research-card="tunnelWork"]').getAttribute('data-research-status') === 'done' && done.disabled === true && done.textContent === '연구 완료' && !doc.querySelector('[data-research-cost="tunnelWork"]'));
-  const stage = doc.getElementById('worldStage');
-  check('Task70: the world is redrawn with the open tunnel and the new unknown rocks', stage.querySelector('[data-tunnel]').getAttribute('data-tunnel-locked') === 'false' && stage.querySelectorAll('[data-world-mine].is-undiscovered').length >= 8 && !!doc.querySelector('[data-map-tunnel].is-open'));
+  check('Task70: clicking it researches, spends the cost and rebuilds the card as done', win.state.research.tunnelWork === true && win.state.gold === 0 && doc.querySelector('[data-research-card="tunnelWork"]').getAttribute('data-research-status') === 'done' && done.disabled === true && done.textContent === '연구 완료' && !doc.querySelector('[data-research-cost="tunnelWork"]'));
+  check('Task93: the tunnel stays locked and the commission card appears', doc.querySelector('#worldStage [data-tunnel]').getAttribute('data-tunnel-locked') === 'true' && !!doc.querySelector('[data-tunnel-contract="none"]') && !!doc.querySelector('[data-order-tunnel]'));
   win.renderAll(); win.renderAll();
-  check('Task70: re-rendering never duplicates the research card', doc.querySelectorAll('[data-research-card="tunnelWork"]').length === 1 && doc.querySelectorAll('[data-research-card]').length === win.RESEARCH.length);
+  check('Task70: re-rendering never duplicates the research card', doc.querySelectorAll('[data-research-card="tunnelWork"]').length === 1 && doc.querySelectorAll('[data-research-card]').length === win.RESEARCH.length && doc.querySelectorAll('[data-tunnel-contract]').length === 1);
 })();
 
 (function test_T70_lockedTunnelPointsToResearch() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
   const tunnel = win.document.querySelector('#worldStage [data-tunnel]');
-  check('Task70: the locked tunnel tells the player where to open it', tunnel.title.includes('연구') && tunnel.title.includes('터널 굴착'));
+  check('Task70: the locked tunnel tells the player where to open it', tunnel.title.includes('연구') && tunnel.title.includes('터널 굴착') && tunnel.title.includes('공사'));
 })();
 
 (function test_T70_saveLoad() {
@@ -2529,10 +2526,10 @@ function t70Afford(win) {
   const saved = JSON.parse(storage.getItem('gachaFactorySave'));
   check('Task70: research is saved in the run as an additive map; saveVersion stays 1', saved.run.research.tunnelWork === true && saved.run.research.workshopBuild === false && saved.run.research.autoCraftDevice === false && saved.saveVersion === 1);
   const loaded = newDom(storage).window;
-  check('Task70: it is still done after loading and its card shows it', loaded.state.research.tunnelWork === true && loaded.state.world.tunnelUnlocked === true && loaded.document.querySelector('[data-research-card="tunnelWork"]').getAttribute('data-research-status') === 'done');
-  check('Task70: loading does not generate the beyond mines again', loaded.state.world.mines.length === 22);
+  check('Task70: it is still done after loading, the tunnel still closed, and its card shows it', loaded.state.research.tunnelWork === true && loaded.state.world.tunnelUnlocked === false && loaded.document.querySelector('[data-research-card="tunnelWork"]').getAttribute('data-research-status') === 'done');
+  check('Task70: loading does not generate the beyond mines', loaded.state.world.mines.length === 14);
   const edit = (fn) => { const p = JSON.parse(storage.getItem('gachaFactorySave')); fn(p); storage.setItem('gachaFactorySave', JSON.stringify(p)); return newDom(storage).window; };
-  const older = edit((p) => { delete p.run.research; });
+  const older = edit((p) => { delete p.run.research; p.run.world.tunnelUnlocked = true; });
   check('Task70: an older save without the field loads; the open tunnel counts as researched', older.state.research.tunnelWork === true && older.state.world.tunnelUnlocked === true);
   const olderClosed = edit((p) => { delete p.run.research; p.run.world.tunnelUnlocked = false; });
   check('Task70: an older save with a closed tunnel loads as not researched', olderClosed.state.research.tunnelWork === false && olderClosed.researchStatus('tunnelWork') === 'available');
@@ -2540,22 +2537,142 @@ function t70Afford(win) {
     const w = edit((p) => { p.run.research = bad; p.run.world.tunnelUnlocked = false; });
     check('Task70: invalid research value #' + i + ' loads as not done and playable', w.state.research.tunnelWork === false && w.canResearch('tunnelWork') === false && w.state.world.tunnelUnlocked === false);
   });
-  const lying = edit((p) => { p.run.research = { tunnelWork: true }; p.run.world.tunnelUnlocked = false; });
-  check('Task70: a research flag that disagrees with a closed tunnel is not trusted (the world decides)', lying.state.research.tunnelWork === false && lying.researchStatus('tunnelWork') === 'available');
+  const bought = edit((p) => { p.run.research = { tunnelWork: true }; p.run.world.tunnelUnlocked = false; });
+  check('Task93: a bought contractor research stays done while the tunnel is closed', bought.state.research.tunnelWork === true && bought.researchStatus('tunnelWork') === 'done' && bought.state.world.tunnelUnlocked === false);
   const unknown = edit((p) => { p.run.research = { tunnelWork: false, mystery: true }; p.run.world.tunnelUnlocked = false; });
   check('Task70: unknown research keys in a save are dropped', unknown.state.research.mystery === undefined && Object.keys(unknown.state.research).sort().join() === unknown.RESEARCH.map(r => r.key).sort().join());
 })();
 
 (function test_T70_ordersKeepResearch() {
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  t70Afford(win);
-  win.doResearch('tunnelWork');
+  t93OpenTunnel(win);
   win.state.gold = 1e6; win.state.products.steel = 200;
   win.doResearch('deliveryContract');
   win.state.gold = 1e6; win.state.products.steel = 200;
   win.completeOrder('forge');
   win.renderAll();
   check('Task70: research, the open tunnel and the beyond mines all stay after an order (Task 74: no reset)', win.state.research.tunnelWork === true && win.state.world.tunnelUnlocked === true && win.state.world.mines.length === 22 && win.document.querySelector('[data-research-card="tunnelWork"]').getAttribute('data-research-status') === 'done');
+})();
+
+// =============================================================================
+// TASK 93 — tunnel construction: research -> commission (5000G + 5 alloy) -> 10 minutes
+// of real time (saved start time) -> unlockTunnel().
+// =============================================================================
+const T93_T0 = 1700000000000;
+
+(function test_T93_balanceAndOrder() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  check('Task93: balance — 5000G + 5 magic alloy, 600 s', win.BALANCE.tunnel.COMMISSION_GOLD === 5000 && win.BALANCE.tunnel.COMMISSION_PRODUCTS.alloy === 5 && Object.keys(win.BALANCE.tunnel.COMMISSION_PRODUCTS).length === 1 && win.BALANCE.tunnel.DURATION_SEC === 600);
+  win.state.gold = 9000; win.state.products.alloy = 9;
+  check('Task93: without the research nothing can be ordered and nothing is spent', win.tunnelWorkStatus() === 'none' && win.canOrderTunnelWork() === false && win.orderTunnelWork(T93_T0) === false && win.state.gold === 9000 && win.state.products.alloy === 9 && win.state.world.tunnelContract === null);
+  win.state.research.tunnelWork = true;
+  win.state.gold = 4999;
+  check('Task93: one gold short is refused', win.canOrderTunnelWork() === false && win.orderTunnelWork(T93_T0) === false && win.state.gold === 4999);
+  win.state.gold = 5000; win.state.products.alloy = 4;
+  check('Task93: one alloy short is refused', win.canOrderTunnelWork() === false && win.orderTunnelWork(T93_T0) === false && win.state.products.alloy === 4);
+  win.state.products.alloy = 7; win.state.products.steel = 3;
+  const logs = win.document.getElementById('log').children.length;
+  check('Task93: ordering pays 5000G and 5 alloy and starts the job', win.orderTunnelWork(T93_T0) === true && win.state.gold === 0 && win.state.products.alloy === 2 && win.state.products.steel === 3 && win.tunnelWorkStatus() === 'building' && win.state.world.tunnelContract.startedAt === T93_T0 && win.state.world.tunnelContract.durationSec === 600);
+  check('Task93: a log line says so, and the tunnel is still closed', win.document.getElementById('log').children.length === logs + 1 && win.state.world.tunnelUnlocked === false);
+  win.state.gold = 99999; win.state.products.alloy = 99;
+  check('Task93: no second order and no second payment', win.canOrderTunnelWork() === false && win.orderTunnelWork(T93_T0 + 1000) === false && win.state.gold === 99999 && win.state.products.alloy === 99 && win.state.world.tunnelContract.startedAt === T93_T0);
+})();
+
+(function test_T93_workRunsAndFinishes() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  win.state.research.tunnelWork = true; win.state.gold = 5000; win.state.products.alloy = 5;
+  win.orderTunnelWork(T93_T0);
+  check('Task93: remaining time counts down from 600 s', win.tunnelWorkRemainingSec(T93_T0) === 600 && Math.abs(win.tunnelWorkRemainingSec(T93_T0 + 120000) - 480) < 1e-9);
+  check('Task93: before the end the tick changes nothing', win.tickTunnelWork(T93_T0 + 599000) === false && win.state.world.tunnelUnlocked === false && win.state.world.mines.length === 14 && !!win.state.world.tunnelContract);
+  check('Task93: at 600 s the tunnel opens through unlockTunnel, once, and the beyond mines appear (14 + 8)', win.tickTunnelWork(T93_T0 + 600000) === true && win.state.world.tunnelUnlocked === true && win.state.world.tunnelContract === null && win.state.world.mines.length === 22 && win.tunnelWorkStatus() === 'done');
+  check('Task93: the log announces the open tunnel', win.document.getElementById('log').textContent.includes('터널이 열렸습니다'));
+  check('Task93: running it again opens nothing and makes no new mines', win.tickTunnelWork(T93_T0 + 900000) === false && win.unlockTunnel() === false && win.state.world.mines.length === 22);
+  win.state.gold = 99999; win.state.products.alloy = 99;
+  check('Task93: once open nothing can be ordered or paid', win.canOrderTunnelWork() === false && win.orderTunnelWork(T93_T0) === false && win.state.gold === 99999 && win.state.products.alloy === 99);
+})();
+
+(function test_T93_clockSkew() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  win.state.research.tunnelWork = true; win.state.gold = 5000; win.state.products.alloy = 5;
+  win.orderTunnelWork(T93_T0);
+  check('Task93: a clock set back never makes the wait longer than 10 minutes', win.tunnelWorkRemainingSec(T93_T0 - 3600000) === 600 && win.tickTunnelWork(T93_T0 - 3600000) === false);
+  check('Task93: the remaining time never goes below 0', win.tunnelWorkRemainingSec(T93_T0 + 9e9) === 0);
+})();
+
+(function test_T93_reconnect() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage, { fullWorld: true }).window;
+  win.state.research.tunnelWork = true; win.state.gold = 5000; win.state.products.alloy = 5;
+  win.orderTunnelWork(T93_T0);
+  win.saveGame();
+  const saved = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task93: the job is saved with its start time; saveVersion stays 1', saved.run.world.tunnelContract.startedAt === T93_T0 && saved.run.world.tunnelContract.durationSec === 600 && saved.saveVersion === 1);
+  const mid = newDom(storage).window;
+  check('Task93: reconnecting mid-job keeps the job, the research and the time, and charges nothing again', mid.tunnelWorkStatus() === 'building' && mid.state.research.tunnelWork === true && mid.state.gold === 0 && mid.state.products.alloy === 0 && Math.abs(mid.tunnelWorkRemainingSec(T93_T0 + 200000) - 400) < 1e-9);
+  check('Task93: a second order after reconnecting is refused', (mid.state.gold = 9999, mid.state.products.alloy = 9, mid.orderTunnelWork(T93_T0 + 200000) === false) && mid.state.gold === 9999);
+  const late = newDom(storage).window;
+  check('Task93: reconnecting after the end opens the tunnel on the next tick, once', late.tickTunnelWork(T93_T0 + 5 * 3600 * 1000) === true && late.state.world.tunnelUnlocked === true && late.state.world.mines.length === 22 && late.state.world.tunnelContract === null);
+  late.saveGame();
+  const again = newDom(storage).window;
+  check('Task93: after saving the open tunnel no job and no new mines are created', again.state.world.tunnelUnlocked === true && again.state.world.tunnelContract === null && again.tickTunnelWork(T93_T0 + 9e9) === false && again.state.world.mines.length === 22);
+})();
+
+(function test_T93_oldAndBadSaves() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage, { fullWorld: true }).window;
+  win.unlockTunnel();
+  win.saveGame();
+  const open = newDom(storage).window;
+  check('Task93: a save with an open tunnel stays open, researched, with no job', open.state.world.tunnelUnlocked === true && open.state.research.tunnelWork === true && open.state.world.tunnelContract === null && open.tunnelWorkStatus() === 'done');
+  open.state.gold = 1e6; open.state.products.alloy = 50;
+  check('Task93: ...and cannot be paid for again', open.orderTunnelWork(T93_T0) === false && open.state.gold === 1e6 && open.state.products.alloy === 50);
+  const edit = (fn) => { const p = JSON.parse(storage.getItem('gachaFactorySave')); fn(p); storage.setItem('gachaFactorySave', JSON.stringify(p)); return newDom(storage).window; };
+  const noField = edit((p) => { delete p.run.world.tunnelContract; p.run.world.tunnelUnlocked = false; delete p.run.research; });
+  check('Task93: a save without the field has no job', noField.state.world.tunnelContract === null && noField.tunnelWorkStatus() === 'none');
+  [1, 'x', [], { startedAt: -1, durationSec: 600 }, { startedAt: 5, durationSec: 0 }, { startedAt: 'a', durationSec: 600 }, { startedAt: 5 }].forEach((bad, i) => {
+    const w = edit((p) => { p.run.world.tunnelContract = bad; p.run.world.tunnelUnlocked = false; });
+    check('Task93: invalid job value #' + i + ' loads as no job', w.state.world.tunnelContract === null && w.tunnelWorkStatus() === 'none');
+  });
+  const both = edit((p) => { p.run.world.tunnelContract = { startedAt: T93_T0, durationSec: 600 }; p.run.world.tunnelUnlocked = true; });
+  check('Task93: a job saved next to an open tunnel is dropped', both.state.world.tunnelContract === null && both.state.world.tunnelUnlocked === true);
+  const job = edit((p) => { p.run.world.tunnelContract = { startedAt: T93_T0, durationSec: 600 }; p.run.world.tunnelUnlocked = false; p.run.research = {}; });
+  check('Task93: a saved job counts the contractor research as bought', job.state.research.tunnelWork === true && job.tunnelWorkStatus() === 'building');
+})();
+
+(function test_T93_ui() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  const doc = win.document;
+  const stage = () => doc.querySelector('#worldStage [data-tunnel]');
+  check('Task93: before the research there is no commission card and the sign says locked', !doc.querySelector('[data-tunnel-contract]') && /잠긴/.test(doc.querySelector('[data-tunnel-label]').textContent));
+  win.state.gold = 1000; win.doResearch('tunnelWork'); win.renderAll();
+  const card = doc.querySelector('[data-tunnel-contract="none"]');
+  const btn = doc.querySelector('[data-order-tunnel]');
+  check('Task93: after the research the card shows the cost, the 10 minutes and a disabled button', !!card && /5,000G/.test(card.textContent) && /마법 합금 5개/.test(card.textContent) && /10:00/.test(card.textContent) && /취소하거나 앞당길 수 없/.test(card.textContent) && btn.disabled === true);
+  win.state.gold = 5000; win.state.products.alloy = 5; win.updateNumbers();
+  check('Task93: the tick enables the button without rebuilding it', doc.querySelector('[data-order-tunnel]') === btn && btn.disabled === false);
+  btn.click();
+  check('Task93: clicking orders the job', win.tunnelWorkStatus() === 'building' && win.state.gold === 0 && !!doc.querySelector('[data-tunnel-contract="building"]') && !doc.querySelector('[data-order-tunnel]'));
+  check('Task93: the tunnel mouth shows the work and the time left, still locked', stage().getAttribute('data-tunnel-locked') === 'true' && /공사 중 · \d+:\d\d/.test(doc.querySelector('[data-tunnel-label]').textContent) && /공사 중/.test(stage().title));
+  win.state.world.tunnelContract.startedAt = win.gameNowMs() - 300 * 1000;
+  win.updateNumbers();
+  const t = doc.querySelector('[data-tunnel-label]').textContent;
+  check('Task93: the label and the card follow the clock (about 5:00 left)', /[45]:\d\d/.test(t) && /남은 시간 [45]:\d\d/.test(doc.querySelector('[data-tunnel-contract-time]').textContent));
+  win.state.world.tunnelContract.startedAt = win.gameNowMs() - 601 * 1000;
+  win.tickLoop();
+  check('Task93: when the time is up the tick opens the tunnel and redraws it', win.state.world.tunnelUnlocked === true && stage().getAttribute('data-tunnel-locked') === 'false' && doc.querySelector('[data-tunnel-label]').textContent === '터널' && doc.querySelector('[data-tunnel-contract="done"]') && doc.querySelectorAll('[data-world-mine].is-undiscovered').length >= 8);
+  win.renderAll(); win.renderAll();
+  check('Task93: re-rendering never duplicates the card or the beyond mines', doc.querySelectorAll('[data-tunnel-contract]').length === 1 && win.state.world.mines.length === 22);
+})();
+
+(function test_T93_labCompanyNeedsTheOpenTunnel() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  win.state.research.deliveryContract = true; win.permanent.totalPrestige = 15;
+  const lab = win.COMPANIES.find((c) => c.key === 'lab');
+  check('Task93: the research alone does not open the lab', (win.state.research.tunnelWork = true, win.isCompanyOpen('lab') === false) && lab.needsTunnel === true && lab.requires.length === 0);
+  win.renderAll();
+  check('Task93: the lab card says what is missing', /터널이 뚫려야/.test(win.document.querySelector('[data-company-closed="lab"]').textContent));
+  win.unlockTunnel();
+  check('Task93: the open tunnel opens it', win.isCompanyOpen('lab') === true);
 })();
 
 (function test_T70_researchFilesAndStyles() {
@@ -2709,7 +2826,7 @@ function t72Open(win) {
   check('Task72: three companies with unique keys', cs.length === 3 && new Set(cs.map(c => c.key)).size === 3);
   check('Task72: every favorite and order product is a real recipe', cs.every(c => c.favorites.every(k => win.RECIPES.some(r => r.key === k)) && c.orders.every(o => win.RECIPES.some(r => r.key === o.product) && Number.isInteger(o.qty) && o.qty > 0)));
   check('Task72: farther companies cost more to ship to', cs[0].distance < cs[1].distance && cs[1].distance < cs[2].distance);
-  check('Task72: the mountain company needs the tunnel research', cs[2].requires.join() === 'tunnelWork' && cs[0].requires.length === 0);
+  check('Task72: the mountain company needs the open tunnel', cs[2].needsTunnel === true && cs[2].requires.length === 0 && cs[0].requires.length === 0 && !cs[0].needsTunnel);
   check('Task72: the order list is known as reference rewards', [20, 10, 20, 25].every((q, i) => win.orderReputation({ product: ['steel', 'alloy', 'alloy', 'coalBrick'][i], qty: q }) === [1, 1, 2, 1][i]));
 })();
 
@@ -2744,9 +2861,11 @@ function t72Open(win) {
   win.permanent.totalPrestige = 5;
   check('Task72: reputation 5 opens the second', win.isCompanyOpen('harbor') === true && win.isCompanyOpen('lab') === false);
   win.permanent.totalPrestige = 15;
-  check('Task72: the third still needs the tunnel research', win.isCompanyOpen('lab') === false);
+  check('Task72: the third still needs the open tunnel', win.isCompanyOpen('lab') === false);
   win.state.research.tunnelWork = true;
-  check('Task72: ...and opens once it is done', win.isCompanyOpen('lab') === true);
+  check('Task72: ...the research alone is not enough', win.isCompanyOpen('lab') === false);
+  win.unlockTunnel();
+  check('Task72: ...and it opens once the tunnel is open', win.isCompanyOpen('lab') === true);
   check('Task72: an unknown company is never open', win.isCompanyOpen('nope') === false && win.isCompanyOpen(null) === false);
 })();
 
@@ -2996,8 +3115,8 @@ function t73Trade(win, n) { for (let i = 0; i < n; i++) win.tickTrades(); }
   check('Task73: reputation 5 opens the harbor card', doc.querySelector('[data-company-card="harbor"]').getAttribute('data-company-open') === 'true');
   win.permanent.totalPrestige = 15;
   win.renderAll();
-  check('Task73: the lab still asks for the tunnel research', /터널 굴착/.test(doc.querySelector('[data-company-closed="lab"]').textContent));
-  win.state.research.tunnelWork = true;
+  check('Task73: the lab still asks for the tunnel', /터널 굴착/.test(doc.querySelector('[data-company-closed="lab"]').textContent));
+  win.unlockTunnel();
   win.renderAll();
   check('Task73: and opens after it', doc.querySelector('[data-company-card="lab"]').getAttribute('data-company-open') === 'true');
   const css = require('fs').readFileSync('css/style.css', 'utf8');

@@ -79,8 +79,8 @@ const RESEARCH = [
    effect:'unlockAutoCraft', cost:{gold:800, products:{steel:10}}, requires:[]},
   {key:'deliveryContract', branch:'delivery', name:'납품 계약', desc:'회사에 제품을 보내고 수주를 받을 수 있게 됩니다. 수주를 완수하면 명성을 얻어요.',
    effect:'unlockDelivery', cost:{gold:1200, products:{steel:10}}, requires:[]},
-  {key:'tunnelWork', branch:'explore', name:'터널 굴착', desc:'산을 가로지르는 터널을 뚫어 산 너머로 가는 길을 엽니다. 산 너머에는 더 희귀한 광맥이 있어요.',
-   effect:'unlockTunnel', cost:{gold:30000, products:{alloy:5}}, requires:[]},
+  {key:'tunnelWork', branch:'explore', name:'터널 굴착', desc:'터널 공사를 맡아 줄 전문 굴착 업체와 계약합니다. 공사를 의뢰하면 터널이 뚫려 산 너머로 갈 수 있어요.',
+   effect:'unlockTunnelContractor', cost:{gold:1000, products:{}}, requires:[]},
   // Task 80: late research — paid with upper parts, not only gold.
   {key:'explorationGear', branch:'explore', name:'탐사 장비', desc:'숨은 광맥을 더 먼 곳에서도 알아챌 수 있게 됩니다. (발견 반경 2.5 → 4.0) 광맥이 늘어나지는 않아요.',
    effect:'widenDiscovery', cost:{gold:60000, products:{manaLamp:4, steelGear:2}}, requires:[]},
@@ -110,7 +110,7 @@ const COMPANIES = [
    distance:1.5, favorites:['alloy','crystalAlloy','specialAlloy','manaLamp','crystalLens'], regularScore:1200, requires:[],
    orders:[{product:'alloy', qty:30}, {product:'crystalAlloy', qty:25}, {product:'specialAlloy', qty:20}, {product:'precisionPart', qty:10}, {product:'specialAlloy', qty:35}]},
   {key:'lab', name:'산 너머 연구소', desc:'산 너머의 연구소. 정밀한 부품과 코어를 찾아요. 터널이 열려야 닿을 수 있어요.',
-   distance:2.5, favorites:['precisionPart','relicPart','quantumCore','plasmaCore','relicOrnament','manaEngine','starLens','plasmaCell','precisionMachine'], regularScore:6000, requires:['tunnelWork'],
+   distance:2.5, favorites:['precisionPart','relicPart','quantumCore','plasmaCore','relicOrnament','manaEngine','starLens','plasmaCell','precisionMachine'], regularScore:6000, requires:[], needsTunnel:true,
    orders:[{product:'precisionPart', qty:20}, {product:'relicPart', qty:20}, {product:'quantumCore', qty:5}, {product:'plasmaCore', qty:8}]},
 ];
 // Task 75: reputation effects. Each opens once reputation (permanent.totalPrestige)

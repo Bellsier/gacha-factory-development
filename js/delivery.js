@@ -67,6 +67,7 @@ function isCompanyOpen(key){
   const def = companyDef(key);
   if(!def || !isDeliveryUnlocked()) return false;
   if(COMPANIES.indexOf(def) >= companySlots()) return false;
+  if(def.needsTunnel && !(state.world && state.world.tunnelUnlocked === true)) return false; // Task 93: the tunnel itself, not the research
   return (def.requires || []).every(isResearchDone);
 }
 

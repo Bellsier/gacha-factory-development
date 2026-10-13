@@ -14,7 +14,7 @@
 // (state.research); the rest of the game asks isWorkshopBuildUnlocked() and
 // isAutoCraftUnlocked().
 const RESEARCH_EFFECTS = {
-  unlockTunnel: () => unlockTunnel(),
+  unlockTunnelContractor: () => { log('전문 굴착 업체와 계약했습니다. 연구 탭에서 터널 공사를 의뢰할 수 있어요.'); }, // Task 93: the tunnel itself opens when the work is done (factory.js)
   unlockWorkshopBuild: () => { log('제작소를 지을 수 있게 되었습니다.'); },
   unlockAutoCraft: () => { log('자동 제작 장치가 완성되었습니다.'); },
   unlockDelivery: () => { log('회사와 납품 계약을 맺었습니다.'); },
@@ -141,8 +141,9 @@ function doResearch(key){
 // already used is grandfathered: a workshop that exists, an auto-craft that was on.
 function researchSyncFromState(research, world, autoCraft){
   RESEARCH.forEach(def => {
-    if(def.effect === 'unlockTunnel'){
-      research[def.key] = !!world && world.tunnelUnlocked === true;
+    if(def.effect === 'unlockTunnelContractor'){
+      // Task 93: an open tunnel or a started job means the contract exists (old saves too).
+      if(world && (world.tunnelUnlocked === true || world.tunnelContract)) research[def.key] = true;
     } else if(def.effect === 'unlockWorkshopBuild'){
       if(world && Array.isArray(world.workshops) && world.workshops.length > 0) research[def.key] = true;
     } else if(def.effect === 'unlockAutoCraft'){

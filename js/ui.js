@@ -35,7 +35,9 @@ function lateGameHint(){
   if(bottleneck.items.length) return '제작소가 재료 때문에 멈춰 있어요. 가장 필요한 재료는 ' + bottleneck.items[0].name + '입니다. 채굴 탭이나 일꾼 배치를 살펴보세요.';
   const site = nextExpansionSite();
   if(site && canUnlockSite(site)) return '채굴 탭에서 ' + site.name + '을(를) 열 수 있어요. 새 자원으로 더 높은 제품을 만들 수 있습니다.';
-  if(!state.world.tunnelUnlocked && researchStatus('tunnelWork') === 'available') return '연구 탭의 "터널 굴착"으로 산 너머의 희귀한 광맥으로 가는 길을 열 수 있어요.';
+  if(tunnelWorkStatus() === 'building') return '터널 공사가 진행 중이에요. 끝나면 산 너머로 갈 수 있습니다. 그동안 다른 일을 해 두세요.';
+  if(isResearchDone('tunnelWork') && tunnelWorkStatus() === 'none') return '연구 탭에서 터널 공사를 의뢰할 수 있어요. 산 너머의 희귀한 광맥으로 가는 길이 열립니다.';
+  if(!state.world.tunnelUnlocked && researchStatus('tunnelWork') === 'available') return '연구 탭의 "터널 굴착"으로 전문 굴착 업체와 계약하면 산 너머로 가는 길을 뚫을 수 있어요.';
   if(state.world.tunnelUnlocked && state.world.mines.some(m => m && !isMineDiscovered(m))) return '아직 발견하지 못한 광맥이 있어요. 맵을 돌아다니며 찾아보세요.';
   return orderHint;
 }
@@ -424,6 +426,7 @@ function companyClosedReason(def){
     const need = BALANCE.delivery.SLOT_THRESHOLDS[index];
     return '명성 ' + need + '점이 되면 거래할 수 있어요. (현재 ' + fmt(permanent.totalPrestige) + '점)';
   }
+  if(def.needsTunnel && !state.world.tunnelUnlocked) return '터널이 뚫려야 닿을 수 있어요. (연구 "터널 굴착" 후 공사를 의뢰하세요)';
   const missing = (def.requires || []).filter(k => !isResearchDone(k)).map(k => (researchDef(k) || { name: k }).name);
   return missing.length ? '먼저 "' + missing.join(', ') + '" 연구가 필요해요.' : '';
 }
@@ -821,6 +824,7 @@ function updateNumbers(){
   updateDeliveryNumbers();
   updateReputationNumbers();
   updateBottleneck();
+  updateTunnelContract();
   const buildBtn = document.querySelector('[data-build-workshop]');
   if(buildBtn){ buildBtn.disabled = !canBuildWorkshop(); buildBtn.textContent = workshopBuildLabel(); }
   RESEARCH.forEach(def=>{
@@ -862,6 +866,7 @@ function renderAll(){
   buildRecipes();
   buildWorkers();
   renderResearch();
+  renderTunnelContract();
   renderWorkshopBuild();
   renderDelivery();
   renderReputation();
@@ -1056,7 +1061,7 @@ function renderWorldTerrain(){
   tunnel.className = 'world-tunnel ' + (t.locked ? 'is-locked' : 'is-open');
   tunnel.setAttribute('data-tunnel', '');
   tunnel.setAttribute('data-tunnel-locked', t.locked ? 'true' : 'false');
-  tunnel.title = t.locked ? '터널 (잠김) — 연구 탭의 "터널 굴착"으로 열 수 있습니다' : '터널 — 산 너머로 이어집니다';
+  tunnel.title = t.locked ? (tunnelWorkStatus() === 'building' ? '터널 — 전문 굴착 업체가 공사 중입니다' : '터널 (잠김) — 연구 탭의 "터널 굴착"으로 굴착 업체와 계약한 뒤 공사를 의뢰하세요') : '터널 — 산 너머로 이어집니다';
   // Closed: the arch stands at the gate at the back of the recess. Open: the
   // gate is gone, so the arch marks the mouth on the rock face.
   placeOnStage(tunnel, t.locked ? t.gateX + 0.15 : t.mouthX - 0.1, t.y + t.halfWidth);
@@ -1065,10 +1070,56 @@ function renderWorldTerrain(){
   const label = document.createElement('div');
   label.className = 'world-tunnel-label';
   label.setAttribute('data-tunnel-label', '');
-  label.textContent = t.locked ? '🔒 잠긴 터널' : '터널';
+  label.textContent = tunnelLabelText();
   placeOnStage(label, t.mouthX + 0.2, t.y + t.halfWidth);
   label.style.zIndex = '4500';
   layer.appendChild(label);
+}
+
+// Task 93: the tunnel's sign at the mouth: locked / under construction with the
+// time left / open.
+function tunnelLabelText(){
+  const status = tunnelWorkStatus();
+  if(status === 'done') return '터널';
+  if(status === 'building') return '🚧 공사 중 · ' + formatWorkTime(tunnelWorkRemainingSec());
+  return '🔒 잠긴 터널';
+}
+
+// Task 93: the commission card under the research cards. Shown once the research
+// is done; the per-tick refresh (updateTunnelContract) only rewrites its texts.
+function tunnelContractHtml(){
+  const status = tunnelWorkStatus();
+  if(status === 'done') return '<div class="line research-card is-done" data-tunnel-contract="done"><div class="res-name">터널 공사</div><div class="rate">터널이 개통되었습니다.</div></div>';
+  const c = tunnelWorkCost();
+  const body = status === 'building'
+    ? '<div class="rate" data-tunnel-contract-time>' + tunnelContractTimeText() + '</div>'
+    : '<div class="rate research-cost" data-tunnel-contract-cost>' + researchCostText({ cost: c }) + '</div>' +
+      '<div class="rate">공사에는 ' + formatWorkTime(BALANCE.tunnel.DURATION_SEC) + '이 걸리고, 게임을 꺼 두어도 시간은 흐릅니다. 의뢰한 뒤에는 취소하거나 앞당길 수 없어요.</div>' +
+      '<button data-order-tunnel ' + dis(!canOrderTunnelWork()) + '>공사 의뢰하기</button>';
+  return '<div class="line research-card" data-tunnel-contract="' + status + '"><div class="res-name">터널 공사</div>' + body + '</div>';
+}
+function tunnelContractTimeText(){
+  return '전문 굴착 업체가 공사 중입니다. 남은 시간 ' + formatWorkTime(tunnelWorkRemainingSec());
+}
+function renderTunnelContract(){
+  const wrap = document.getElementById('tunnelContract');
+  if(!wrap) return;
+  if(!isResearchDone('tunnelWork') && tunnelWorkStatus() === 'none'){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = tunnelContractHtml();
+  const btn = wrap.querySelector('[data-order-tunnel]');
+  if(btn) btn.onclick = () => { if(orderTunnelWork()) renderAll(); };
+}
+function updateTunnelContract(){
+  const label = document.querySelector('[data-tunnel-label]');
+  if(label) label.textContent = tunnelLabelText();
+  const wrap = document.getElementById('tunnelContract');
+  if(!wrap) return;
+  const timeEl = wrap.querySelector('[data-tunnel-contract-time]');
+  if(timeEl) timeEl.textContent = tunnelContractTimeText();
+  const costEl = wrap.querySelector('[data-tunnel-contract-cost]');
+  if(costEl) costEl.textContent = researchCostText({ cost: tunnelWorkCost() });
+  const btn = wrap.querySelector('[data-order-tunnel]');
+  if(btn) btn.disabled = !canOrderTunnelWork();
 }
 
 // Task 89: scenery on the land beyond the range — shown once the tunnel is open.

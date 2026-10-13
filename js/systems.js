@@ -478,6 +478,7 @@ function tickLoop(){
   tickAutoSell();
   tickPlayer();
   tickExploration(); // Task 65
+  if(tickTunnelWork() && typeof renderAll === 'function') renderAll(); // Task 93: the work is done, the tunnel opens
   updateNumbers();
   updatePlayerSprite();
 }

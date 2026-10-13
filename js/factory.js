@@ -341,9 +341,66 @@ function populateBeyondMines(options){
   return added;
 }
 
+// ---------------------------------------------------------------------------
+// Task 93: tunnel construction (Blueprint 3.1.1). After the research
+// "터널 굴착", the player commissions the contractor once: the cost is paid at
+// that moment and the job runs for DURATION_SEC of real time. The job stores its
+// start time (state.world.tunnelContract), so it also runs while the game is
+// closed. When the time is up tickTunnelWork() opens the tunnel through
+// unlockTunnel(). No cancel, no speed-up.
+// ---------------------------------------------------------------------------
+function gameNowMs(){ return Date.now(); }
+
+// 'none' | 'building' | 'done'
+function tunnelWorkStatus(){
+  if(state.world.tunnelUnlocked === true) return 'done';
+  return state.world.tunnelContract ? 'building' : 'none';
+}
+function tunnelWorkCost(){
+  const t = BALANCE.tunnel;
+  return { gold: t.COMMISSION_GOLD, products: { ...t.COMMISSION_PRODUCTS } };
+}
+function tunnelWorkCostMet(){
+  const c = tunnelWorkCost();
+  return state.gold >= c.gold && Object.keys(c.products).every(k => (state.products[k] || 0) >= c.products[k]);
+}
+function canOrderTunnelWork(){
+  return isResearchDone('tunnelWork') && tunnelWorkStatus() === 'none' && tunnelWorkCostMet();
+}
+function orderTunnelWork(nowMs){
+  if(!canOrderTunnelWork()) return false;
+  const c = tunnelWorkCost();
+  state.gold -= c.gold;
+  Object.keys(c.products).forEach(k => { state.products[k] -= c.products[k]; });
+  state.world.tunnelContract = { startedAt: Number.isFinite(nowMs) ? nowMs : gameNowMs(), durationSec: BALANCE.tunnel.DURATION_SEC };
+  log('전문 굴착 업체에 터널 공사를 의뢰했습니다.');
+  return true;
+}
+// Seconds of work left (null without a job). A start time in the future (clock
+// set back) counts as just started, so the wait never exceeds the duration.
+function tunnelWorkRemainingSec(nowMs){
+  const job = state.world.tunnelContract;
+  if(!job) return null;
+  const now = Number.isFinite(nowMs) ? nowMs : gameNowMs();
+  const elapsed = Math.max(0, (now - job.startedAt) / 1000);
+  return Math.max(0, job.durationSec - elapsed);
+}
+// Opens the tunnel when the work is finished. Returns true when it just did.
+function tickTunnelWork(nowMs){
+  if(!state.world.tunnelContract) return false;
+  if(tunnelWorkRemainingSec(nowMs) > 0) return false;
+  state.world.tunnelContract = null;
+  return unlockTunnel();
+}
+function formatWorkTime(sec){
+  const s = Math.ceil(sec);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
 function unlockTunnel(options){
   if(state.world.tunnelUnlocked === true) return false;
   state.world.tunnelUnlocked = true;
+  state.world.tunnelContract = null;
   if(state.research) researchSyncFromState(state.research, state.world, state.autoCraft); // Task 70: the tunnel research counts as done
   populateBeyondMines(options);
   log('터널이 열렸습니다. 산 너머로 갈 수 있어요.');

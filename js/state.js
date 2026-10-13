@@ -27,6 +27,9 @@ function freshWorldState(){
     // Task 68: the tunnel through the mountain starts closed. Opening it is
     // progress (saved); the terrain itself is fixed and never saved.
     tunnelUnlocked: false,
+    // Task 93: the construction job (null = none). startedAt is a Date.now() value, so
+    // the work goes on while the game is closed.
+    tunnelContract: null,
     // Task 65: every generated mine except the starters begins undiscovered;
     // walking near one reveals it (tickExploration in systems.js).
     hiddenMineIds: mines.filter(m => !m.id.startsWith('mine_start_')).map(m => m.id),
@@ -272,8 +275,16 @@ function sanitizeWorldState(raw){
     workshops: sanitizeWorkshops(raw.workshops),
     player: sanitizePlayer(raw.player, base, tunnelUnlocked),
     tunnelUnlocked,
+    tunnelContract: tunnelUnlocked ? null : sanitizeTunnelContract(raw.tunnelContract),
     hiddenMineIds: sanitizeHiddenMineIds(raw.hiddenMineIds, mines),
   };
+}
+
+// Task 93: additive field. Anything that is not a valid job = no job.
+function sanitizeTunnelContract(raw){
+  if(!isPlainObject(raw)) return null;
+  if(!isNonNegativeFinite(raw.startedAt) || !isNonNegativeFinite(raw.durationSec) || raw.durationSec <= 0) return null;
+  return { startedAt: raw.startedAt, durationSec: raw.durationSec };
 }
 
 // Task 65: additive field (saveVersion unchanged). Missing (any older save) ->

@@ -51,6 +51,13 @@ const BALANCE = {
     REPEAT_QTY_CAP_MULT: 2,     // ... but never above this times the base quantity
     REPEAT_MAX_QTY: 100,        // hard cap on one repeat order's quantity
   },
+  // Task 93: tunnel construction (Blueprint 3.1.1). The research only unlocks the
+  // commission; the contractor then digs for DURATION_SEC of real time.
+  tunnel: {
+    COMMISSION_GOLD: 5000,
+    COMMISSION_PRODUCTS: { alloy: 5 },
+    DURATION_SEC: 600,
+  },
   hq: {
     MULTIPLIER_PER_LEVEL: 0.08, // hqMult(): run-scoped multiplier gained per HQ level
     COST_BASE: 1000,            // hqCost(): base cost of HQ level 0

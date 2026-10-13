@@ -34,6 +34,7 @@ const bot = `
   let simT = 0;
   const income = { sold: 0 };
   log = function(msg){ events.push([simT, msg]); };
+  gameNowMs = () => simT * 1000; // Task 93: the tunnel job follows the simulated clock
   const S = () => state;
   const fmtT = (t) => { const h = Math.floor(t/3600), m = Math.floor(t%3600/60); return h + 'h' + String(m).padStart(2,'0'); };
 
@@ -45,6 +46,7 @@ const bot = `
     const want = (k, q) => { goals[k] = Math.max(goals[k] || 0, q); };
     // next research that is not done and whose prereqs are met
     RESEARCH.filter(d => researchStatus(d.key) === 'available').forEach(d => Object.keys(d.cost.products || {}).forEach(k => want(k, d.cost.products[k])));
+    if(isResearchDone('tunnelWork') && tunnelWorkStatus() === 'none') Object.keys(tunnelWorkCost().products).forEach(k => want(k, tunnelWorkCost().products[k]));
     const site = nextExpansionSite();
     if(site) Object.keys(site.unlockProducts || {}).forEach(k => want(k, site.unlockProducts[k]));
     COMPANIES.forEach(c => { if(isCompanyOpen(c.key)) openOrders(c.key).forEach(o => want(o.product, o.qty)); });
@@ -76,6 +78,7 @@ const bot = `
     // research in a fixed order
     ['autoCraftDevice','workshopBuild','deliveryContract','tunnelWork','workshopExpansion','tradeExpansion','explorationGear','geologicalSurvey','fastTrade'].forEach(k => { if(canResearch(k)) doResearch(k); });
     // sites
+    if(canOrderTunnelWork() && state.gold >= tunnelWorkCost().gold * 1.2) orderTunnelWork(); // Task 93
     const site = nextExpansionSite();
     if(site && canUnlockSite(site) && state.gold >= site.unlockCost * 1.2) expandBase();
     // workshops

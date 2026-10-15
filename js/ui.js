@@ -880,7 +880,10 @@ function renderAll(){
 function playerTypingTarget(el){
   if(!el || !el.tagName) return false;
   const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  // Task 99: a checkbox (or another button-like input) takes no typing, so after
+  // clicking one the movement keys still walk.
+  if(tag === 'INPUT') return !['checkbox', 'radio', 'button', 'submit', 'reset'].includes(String(el.type).toLowerCase());
+  return tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
 // Task 95: typing in a field never starts a walk, but a key release always

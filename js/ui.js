@@ -883,16 +883,22 @@ function playerTypingTarget(el){
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
+// Task 95: typing in a field never starts a walk, but a key release always
+// ends one: a key held before the focus moved into a field is let go there
+// too, otherwise the player kept walking with no key down.
 function onPlayerKey(e, down){
-  if(playerTypingTarget(e.target)) return;
+  const typing = playerTypingTarget(e.target);
+  if(down && typing) return;
   const dir = playerDirFromKey(e.key);
   if(!dir) return;
-  if(e.key.startsWith('Arrow')) e.preventDefault();
+  if(!typing && e.key.startsWith('Arrow')) e.preventDefault();
   setPlayerHeld(dir, down);
 }
 
 document.addEventListener('keydown', (e)=> onPlayerKey(e, true));
 document.addEventListener('keyup', (e)=> onPlayerKey(e, false));
+// Task 95: moving the focus into a field stops the walk (the field has the keys now).
+document.addEventListener('focusin', (e)=>{ if(playerTypingTarget(e.target)) clearPlayerHeld(); });
 window.addEventListener('blur', ()=> clearPlayerHeld());
 
 // ---------------------------------------------------------------------------

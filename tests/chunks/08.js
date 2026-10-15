@@ -209,6 +209,80 @@
   check('Task56: player movement does not consume resources', win.state.resources.iron === 0);
 })();
 
+// Task 95: a movement key released while the focus is in a field must still
+// stop the player (it used to be ignored there, so the player kept walking).
+(function test_T95_keyReleaseInFieldStopsWalking() {
+  const win = newDom(makeMemoryStorage()).window;
+  const doc = win.document;
+  const p = win.state.world.player;
+  const key = (target, type, k) => { const e = new win.KeyboardEvent(type, { key: k, bubbles: true, cancelable: true }); target.dispatchEvent(e); return e; };
+  // which way one tick moves the player right now ('' = standing still); the position is put back
+  const held = () => {
+    const x = p.x, y = p.y;
+    win.tickPlayer();
+    const dx = p.x - x, dy = p.y - y;
+    p.x = x; p.y = y; p.pose = 'idle';
+    return [dx > 0 ? 'right' : '', dx < 0 ? 'left' : '', dy > 0 ? 'down' : '', dy < 0 ? 'up' : ''].filter(Boolean).join(',');
+  };
+  const input = doc.querySelector('[data-craft-target="steel"]');
+  const select = doc.createElement('select');
+  const area = doc.createElement('textarea');
+  doc.body.appendChild(select); doc.body.appendChild(area);
+  check('Task95: setup — a number field exists in the page', !!input && input.tagName === 'INPUT');
+
+  // walk left, then the key goes up inside the number field
+  key(doc.body, 'keydown', 'a');
+  for (let i = 0; i < 3; i++) win.tickLoop();
+  check('Task95: setup — holding A walks left', p.pose === 'walk' && held() === 'left');
+  key(input, 'keyup', 'a');
+  check('Task95: releasing A inside a field lets go of the key', held() === '');
+  win.tickLoop();
+  const x0 = p.x;
+  for (let i = 0; i < 10; i++) win.tickLoop();
+  check('Task95: the player stops and stays put after the release', p.x === x0 && p.pose === 'idle');
+
+  // the same for arrow keys, a select and a textarea (shift held: key is upper case)
+  [[select, 'ArrowRight', 'right'], [area, 'D', 'right'], [input, 'ArrowUp', 'up']].forEach(([el, k, dir]) => {
+    key(doc.body, 'keydown', k);
+    const ok = held() === dir;
+    key(el, 'keyup', k);
+    check('Task95: ' + k + ' released in a ' + el.tagName.toLowerCase() + ' is let go', ok && held() === '');
+  });
+  const up = key(input, 'keyup', 'ArrowLeft');
+  check('Task95: an arrow key released in a field keeps its default (no preventDefault there)', up.defaultPrevented === false);
+
+  // typing in a field still never starts a walk
+  const down = key(input, 'keydown', 'ArrowLeft');
+  key(area, 'keydown', 'w');
+  check('Task95: keys pressed inside a field still do not move the player', held() === '' && down.defaultPrevented === false);
+  key(input, 'keyup', 'ArrowLeft'); key(area, 'keyup', 'w');
+
+  // focusing a field while a key is held stops the walk at once
+  key(doc.body, 'keydown', 's');
+  check('Task95: setup — holding S', held() === 'down');
+  input.focus();
+  check('Task95: moving the focus into a field drops the held key', held() === '');
+  const y0 = p.y;
+  for (let i = 0; i < 5; i++) win.tickLoop();
+  check('Task95: no walking while the field has the focus', p.y === y0);
+  input.blur();
+  // focusing a button (not a field) leaves a held key alone
+  const btn = doc.querySelector('.tab-btn');
+  key(doc.body, 'keydown', 'd');
+  btn.focus();
+  check('Task95: focusing a button does not drop the held key', held() === 'right');
+  key(doc.body, 'keyup', 'd');
+
+  // normal walking on the page is unchanged
+  const x1 = p.x;
+  const kd = key(doc.body, 'keydown', 'ArrowRight');
+  for (let i = 0; i < 5; i++) win.tickLoop();
+  key(doc.body, 'keyup', 'ArrowRight');
+  win.tickLoop();
+  check('Task95: walking with the page focused still works and arrows do not scroll', p.x > x1 && p.pose === 'idle' && kd.defaultPrevented === true && held() === '');
+  check('Task95: nothing about movement is saved (saveVersion 1, player fields unchanged)', win.saveGame() === true && Object.keys(JSON.parse(win.localStorage.getItem('gachaFactorySave')).run.world.player).sort().join(',') === 'facing,pose,x,y');
+})();
+
 (function test_T57_worldObjectsFromState() {
   const win = newDom(makeMemoryStorage()).window;
   const doc = win.document;

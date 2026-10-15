@@ -134,6 +134,13 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   };
 });
 
+// Task 98: a line's income text. Also refreshed every tick (updateNumbers), so
+// it follows a mine being secured or the multiplier changing without a rebuild.
+function lineRateText(resKey){
+  const rate = autoRate(resKey);
+  return rate > 0 ? '자동 +' + rate.toFixed(1) + '/초' : '수동 채굴만 가능';
+}
+
 // Full rebuild: only called after structural changes (new character, facility
 // level up, site unlock). Never called from the fast tick loop, so
 // buttons keep their identity and don't flicker.
@@ -160,12 +167,11 @@ function buildLines(){
     }
     let linesHtml = '';
     siteResources.forEach(r=>{
-      const rate = autoRate(r.key);
       linesHtml += `
         <div class="line">
           <div class="res-name">${r.name}</div>
           <div class="res-amt" data-amt="${r.key}">${fmt(state.resources[r.key])}</div>
-          <div class="rate" data-rate="${r.key}">${rate > 0 ? '자동 +' + rate.toFixed(1) + '/초' : '수동 채굴만 가능'}</div>
+          <div class="rate" data-rate="${r.key}">${lineRateText(r.key)}</div>
           <button data-mine="${r.key}">채굴하기 (+${manualAmount(r.key).toFixed(1)})</button>
           <div class="facility">
             <span>채굴 도구 Lv.${state.facility[r.key]}</span>
@@ -775,6 +781,8 @@ function updateNumbers(){
     if(sharedEl) sharedEl.textContent = fmt(state.resources[r.key]);
     const el = document.querySelector(`[data-amt="${r.key}"]`);
     if(el) el.textContent = fmt(state.resources[r.key]);
+    const rateEl = document.querySelector(`[data-rate="${r.key}"]`);
+    if(rateEl) rateEl.textContent = lineRateText(r.key); // Task 98
     const trainBtn = document.querySelector(`[data-train="${r.key}"]`);
     if(trainBtn) trainBtn.disabled = workforceAtMax(r.key) || state.resources[r.key] < workforceCost(r.key);
     const facBtn = document.querySelector(`[data-fac="${r.key}"]`);

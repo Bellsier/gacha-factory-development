@@ -518,9 +518,32 @@ function updateReputationNumbers(){
   });
 }
 
+// Task 97: what the player chose in the free-delivery boxes, and which box had
+// the focus, so a rebuild (a new order arriving, an order completed) keeps it.
+function deliveryInputsSnapshot(wrap){
+  const kept = {};
+  wrap.querySelectorAll('[data-deliver-product]').forEach(el => { kept[el.dataset.deliverProduct] = { product: el.value }; });
+  wrap.querySelectorAll('[data-deliver-qty]').forEach(el => { (kept[el.dataset.deliverQty] = kept[el.dataset.deliverQty] || {}).qty = el.value; });
+  const active = document.activeElement;
+  const attr = active && wrap.contains(active) ? ['data-deliver-product', 'data-deliver-qty'].find(a => active.hasAttribute(a)) : null;
+  return { kept, focus: attr ? { attr, key: active.getAttribute(attr) } : null };
+}
+function restoreDeliveryInputs(wrap, snap){
+  Object.keys(snap.kept).forEach(key => {
+    const select = wrap.querySelector('[data-deliver-product="' + key + '"]');
+    const product = snap.kept[key].product;
+    if(select && product && Array.from(select.options).some(o => o.value === product)) select.value = product;
+    const input = wrap.querySelector('[data-deliver-qty="' + key + '"]');
+    if(input && snap.kept[key].qty !== undefined) input.value = snap.kept[key].qty;
+  });
+  const el = snap.focus && wrap.querySelector('[' + snap.focus.attr + '="' + snap.focus.key + '"]');
+  if(el) el.focus();
+}
+
 function renderDelivery(){
   const wrap = document.getElementById('deliveryList');
   if(!wrap) return;
+  const snap = deliveryInputsSnapshot(wrap);
   wrap.innerHTML = '';
   COMPANIES.forEach(def => {
     const open = isCompanyOpen(def.key);
@@ -551,6 +574,7 @@ function renderDelivery(){
     card.innerHTML = html;
     wrap.appendChild(card);
   });
+  restoreDeliveryInputs(wrap, snap);
   wrap.querySelectorAll('[data-complete-order]').forEach(btn => {
     btn.onclick = () => {
       if(!completeOrder(btn.dataset.completeOrder, Number(btn.dataset.orderSlot))) return;

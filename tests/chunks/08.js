@@ -4090,6 +4090,35 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   check('Task87: the click scales with the multiplier', Math.abs(win.state.resources.iron - before - mine.miningPower * win.mult()) < 1e-9);
 })();
 
+// Task 98: the mining-tab line text ("자동 +x/초" / "수동 채굴만 가능") follows the
+// real income when a mine is secured, without a rebuild of the lines.
+(function test_T98_lineRateFollowsIncome() {
+  const win = newDom(makeMemoryStorage()).window;
+  const doc = win.document;
+  const rateText = (k) => doc.querySelector('[data-rate="' + k + '"]').textContent;
+  const expected = (k) => { const r = win.autoRate(k); return r > 0 ? '자동 +' + r.toFixed(1) + '/초' : '수동 채굴만 가능'; };
+  check('Task98: setup — no income yet, the iron line says manual only', win.autoRate('iron') === 0 && rateText('iron') === '수동 채굴만 가능');
+  // secure the iron mine with the real button (buildMines + updateNumbers, no buildLines)
+  doc.querySelector('[data-secure-mine="mine_start_iron"]').click();
+  check('Task98: setup — the mine is secured and gives income', win.mineById('mine_start_iron').developmentState === 'secured' && win.autoRate('iron') > 0);
+  check('Task98: the iron line shows the new income right after securing', rateText('iron') === expected('iron') && rateText('iron').startsWith('자동 +'));
+  check('Task98: the coal line is untouched', rateText('coal') === '수동 채굴만 가능' && win.autoRate('coal') === 0);
+  // the multiplier changes (reputation) — the next tick shows it
+  win.permanent.totalPrestige = 20;
+  win.tickLoop();
+  check('Task98: the line follows a multiplier change on the next tick', rateText('iron') === expected('iron') && Math.abs(win.mult() - 1) > 0.1);
+  // the line text agrees with what a tick really adds
+  const r0 = win.state.resources.iron;
+  win.tickMining();
+  const perSecond = (win.state.resources.iron - r0) * win.TICKS_PER_SECOND;
+  check('Task98: the shown rate is what the tick really pays', rateText('iron') === '자동 +' + perSecond.toFixed(1) + '/초');
+  // the same text after a full rebuild, and after load
+  const shown = rateText('iron');
+  win.buildLines();
+  check('Task98: a rebuild shows the same text', rateText('iron') === shown);
+  check('Task98: nothing new is saved (saveVersion 1)', win.saveGame() === true && JSON.parse(win.localStorage.getItem('gachaFactorySave')).saveVersion === 1);
+})();
+
 (function test_T88_secondSlot() {
   const win = newDom(makeMemoryStorage()).window;
   const p = win.permanent.companies.forge;

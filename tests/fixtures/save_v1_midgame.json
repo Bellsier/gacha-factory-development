@@ -1,0 +1,651 @@
+{
+ "saveVersion": 1,
+ "savedAt": 1792000000000,
+ "permanent": {
+  "totalPrestige": 18,
+  "runCount": 1,
+  "tickets": 4,
+  "firstGachaGranted": true,
+  "companies": {
+   "forge": {
+    "score": 142.875,
+    "orderIndex": 1,
+    "sent": {
+     "steel": 20,
+     "coalBrick": 0,
+     "alloy": 0,
+     "crystalAlloy": 0,
+     "specialAlloy": 0,
+     "precisionPart": 0,
+     "relicPart": 0,
+     "quantumCore": 0,
+     "plasmaCore": 0,
+     "ironTool": 0,
+     "manaLamp": 0,
+     "crystalLens": 0,
+     "steelGear": 0,
+     "relicOrnament": 0,
+     "manaEngine": 0,
+     "starLens": 0,
+     "plasmaCell": 0,
+     "precisionMachine": 0
+    },
+    "tradeTimer": 0,
+    "open": [
+     {
+      "product": "coalBrick",
+      "qty": 25,
+      "index": 1
+     },
+     {
+      "product": "steel",
+      "qty": 24,
+      "index": -1
+     }
+    ],
+    "orderTimer": 0,
+    "repeatDone": 0,
+    "lastRepeat": null
+   },
+   "harbor": {
+    "score": 148.5,
+    "orderIndex": 0,
+    "sent": {
+     "steel": 0,
+     "coalBrick": 0,
+     "alloy": 5,
+     "crystalAlloy": 0,
+     "specialAlloy": 0,
+     "precisionPart": 0,
+     "relicPart": 0,
+     "quantumCore": 0,
+     "plasmaCore": 0,
+     "ironTool": 0,
+     "manaLamp": 0,
+     "crystalLens": 0,
+     "steelGear": 0,
+     "relicOrnament": 0,
+     "manaEngine": 0,
+     "starLens": 0,
+     "plasmaCell": 0,
+     "precisionMachine": 0
+    },
+    "tradeTimer": 0,
+    "open": [
+     {
+      "product": "alloy",
+      "qty": 30,
+      "index": 0
+     }
+    ],
+    "orderTimer": 0,
+    "repeatDone": 0,
+    "lastRepeat": null
+   },
+   "lab": {
+    "score": 0,
+    "orderIndex": 0,
+    "sent": {
+     "steel": 0,
+     "coalBrick": 0,
+     "alloy": 0,
+     "crystalAlloy": 0,
+     "specialAlloy": 0,
+     "precisionPart": 0,
+     "relicPart": 0,
+     "quantumCore": 0,
+     "plasmaCore": 0,
+     "ironTool": 0,
+     "manaLamp": 0,
+     "crystalLens": 0,
+     "steelGear": 0,
+     "relicOrnament": 0,
+     "manaEngine": 0,
+     "starLens": 0,
+     "plasmaCell": 0,
+     "precisionMachine": 0
+    },
+    "tradeTimer": 0,
+    "open": [
+     {
+      "product": "precisionPart",
+      "qty": 20,
+      "index": 0
+     }
+    ],
+    "orderTimer": 0,
+    "repeatDone": 0,
+    "lastRepeat": null
+   }
+  }
+ },
+ "run": {
+  "resources": {
+   "iron": 482.73023999999964,
+   "coal": 460.5646399999996,
+   "mana": 501.7064000000005,
+   "crystal": 500.85320000000024,
+   "rareMetal": 500,
+   "relic": 500.85320000000024,
+   "cosmicShard": 500,
+   "plasma": 500
+  },
+  "products": {
+   "steel": 40,
+   "coalBrick": 80,
+   "alloy": 50,
+   "crystalAlloy": 60,
+   "specialAlloy": 60,
+   "precisionPart": 60,
+   "relicPart": 60,
+   "quantumCore": 60,
+   "plasmaCore": 60,
+   "ironTool": 60,
+   "manaLamp": 61,
+   "crystalLens": 60,
+   "steelGear": 60,
+   "relicOrnament": 60,
+   "manaEngine": 60,
+   "starLens": 60,
+   "plasmaCell": 60,
+   "precisionMachine": 60
+  },
+  "gold": 153399,
+  "characters": [
+   {
+    "id": "w_mv9rajywdx1o8s",
+    "rarity": "epic",
+    "resource": "coal",
+    "mining": 4,
+    "carry": 5,
+    "move": 3,
+    "miningLvl": 1,
+    "carryLvl": 0,
+    "moveLvl": 0
+   },
+   {
+    "id": "w_mv9rak6jelubfs",
+    "rarity": "common",
+    "resource": "crystal",
+    "mining": 1,
+    "carry": 2,
+    "move": 1,
+    "miningLvl": 0,
+    "carryLvl": 0,
+    "moveLvl": 0
+   },
+   {
+    "id": "w_mv9rakbo5bnjqv",
+    "rarity": "common",
+    "resource": "relic",
+    "mining": 1,
+    "carry": 2,
+    "move": 1,
+    "miningLvl": 0,
+    "carryLvl": 0,
+    "moveLvl": 0
+   },
+   {
+    "id": "w_mv9rakgk4kjjx0",
+    "rarity": "common",
+    "resource": "mana",
+    "mining": 1,
+    "carry": 2,
+    "move": 1,
+    "miningLvl": 0,
+    "carryLvl": 0,
+    "moveLvl": 0
+   },
+   {
+    "id": "w_mv9raklm5vk04x",
+    "rarity": "common",
+    "resource": "mana",
+    "mining": 1,
+    "carry": 2,
+    "move": 1,
+    "miningLvl": 0,
+    "carryLvl": 0,
+    "moveLvl": 0
+   }
+  ],
+  "lastPull": {
+   "id": "w_mv9raklm5vk04x",
+   "rarity": "common",
+   "resource": "mana",
+   "mining": 1,
+   "carry": 2,
+   "move": 1,
+   "miningLvl": 0,
+   "carryLvl": 0,
+   "moveLvl": 0
+  },
+  "facility": {
+   "iron": 1,
+   "coal": 0,
+   "mana": 0,
+   "crystal": 0,
+   "rareMetal": 0,
+   "relic": 0,
+   "cosmicShard": 0,
+   "plasma": 0
+  },
+  "workforce": {
+   "iron": 0,
+   "coal": 1,
+   "mana": 0,
+   "crystal": 0,
+   "rareMetal": 0,
+   "relic": 0,
+   "cosmicShard": 0,
+   "plasma": 0
+  },
+  "unlockedSites": {
+   "abandonedMine": true,
+   "manaVein": true,
+   "ruins": true,
+   "spaceStation": false
+  },
+  "research": {
+   "workshopBuild": true,
+   "autoCraftDevice": true,
+   "deliveryContract": true,
+   "tunnelWork": true,
+   "explorationGear": true,
+   "geologicalSurvey": false,
+   "workshopExpansion": false,
+   "tradeExpansion": false,
+   "fastTrade": false
+  },
+  "autoCraft": {
+   "steel": true,
+   "coalBrick": false,
+   "alloy": false,
+   "crystalAlloy": false,
+   "specialAlloy": false,
+   "precisionPart": false,
+   "relicPart": false,
+   "quantumCore": false,
+   "plasmaCore": false,
+   "ironTool": false,
+   "manaLamp": false,
+   "crystalLens": false,
+   "steelGear": false,
+   "relicOrnament": false,
+   "manaEngine": false,
+   "starLens": false,
+   "plasmaCell": false,
+   "precisionMachine": false
+  },
+  "craftTarget": {
+   "steel": 40,
+   "coalBrick": 0,
+   "alloy": 0,
+   "crystalAlloy": 0,
+   "specialAlloy": 0,
+   "precisionPart": 0,
+   "relicPart": 0,
+   "quantumCore": 0,
+   "plasmaCore": 0,
+   "ironTool": 0,
+   "manaLamp": 0,
+   "crystalLens": 0,
+   "steelGear": 0,
+   "relicOrnament": 0,
+   "manaEngine": 0,
+   "starLens": 0,
+   "plasmaCell": 0,
+   "precisionMachine": 0
+  },
+  "autoSell": {
+   "steel": false,
+   "coalBrick": true,
+   "alloy": false,
+   "crystalAlloy": false,
+   "specialAlloy": false,
+   "precisionPart": false,
+   "relicPart": false,
+   "quantumCore": false,
+   "plasmaCore": false,
+   "ironTool": false,
+   "manaLamp": false,
+   "crystalLens": false,
+   "steelGear": false,
+   "relicOrnament": false,
+   "manaEngine": false,
+   "starLens": false,
+   "plasmaCell": false,
+   "precisionMachine": false
+  },
+  "autoSellOn": {
+   "steel": true,
+   "coalBrick": false,
+   "alloy": true,
+   "crystalAlloy": true,
+   "specialAlloy": true,
+   "precisionPart": true,
+   "relicPart": true,
+   "quantumCore": true,
+   "plasmaCore": true,
+   "ironTool": true,
+   "manaLamp": true,
+   "crystalLens": true,
+   "steelGear": true,
+   "relicOrnament": true,
+   "manaEngine": true,
+   "starLens": true,
+   "plasmaCell": true,
+   "precisionMachine": true
+  },
+  "craftQueue": {
+   "steel": null,
+   "coalBrick": null,
+   "alloy": null,
+   "crystalAlloy": null,
+   "specialAlloy": null,
+   "precisionPart": null,
+   "relicPart": null,
+   "quantumCore": null,
+   "plasmaCore": null,
+   "ironTool": null,
+   "manaLamp": null,
+   "crystalLens": null,
+   "steelGear": null,
+   "relicOrnament": null,
+   "manaEngine": null,
+   "starLens": null,
+   "plasmaCell": null,
+   "precisionMachine": null
+  },
+  "hqLevel": 1,
+  "craftFacility": 2,
+  "autoLineLogged": false,
+  "world": {
+   "base": {
+    "x": 2,
+    "y": 0,
+    "level": 3
+   },
+   "mines": [
+    {
+     "id": "mine_start_iron",
+     "x": 4,
+     "y": 0,
+     "resource": "iron",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "secured"
+    },
+    {
+     "id": "mine_start_coal",
+     "x": 0,
+     "y": -2,
+     "resource": "coal",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "secured"
+    },
+    {
+     "id": "mine_ring_near_1",
+     "x": 3,
+     "y": -3,
+     "resource": "coal",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_near_2",
+     "x": -1,
+     "y": 1,
+     "resource": "coal",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_near_3",
+     "x": 4,
+     "y": 2,
+     "resource": "iron",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_mid_1",
+     "x": 7,
+     "y": -3,
+     "resource": "crystal",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_mid_2",
+     "x": -3,
+     "y": 3,
+     "resource": "coal",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_mid_3",
+     "x": 8,
+     "y": 3,
+     "resource": "iron",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_mid_4",
+     "x": 2,
+     "y": -5,
+     "resource": "coal",
+     "grade": 1,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_far_1",
+     "x": 5,
+     "y": 9,
+     "resource": "rareMetal",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_far_2",
+     "x": 9,
+     "y": 5,
+     "resource": "crystal",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_far_3",
+     "x": -3,
+     "y": -5,
+     "resource": "crystal",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_outer_1",
+     "x": 10,
+     "y": 7,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ring_outer_2",
+     "x": 6,
+     "y": -10,
+     "resource": "cosmicShard",
+     "grade": 4,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_manaVein_mana",
+     "x": 6,
+     "y": 0,
+     "resource": "mana",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_manaVein_crystal",
+     "x": 2,
+     "y": 4,
+     "resource": "crystal",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ruins_rareMetal",
+     "x": 8,
+     "y": 0,
+     "resource": "rareMetal",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_ruins_relic",
+     "x": 2,
+     "y": 6,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_deepForest_1",
+     "x": -8,
+     "y": 1,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_deepForest_2",
+     "x": -8,
+     "y": 3,
+     "resource": "mana",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_deepForest_3",
+     "x": -8,
+     "y": -1,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_rockyGround_1",
+     "x": -10,
+     "y": 4,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_rockyGround_2",
+     "x": -10,
+     "y": 1,
+     "resource": "crystal",
+     "grade": 2,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_halfDugMine_1",
+     "x": -10,
+     "y": -6,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_halfDugMine_2",
+     "x": -10,
+     "y": 7,
+     "resource": "relic",
+     "grade": 3,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    },
+    {
+     "id": "mine_beyond_rareDeep_1",
+     "x": -9,
+     "y": -10,
+     "resource": "plasma",
+     "grade": 4,
+     "miningPower": 1,
+     "developmentState": "unsecured"
+    }
+   ],
+   "workshops": [
+    {
+     "id": "workshop_mv9rakqxmdw4jn",
+     "x": 1,
+     "y": -1,
+     "level": 1,
+     "recipeKey": "coalBrick",
+     "auto": true,
+     "progress": null
+    },
+    {
+     "id": "workshop_mv9rakqxu87oo7",
+     "x": 2,
+     "y": -1,
+     "level": 2,
+     "recipeKey": "specialAlloy",
+     "auto": false,
+     "progress": 1.1999999999999984
+    }
+   ],
+   "player": {
+    "x": -7.6,
+    "y": 1,
+    "facing": "left",
+    "pose": "idle"
+   },
+   "tunnelUnlocked": true,
+   "tunnelContract": null,
+   "hiddenMineIds": [
+    "mine_ring_near_1",
+    "mine_ring_near_2",
+    "mine_ring_near_3",
+    "mine_ring_mid_1",
+    "mine_ring_mid_2",
+    "mine_ring_mid_3",
+    "mine_ring_mid_4",
+    "mine_ring_far_1",
+    "mine_ring_far_2",
+    "mine_ring_far_3",
+    "mine_ring_outer_1",
+    "mine_ring_outer_2",
+    "mine_beyond_halfDugMine_1",
+    "mine_beyond_halfDugMine_2",
+    "mine_beyond_rareDeep_1"
+   ]
+  }
+ }
+}

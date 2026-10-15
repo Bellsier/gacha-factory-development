@@ -29,6 +29,21 @@ npm test
 
 `npm test`는 `tests/regression.test.js`가 `tests/chunks/00.js`부터 번호 순으로 불러 한 번에 실행합니다. 청크를 합친 내용이 전체 회귀 스위트입니다.
 
+## 실행 파일 만들기
+
+```bash
+node tools/build-dist.js
+```
+
+`dist/`에 두 파일이 생깁니다(저장소에는 올리지 않음).
+
+- `chaegul-gongbang-<커밋>.zip`: 압축을 풀고 `index.html`을 엽니다.
+- `chaegul-gongbang-<커밋>-single.html`: CSS와 스크립트를 모두 넣은 파일 하나. 휴대폰에 옮겨 바로 열 수 있습니다.
+
+## 탑다운 전환
+
+그래픽은 2D 탑다운 픽셀아트로 전환하는 중입니다(청사진 3.0). 설계는 [`docs/TOPDOWN_TRANSITION.md`](docs/TOPDOWN_TRANSITION.md)에 있으며, 지금 화면은 아직 기존 2.5D 화면입니다.
+
 ## 진행
 
 1. **채굴** 탭에서 월드 광맥을 확보한 뒤 캔다. 캔 광석은 공용 저장소로 들어간다. WASD 또는 방향키로 거점 주변을 걸을 수 있습니다.

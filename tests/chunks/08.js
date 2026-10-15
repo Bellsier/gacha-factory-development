@@ -2599,6 +2599,40 @@ const T93_T0 = 1700000000000;
   check('Task93: the remaining time never goes below 0', win.tunnelWorkRemainingSec(T93_T0 + 9e9) === 0);
 })();
 
+// Task 100: with the clock set back, the job still ends DURATION_SEC after the
+// tick that saw the earlier time (it used to stand at 10:00 until the clock
+// caught up with the old start time, then count down another 10 minutes).
+(function test_T100_clockSetBackStillTenMinutes() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage, { fullWorld: true }).window;
+  win.state.research.tunnelWork = true; win.state.gold = 5000; win.state.products.alloy = 5;
+  win.orderTunnelWork(T93_T0);
+  const back = T93_T0 - 3600000; // the clock goes back one hour, 0 s into the job
+  check('Task100: the tick at the earlier time moves the start to it and does not open yet', win.tickTunnelWork(back) === false && win.state.world.tunnelContract.startedAt === back && win.tunnelWorkRemainingSec(back) === 600);
+  check('Task100: five minutes later half the work is left', win.tickTunnelWork(back + 300000) === false && Math.abs(win.tunnelWorkRemainingSec(back + 300000) - 300) < 1e-9);
+  check('Task100: ten minutes after the clock went back the tunnel opens', win.tickTunnelWork(back + 600000) === true && win.state.world.tunnelUnlocked === true && win.state.world.tunnelContract === null);
+  // the sign never shows more than the duration, whatever the clock does
+  const w2 = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  w2.state.research.tunnelWork = true; w2.state.gold = 5000; w2.state.products.alloy = 5;
+  w2.orderTunnelWork(Date.now() + 7 * 24 * 3600000); // started with the clock a week ahead
+  w2.tickLoop(); // the real clock (now) is before the start
+  const left = w2.tunnelWorkRemainingSec();
+  check('Task100: a job started with the clock ahead counts down from now (real tick, real clock)', left <= 600 && left > 590 && w2.state.world.tunnelContract.startedAt <= Date.now());
+  check('Task100: the sign shows at most 10:00', /공사 중 · (10:00|9:\d\d)/.test(w2.document.querySelector('[data-tunnel-label]').textContent));
+  // a normal job is untouched: the start time stays, it opens at 600 s
+  const w3 = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  w3.state.research.tunnelWork = true; w3.state.gold = 5000; w3.state.products.alloy = 5;
+  w3.orderTunnelWork(T93_T0);
+  check('Task100: a normal job keeps its start time and opens at 600 s', w3.tickTunnelWork(T93_T0 + 599000) === false && w3.state.world.tunnelContract.startedAt === T93_T0 && w3.tickTunnelWork(T93_T0 + 600000) === true);
+  // the saved job keeps its shape
+  const w4 = newDom(storage, { fullWorld: true }).window;
+  w4.state.world.tunnelUnlocked = false; w4.state.world.tunnelContract = { startedAt: T93_T0 + 1000, durationSec: 600 };
+  w4.tickTunnelWork(T93_T0);
+  w4.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task100: the saved job has the same fields (startedAt, durationSec) and saveVersion 1', sv.saveVersion === 1 && Object.keys(sv.run.world.tunnelContract).sort().join(',') === 'durationSec,startedAt' && sv.run.world.tunnelContract.startedAt === T93_T0);
+})();
+
 (function test_T93_reconnect() {
   const storage = makeMemoryStorage();
   const win = newDom(storage, { fullWorld: true }).window;

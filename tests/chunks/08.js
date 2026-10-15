@@ -3237,6 +3237,65 @@ function t73Trade(win, n) { for (let i = 0; i < n; i++) win.tickTrades(); }
   check('Task73: company cards are styled', /\.company-card/.test(css));
 })();
 
+// Task 97: a new order arriving (or any rebuild of the delivery tab) keeps the
+// product, the quantity and the focus of the free-delivery boxes.
+(function test_T97_deliveryInputsSurviveRebuild() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const doc = win.document;
+  win.state.research.deliveryContract = true;
+  win.permanent.totalPrestige = 5; // two companies open
+  win.state.products.steel = 50;
+  win.state.products.coalBrick = 50;
+  win.state.gold = 5000;
+  const p = win.permanent.companies.forge;
+  p.orderIndex = 1; p.open = []; p.orderTimer = 0;
+  win.renderAll();
+  const sel = (k) => doc.querySelector('[data-deliver-product="' + k + '"]');
+  const qty = (k) => doc.querySelector('[data-deliver-qty="' + k + '"]');
+  check('Task97: setup — forge has no open order and both companies are open', p.open.length === 0 && !!sel('forge') && !!sel('harbor'));
+  sel('forge').value = 'coalBrick';
+  qty('forge').value = '7';
+  sel('harbor').value = 'steel';
+  qty('harbor').value = '12';
+  qty('forge').focus();
+  check('Task97: setup — the forge quantity box has the focus', doc.activeElement === qty('forge'));
+
+  // the order arrives through the real tick
+  p.orderTimer = win.orderArrivalSec();
+  win.tickLoop();
+  check('Task97: setup — the new order arrived and its row is shown', p.open.length === 1 && !!doc.querySelector('[data-complete-order="forge"][data-order-slot="0"]'));
+  check('Task97: the chosen product is kept after the order arrives', sel('forge').value === 'coalBrick' && sel('harbor').value === 'steel');
+  check('Task97: the typed quantity is kept after the order arrives', qty('forge').value === '7' && qty('harbor').value === '12');
+  check('Task97: the focus stays in the quantity box', doc.activeElement === qty('forge'));
+  win.tickLoop();
+  check('Task97: the preview and the button follow the kept choice', /보유 50개/.test(doc.querySelector('[data-deliver-preview="forge"]').textContent) && doc.querySelector('[data-deliver="forge"]').disabled === false);
+  doc.querySelector('[data-deliver="forge"]').click();
+  check('Task97: free delivery sends the kept product and quantity', win.state.products.coalBrick === 43 && win.state.products.steel === 50);
+
+  // completing an order rebuilds everything (renderAll): the boxes keep their values too
+  qty('forge').blur();
+  win.state.products.coalBrick = 50;
+  doc.querySelector('[data-complete-order="forge"][data-order-slot="0"]').click();
+  check('Task97: setup — the order was completed', p.open.length === 0 && p.orderIndex === 2);
+  check('Task97: values are kept through renderAll after completing an order', sel('forge').value === 'coalBrick' && qty('forge').value === '7' && qty('harbor').value === '12');
+  check('Task97: no focus is forced into the box when it did not have it', doc.activeElement !== qty('forge'));
+
+  // a product that is no longer offered falls back to the first option; a fresh tab starts at the defaults
+  sel('forge').innerHTML += '<option value="nothing">x</option>';
+  sel('forge').value = 'nothing';
+  win.renderDelivery();
+  check('Task97: a choice that is not offered any more falls back to the first product', sel('forge').value === sel('forge').options[0].value);
+  const fresh = newDom(makeMemoryStorage()).window;
+  fresh.state.research.deliveryContract = true;
+  fresh.renderAll();
+  check('Task97: a fresh delivery tab still starts at the first product and quantity 1',
+    fresh.document.querySelector('[data-deliver-qty="forge"]').value === '1' && fresh.document.querySelector('[data-deliver-product="forge"]').selectedIndex === 0);
+  check('Task97: nothing about the boxes is saved (saveVersion 1, company fields unchanged)', win.saveGame() === true &&
+    JSON.parse(storage.getItem('gachaFactorySave')).saveVersion === 1 &&
+    Object.keys(JSON.parse(storage.getItem('gachaFactorySave')).permanent.companies.forge).sort().join(',') === 'lastRepeat,open,orderIndex,orderTimer,repeatDone,score,sent,tradeTimer');
+})();
+
 
 // ---------------------------------------------------------------------------
 // Task 74: the prestige reset is gone; orders (big deliveries) are the way to reputation

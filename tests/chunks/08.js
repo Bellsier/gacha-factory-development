@@ -3974,6 +3974,142 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   check('Task90: a stalled workshop names the missing material', /멈춰 있어요/.test(hint()) && win.bottleneckReport().items.length > 0 && hint().includes(win.bottleneckReport().items[0].name));
 })();
 
+// =============================================================================
+// Task 94: a fixed order and a repeat order that are open together must come
+// back after save/load (sanitizeOpenOrders must accept what issueOrder issues).
+// =============================================================================
+
+// "index:product:qty|..." for a company's open orders, in list order.
+function t94Shape(win, key) {
+  return win.permanent.companies[key].open.map((o) => o.index + ':' + o.product + ':' + o.qty).join('|');
+}
+// Runs `setup(win)` on a fresh game, saves, and boots a second window from that save.
+function t94Reload(setup) {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  setup(win);
+  win.saveGame();
+  return { storage, win, loaded: newDom(storage).window };
+}
+function t94Set(win, key, orderIndex, open) {
+  const p = win.permanent.companies[key];
+  p.orderIndex = orderIndex;
+  p.open = open;
+  return p;
+}
+function t94FixedOf(win, key, idx) {
+  const o = win.COMPANIES.find((c) => c.key === key).orders[idx];
+  return { product: o.product, qty: o.qty, index: idx };
+}
+// Boots a game from a hand-edited save file: `mutate(companies, saveJson)` edits what a save holds.
+function t94FromRaw(mutate) {
+  const storage = makeMemoryStorage();
+  newDom(storage).window.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  mutate(sv.permanent.companies, sv);
+  storage.setItem('gachaFactorySave', JSON.stringify(sv));
+  return { storage, win: newDom(storage).window };
+}
+
+(function test_T94_fixedOnlyAndRepeatOnly() {
+  const f = t94Reload((win) => t83SetOrder(win, 'forge', 2));
+  check('Task94: a fixed order alone survives save/load', t94Shape(f.loaded, 'forge') === '2:steel:60' && f.loaded.permanent.companies.forge.orderIndex === 2);
+  const r = t94Reload((win) => t94Set(win, 'forge', win.COMPANIES[0].orders.length, [{ product: 'steel', qty: 30, index: -1 }]));
+  check('Task94: a repeat order alone (all fixed orders paid) survives save/load', t94Shape(r.loaded, 'forge') === '-1:steel:30');
+})();
+
+(function test_T94_fixedAndRepeatTogether() {
+  let before = '';
+  const r = t94Reload((win) => {
+    win.permanent.totalPrestige = 18; // second order slot (BALANCE.orders.SECOND_SLOT_AT)
+    t83SetOrder(win, 'forge', 1);
+    win.issueOrder('forge', Math.random); // Task 88: the free second slot gets a repeat order
+    const p = win.permanent.companies.forge;
+    p.orderTimer = 42; p.repeatDone = 3; p.lastRepeat = 'steel';
+    before = t94Shape(win, 'forge');
+  });
+  const q = r.loaded.permanent.companies.forge;
+  check('Task94: setup — the game itself opened a fixed order and a repeat order together', /^1:coalBrick:25\|-1:[A-Za-z]+:\d+$/.test(before));
+  check('Task94: a fixed order and a repeat order open together both survive save/load', t94Shape(r.loaded, 'forge') === before);
+  check('Task94: the repeat order is still a repeat order (index -1, real product, quantity within the cap)', q.open.length === 2 && q.open[1].index === -1 && !!r.loaded.recipeByKey(q.open[1].product) && Number.isInteger(q.open[1].qty) && q.open[1].qty >= 1 && q.open[1].qty <= 100);
+  check('Task94: order timer, repeat history and fixed progress are untouched', q.orderTimer === 42 && q.repeatDone === 3 && q.lastRepeat === 'steel' && q.orderIndex === 1);
+  // the repeat order may also sit ahead of the fixed one (the fixed order arrives after the first was paid from slot 0)
+  const r2 = t94Reload((win) => t94Set(win, 'forge', 3, [{ product: 'ironTool', qty: 9, index: -1 }, t94FixedOf(win, 'forge', 3)]));
+  check('Task94: a repeat order ahead of a later fixed order keeps both and their order', t94Shape(r2.loaded, 'forge') === t94Shape(r2.win, 'forge') && r2.loaded.permanent.companies.forge.open[0].index === -1 && r2.loaded.permanent.companies.forge.open[1].index === 3);
+  // load -> save -> load does not drift
+  r.loaded.saveGame();
+  const again = newDom(r.storage).window;
+  check('Task94: load, save and load again gives the same orders', t94Shape(again, 'forge') === before);
+})();
+
+(function test_T94_severalCompanies() {
+  const before = {};
+  const r = t94Reload((win) => {
+    win.permanent.totalPrestige = 18;
+    const keys = win.COMPANIES.map((c) => c.key);
+    t94Set(win, keys[0], 1, [t94FixedOf(win, keys[0], 1), { product: 'ironTool', qty: 9, index: -1 }]);          // fixed + repeat
+    t94Set(win, keys[1], 0, [t94FixedOf(win, keys[1], 0)]);                                                       // fixed only
+    t94Set(win, keys[2], win.COMPANIES[2].orders.length, [{ product: 'steel', qty: 30, index: -1 }]);            // repeat only
+    keys.forEach((k) => { before[k] = t94Shape(win, k); });
+  });
+  const keys = r.loaded.COMPANIES.map((c) => c.key);
+  check('Task94: several companies — setup holds fixed+repeat, fixed only, repeat only', before[keys[0]].split('|').length === 2 && before[keys[1]].split('|').length === 1 && before[keys[2]] === '-1:steel:30');
+  check('Task94: several companies — the company with both orders gets both back', t94Shape(r.loaded, keys[0]) === before[keys[0]]);
+  check('Task94: several companies — the fixed-only company is unchanged', t94Shape(r.loaded, keys[1]) === before[keys[1]]);
+  check('Task94: several companies — the repeat-only company is unchanged', t94Shape(r.loaded, keys[2]) === before[keys[2]]);
+  check('Task94: several companies — each keeps its own fixed progress', keys.every((k) => r.loaded.permanent.companies[k].orderIndex === r.win.permanent.companies[k].orderIndex));
+})();
+
+(function test_T94_invalidOrdersStayRejected() {
+  const fixed2 = { product: 'steel', qty: 60, index: 2 };
+  const okRep = { product: 'ironTool', qty: 9, index: -1 };
+  // [what is wrong, the saved open list, what a company on fixed order 2 ends up with]
+  const cases = [
+    ['a repeat order for an unknown product', [fixed2, { product: 'nope', qty: 5, index: -1 }], '2:steel:60'],
+    ['a repeat order with quantity 0', [fixed2, { product: 'ironTool', qty: 0, index: -1 }], '2:steel:60'],
+    ['a repeat order with a negative quantity', [fixed2, { product: 'ironTool', qty: -4, index: -1 }], '2:steel:60'],
+    ['a repeat order with a fractional quantity', [fixed2, { product: 'ironTool', qty: 1.5, index: -1 }], '2:steel:60'],
+    ['a repeat order with a text quantity', [fixed2, { product: 'ironTool', qty: '5', index: -1 }], '2:steel:60'],
+    ['a repeat order above the quantity cap (101)', [fixed2, { product: 'ironTool', qty: 101, index: -1 }], '2:steel:60'],
+    ['a repeat order exactly at the quantity cap (100) is kept', [fixed2, { product: 'ironTool', qty: 100, index: -1 }], '2:steel:60|-1:ironTool:100'],
+    ['a fixed order that is not the company\'s next one', [{ product: 'steel', qty: 60, index: 4 }, okRep], '-1:ironTool:9'],
+    ['a fixed order with a changed product/quantity is replaced by the company\'s own', [{ product: 'alloy', qty: 1, index: 2 }, okRep], '2:steel:60|-1:ironTool:9'],
+    ['two fixed orders', [fixed2, fixed2, okRep], '2:steel:60|-1:ironTool:9'],
+    ['more orders than the two slots', [fixed2, okRep, okRep], '2:steel:60|-1:ironTool:9'],
+    ['an open list that is not a list', 'x', '2:steel:60'],
+  ];
+  cases.forEach(([what, open, expected]) => {
+    const r = t94FromRaw((cs) => { cs.forge.orderIndex = 2; cs.forge.open = open; });
+    check('Task94: ' + what + ' → "' + expected + '"', t94Shape(r.win, 'forge') === expected);
+  });
+  // a repeat order cannot exist before the first fixed order was paid (issueOrder never opens one then)
+  const r0 = t94FromRaw((cs) => { cs.forge.orderIndex = 0; cs.forge.open = [{ product: 'steel', qty: 20, index: 0 }, okRep]; });
+  check('Task94: a repeat order before the first fixed order was paid is still dropped', t94Shape(r0.win, 'forge') === '0:steel:20');
+  // whatever is saved, the loaded list is always safe
+  [1, 'x', null, {}, [null, 3, 'a'], [okRep, okRep, okRep, okRep], [{ index: 4, product: 'x', qty: 9 }], [fixed2, { product: 'ironTool', qty: 9, index: -5 }]].forEach((bad, i) => {
+    const r = t94FromRaw((cs) => { cs.forge.orderIndex = 3; cs.forge.open = bad; cs.forge.orderTimer = i % 2 ? 'x' : -3; });
+    const f = r.win.permanent.companies.forge;
+    const fixedCount = f.open.filter((o) => o.index >= 0).length;
+    check('Task94: odd saved open list #' + i + ' loads safely', Array.isArray(f.open) && f.open.length <= 2 && fixedCount <= 1 && f.open.every((o) => !!r.win.recipeByKey(o.product) && Number.isInteger(o.qty) && o.qty >= 1 && (o.index === -1 ? o.qty <= 100 : o.index === 3)) && Number.isFinite(f.orderTimer) && f.orderTimer >= 0);
+  });
+})();
+
+(function test_T94_oldSavesStillLoad() {
+  // before Task 83: no open list, no timer, no repeat history — the company gets the fixed order it was on
+  const a = t94FromRaw((cs) => { cs.forge.orderIndex = 1; delete cs.forge.open; delete cs.forge.orderTimer; delete cs.forge.repeatDone; delete cs.forge.lastRepeat; });
+  check('Task94: a save from before Task 83 still gets its fixed order and no repeat order', t94Shape(a.win, 'forge') === '1:coalBrick:25');
+  // before Task 88: every fixed order paid and a repeat order open
+  const b = t94FromRaw((cs) => { cs.forge.orderIndex = 5; cs.forge.open = [{ product: 'steel', qty: 30, index: -1 }]; });
+  check('Task94: a save from before Task 88 (all fixed paid, repeat open) still loads its repeat order', b.win.COMPANIES[0].orders.length === 5 && t94Shape(b.win, 'forge') === '-1:steel:30');
+  // a file the buggy build wrote while a fixed and a repeat order were open: the repeat order is there again
+  const c = t94FromRaw((cs) => { cs.forge.orderIndex = 1; cs.forge.open = [{ product: 'coalBrick', qty: 25, index: 1 }, { product: 'ironTool', qty: 9, index: -1 }]; });
+  check('Task94: a save that holds a fixed and a repeat order together now loads both', t94Shape(c.win, 'forge') === '1:coalBrick:25|-1:ironTool:9');
+  // the save format itself did not change
+  c.win.saveGame();
+  const sv = JSON.parse(c.storage.getItem('gachaFactorySave'));
+  check('Task94: saveVersion is still 1 and a company keeps exactly its existing save fields', sv.saveVersion === 1 && Object.keys(sv.permanent.companies.forge).sort().join(',') === 'lastRepeat,open,orderIndex,orderTimer,repeatDone,score,sent,tradeTimer');
+})();
+
 // SUMMARY
 // =============================================================================
 

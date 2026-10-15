@@ -348,7 +348,11 @@ function freshCompaniesState(){
 // Task 83: open orders. A save from before Task 83 has none: it gets the
 // fixed order it was on. A fixed entry must be the company's next fixed order
 // (its product and quantity come from the company, not the save); a repeat
-// entry needs a real product and a quantity within the cap.
+// entry needs a real product, a quantity within the cap, and a company that has
+// paid at least one fixed order. That last rule is exactly when issueOrder
+// (Task 88) opens a repeat order, so a repeat order may sit next to a fixed
+// one (Task 94: it used to be accepted only after every fixed order was paid,
+// which dropped a normally issued repeat order on load).
 function sanitizeOpenOrders(raw, def, orderIndex){
   const fixedNow = () => def.orders[orderIndex] ? [{ product: def.orders[orderIndex].product, qty: def.orders[orderIndex].qty, index: orderIndex }] : [];
   if(!Array.isArray(raw)) return fixedNow();
@@ -359,7 +363,7 @@ function sanitizeOpenOrders(raw, def, orderIndex){
       const fixed = fixedNow()[0];
       if(fixed && o.index === orderIndex && !out.some(x => x.index >= 0)) out.push(fixed);
     } else if(typeof o.product === 'string' && RECIPES.some(r => r.key === o.product) &&
-              Number.isInteger(o.qty) && o.qty >= 1 && o.qty <= BALANCE.orders.REPEAT_MAX_QTY && orderIndex >= def.orders.length){
+              Number.isInteger(o.qty) && o.qty >= 1 && o.qty <= BALANCE.orders.REPEAT_MAX_QTY && orderIndex >= 1){
       out.push({ product: o.product, qty: o.qty, index: -1 });
     }
   });

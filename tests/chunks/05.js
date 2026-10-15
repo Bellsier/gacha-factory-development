@@ -93,3 +93,58 @@ function tdKey(win, target, key) {
   let darker = 0; for (let k = 0; k < 20; k++) { const y = -8 + k * 0.8; if (bright(img, -9, y) < bright(imgOpen, -9, y)) darker++; }
   check('Task104: the land beyond is under fog until the tunnel opens', darker >= 18);
 })();
+
+(function test_T104_drawList() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  const s = win.state;
+  win.secureMine('mine_start_iron');
+  win.addWorkshop({ x: s.world.base.x + 1, y: s.world.base.y + 1, level: 4 });
+  const list = win.tdDrawList({ dir: 'left', frame: 2, x: 3, y: 1 });
+  const kinds = (k) => list.filter((it) => it.kind === k);
+  check('Task104: draw list — the workshop, its lamp, every mine once, the workshop huts and the player',
+    kinds('base').length === 1 && list.some((it) => it.prop === 'lamp') && kinds('ore').length === s.world.mines.length && kinds('workshop').length === 1 && kinds('player').length === 1);
+  check('Task104: draw list — mine looks follow discovery and securing', list.find((it) => it.id === 'mine_start_iron').look === 'secured' &&
+    list.find((it) => it.id === 'mine_start_coal').look === 'unsecured' && kinds('ore').filter((it) => it.look === 'undiscovered').length === s.world.hiddenMineIds.length && s.world.hiddenMineIds.length > 0);
+  check('Task104: draw list — the craft hut look follows its level tier', kinds('workshop')[0].tier === 2);
+  check('Task104: draw list — sorted back to front by y', list.every((it, k) => k === 0 || list[k - 1].sortY <= it.sortY));
+  check('Task104: draw list — the closed gate is drawn and no land-beyond scenery yet', kinds('gate').length === 1 && !list.some((it) => it.kind === 'prop' && it.prop !== 'lamp'));
+  s.world.tunnelUnlocked = true;
+  const open = win.tdDrawList(null);
+  check('Task104: draw list — once open, the gate is gone and the scenery beyond appears', !open.some((it) => it.kind === 'gate') && open.filter((it) => it.kind === 'prop' && it.prop !== 'lamp').length > 20 && !open.some((it) => it.kind === 'player'));
+  let ok = true;
+  try { win.tdRender(1000); win.tdRenderMinimap({ x: 0, y: 0 }); } catch (e) { ok = false; }
+  check('Task104: without a 2D canvas (jsdom) the renderer draws nothing and does not fail', ok && win.TD.ctx === null && win.TD.running === false);
+})();
+
+// -----------------------------------------------------------------------------
+// Task 105: the pixel art (as data)
+// -----------------------------------------------------------------------------
+(function test_T105_sprites() {
+  const win = newDom(makeMemoryStorage()).window;
+  const inside = (sp) => sp.rects.length > 0 && sp.rects.every(([x, y, w, h]) => x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= sp.w && y + h <= sp.h);
+  const key = (sp) => JSON.stringify(sp.rects);
+  const dirs = ['down', 'up', 'left', 'right'];
+  const all = dirs.map((d) => [0, 1, 2, 3].map((f) => win.tdPlayerSprite(d, f)));
+  check('Task105: the player has 4 directions x 4 walk frames, 16 x 22, all inside', all.every((row) => row.every((sp) => sp.w === 16 && sp.h === 22 && inside(sp))));
+  check('Task105: walking frames differ from standing (legs and arms move)', dirs.every((d, k) => key(all[k][1]) !== key(all[k][0]) && key(all[k][3]) !== key(all[k][0]) && key(all[k][1]) !== key(all[k][3])));
+  check('Task105: the four directions look different', new Set(all.map((row) => key(row[0]))).size === 4);
+  const r0 = win.tdPlayerSprite('right', 0), l0 = win.tdPlayerSprite('left', 0);
+  check('Task105: facing left is the mirror of facing right', l0.rects.every(([x, y, w, h, c], k) => x === 16 - r0.rects[k][0] - r0.rects[k][2] && y === r0.rects[k][1] && c === r0.rects[k][4]));
+  check('Task105: the miner wears a helmet with a lamp facing down and to the side, not from behind',
+    key(win.tdPlayerSprite('down', 0)).includes(win.TD_PLAYER_COLORS.lamp) && key(r0).includes(win.TD_PLAYER_COLORS.lamp) && !key(win.tdPlayerSprite('up', 0)).includes(win.TD_PLAYER_COLORS.lamp));
+  const resKeys = win.RESOURCES.map((r) => r.key);
+  check('Task105: every resource has its own ore colour', resKeys.every((k) => win.TD_RES_COLORS[k]) && new Set(resKeys.map((k) => win.TD_RES_COLORS[k][0])).size === resKeys.length);
+  check('Task105: an ore boulder shows its resource colour; an undiscovered one shows none', resKeys.every((k) => key(win.tdOreSprite(k, 'unsecured')).includes(win.TD_RES_COLORS[k][0]) && inside(win.tdOreSprite(k, 'secured'))) &&
+    resKeys.every((k) => !key(win.tdOreSprite(null, 'undiscovered')).includes(win.TD_RES_COLORS[k][0])));
+  check('Task105: a secured vein carries the teal flag, an unsecured one does not', key(win.tdOreSprite('iron', 'secured')).includes('#3fc9b0') && !key(win.tdOreSprite('iron', 'unsecured')).includes('#3fc9b0'));
+  check('Task105: the workshop cabin and the three craft hut tiers', inside(win.tdBaseSprite()) && win.tdBaseSprite().w === 64 && [1, 2, 3].every((t) => inside(win.tdWorkshopSprite(t))) &&
+    new Set([1, 2, 3].map((t) => key(win.tdWorkshopSprite(t)))).size === 3);
+  const propKinds = new Set();
+  ['deepForest', 'rockyGround', 'halfDugMine', 'rareDeep'].forEach((z) => win.WORLD_TERRAIN.BEYOND.PROPS[z].forEach((row) => propKinds.add(row.kind)));
+  win.terrainBeyondProps().forEach((pr) => propKinds.add(pr.kind));
+  const pebble = key(win.tdPropSprite('no-such-kind'));
+  check('Task105: every kind of scenery beyond the mountain has its own sprite', [...propKinds].every((k) => inside(win.tdPropSprite(k)) && key(win.tdPropSprite(k)) !== pebble) && propKinds.size >= 9);
+  const tdSrc = fs.readdirSync(path.join(__dirname, '..', 'js', 'topdown')).map((f) => fs.readFileSync(path.join(__dirname, '..', 'js', 'topdown', f), 'utf8')).join('\n');
+  check('Task105: the art is drawn in code — no image files or image URLs in the top-down code', !/\.(png|jpe?g|gif|webp)\b|url\(|new Image\(|https?:\/\//i.test(tdSrc));
+  check('Task105: without a canvas, baking a sprite returns nothing and does not fail', win.tdSpriteImage(win.tdPlayerSprite('down', 0)) === null);
+})();

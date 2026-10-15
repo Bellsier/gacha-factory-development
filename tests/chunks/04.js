@@ -324,7 +324,7 @@ function t103Random(seed) {
   const files = dist.gameFiles(root);
   const pageScripts = [...html.matchAll(/<script src="(js\/[^"]+)"><\/script>/g)].map((m) => m[1]);
   check('Task103: handoff — the ZIP file list is index.html, the stylesheet and every script the page loads',
-    files[0] === 'index.html' && files.includes('css/style.css') && pageScripts.length === 12 && pageScripts.every((s) => files.includes(s)));
+    files[0] === 'index.html' && files.includes('css/style.css') && pageScripts.length === MODULE_FILES.length && pageScripts.every((s) => files.includes(s)));
   check('Task103: handoff — CRC-32 matches the standard check value', dist.crc32(Buffer.from('123456789')) === 0xcbf43926);
   const zip = dist.buildZip([{ name: 'a.txt', data: Buffer.from('채굴 공방') }, { name: 'js/b.js', data: Buffer.from('x'.repeat(5000)) }], 'pkg');
   // read the entries back through the central directory
@@ -344,7 +344,7 @@ function t103Random(seed) {
     back.length === 2 && back[0].name === 'pkg/a.txt' && back[0].text === '채굴 공방' && back[1].text === 'x'.repeat(5000) && back.every((e) => e.ok));
   const single = dist.buildSingleHtml(root);
   const inlined = [...single.matchAll(/<script>\/\* (js\/[^ ]+) \*\//g)].map((m) => m[1]);
-  check('Task103: handoff — the single HTML inlines the stylesheet and all 12 scripts in page order, with no local file left',
+  check('Task103: handoff — the single HTML inlines the stylesheet and every script in page order, with no local file left',
     JSON.stringify(inlined) === JSON.stringify(pageScripts) && /<style>/.test(single) && !/<script src="js\//.test(single) && !/href="css\//.test(single));
   // it boots as a page on its own
   const dom = new JSDOM(single, { runScripts: 'dangerously', url: 'https://single.test/' });

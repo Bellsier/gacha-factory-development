@@ -398,6 +398,46 @@
   check('Task58: reload still restores the saved world', win2.state.world.mines.length === 2);
 })();
 
+// Task 99: after clicking a checkbox (auto-craft, auto-sell, workshop auto) the
+// movement keys still walk; fields that take typing still keep the keys.
+(function test_T99_checkboxFocusKeepsMovement() {
+  const win = newDom(makeMemoryStorage()).window;
+  const doc = win.document;
+  const p = win.state.world.player;
+  const key = (target, type, k) => { const e = new win.KeyboardEvent(type, { key: k, bubbles: true, cancelable: true }); target.dispatchEvent(e); return e; };
+  const walk = (target, k, ticks) => { const x = p.x, y = p.y; key(target, 'keydown', k); for (let i = 0; i < ticks; i++) win.tickLoop(); key(target, 'keyup', k); win.tickLoop(); return { dx: p.x - x, dy: p.y - y }; };
+  win.state.research.autoCraftDevice = true;
+  win.state.research.workshopBuild = true;
+  win.state.autoSell.steel = true;
+  win.state.world.workshops = [{ id: 'workshop_t99', x: 4, y: 2, level: 1, recipeKey: 'steel', auto: false, progress: null }];
+  win.renderAll();
+  const boxes = ['[data-autocraft="steel"]', '[data-autoselltoggle="steel"]', '[data-workshop-auto="workshop_t99"]'].map((s) => doc.querySelector(s));
+  check('Task99: setup — the three kinds of checkbox are on the page and enabled', boxes.every((b) => b && b.type === 'checkbox' && !b.disabled));
+  boxes.forEach((box, i) => {
+    box.focus();
+    const d = walk(box, i === 1 ? 'ArrowRight' : 'd', 5);
+    check('Task99: with checkbox ' + (i + 1) + ' focused, the movement key walks and stops on release', doc.activeElement === box && d.dx > 0 && p.pose === 'idle');
+  });
+  const arrow = key(boxes[0], 'keydown', 'ArrowLeft');
+  key(boxes[0], 'keyup', 'ArrowLeft');
+  check('Task99: an arrow key on a checkbox does not scroll the page', arrow.defaultPrevented === true);
+  // clicking still toggles the checkbox as before
+  const before = win.state.autoCraft.steel;
+  boxes[0].click();
+  check('Task99: clicking the auto-craft checkbox still toggles it', win.state.autoCraft.steel === !before);
+  // fields that take typing still keep the keys
+  const fields = [doc.querySelector('[data-craft-target="steel"]'), doc.querySelector('[data-workshop-recipe="workshop_t99"]'), doc.createElement('textarea')];
+  doc.body.appendChild(fields[2]);
+  fields.forEach((f) => {
+    f.focus();
+    const d = walk(f, 'd', 5);
+    check('Task99: a ' + f.tagName.toLowerCase() + (f.type ? ' (' + f.type + ')' : '') + ' still keeps the movement keys', d.dx === 0 && d.dy === 0);
+  });
+  check('Task99: the typing rule by element', win.playerTypingTarget(fields[0]) && win.playerTypingTarget(fields[1]) && win.playerTypingTarget(fields[2]) &&
+    !win.playerTypingTarget(boxes[0]) && !win.playerTypingTarget(doc.body) && !win.playerTypingTarget(null));
+  check('Task99: nothing new is saved (saveVersion 1)', win.saveGame() === true && JSON.parse(win.localStorage.getItem('gachaFactorySave')).saveVersion === 1);
+})();
+
 (function test_T59_worldInfoPanel() {
   const win = newDom(makeMemoryStorage()).window;
   const doc = win.document;

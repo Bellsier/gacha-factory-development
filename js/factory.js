@@ -386,9 +386,15 @@ function tunnelWorkRemainingSec(nowMs){
   return Math.max(0, job.durationSec - elapsed);
 }
 // Opens the tunnel when the work is finished. Returns true when it just did.
+// Task 100: a start time still in the future is moved to now, so the job
+// restarts its countdown instead of standing at the full duration until the
+// clock catches up again (the wait never exceeds DURATION_SEC).
 function tickTunnelWork(nowMs){
-  if(!state.world.tunnelContract) return false;
-  if(tunnelWorkRemainingSec(nowMs) > 0) return false;
+  const job = state.world.tunnelContract;
+  if(!job) return false;
+  const now = Number.isFinite(nowMs) ? nowMs : gameNowMs();
+  if(job.startedAt > now) job.startedAt = now;
+  if(tunnelWorkRemainingSec(now) > 0) return false;
   state.world.tunnelContract = null;
   return unlockTunnel();
 }

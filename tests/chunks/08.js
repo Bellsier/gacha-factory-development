@@ -3974,6 +3974,51 @@ const T79_ONLY = ['specialAlloy', 'steelGear', 'relicOrnament', 'precisionPart',
   check('Task90: a stalled workshop names the missing material', /멈춰 있어요/.test(hint()) && win.bottleneckReport().items.length > 0 && hint().includes(win.bottleneckReport().items[0].name));
 })();
 
+// Task 96: the blueprint and the README describe the game as it is. The numbers
+// they state are checked against the code, and statements about removed or
+// not-yet-built systems are kept out.
+(function test_T96_docsMatchTheCode() {
+  const win = newDom(makeMemoryStorage()).window;
+  const blueprint = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BLUEPRINT_V3.md'), 'utf8');
+  const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+  const name = (k) => win.COMPANIES.find((c) => c.key === k).name;
+  const counts = ['forge', 'harbor', 'lab'].map((k) => win.COMPANIES.find((c) => c.key === k).orders.length);
+  check('Task96: blueprint 15.2 states the fixed order count of every company',
+    blueprint.includes('대장간 ' + counts[0] + '개, 항구 상회 ' + counts[1] + '개, 산 너머 연구소 ' + counts[2] + '개') && name('lab') === '산 너머 연구소');
+  const repSum = win.COMPANIES.reduce((s, c) => s + c.orders.reduce((t, o) => t + win.orderReputation({ ...o, index: 0 }), 0), 0);
+  check('Task96: blueprint 15.2 reputation cap is the sum of all fixed orders and BALANCE.reputation.MAX',
+    blueprint.includes('상한이 있다(' + win.BALANCE.reputation.MAX + ', 모든 고정 수주의 합)') && repSum === win.BALANCE.reputation.MAX);
+  check('Task96: README states the same reputation cap', readme.includes('최대 ' + win.BALANCE.reputation.MAX));
+  const t = win.BALANCE.tunnel;
+  const tunnelResearch = win.RESEARCH.find((r) => r.key === 'tunnelWork');
+  check('Task96: blueprint 3.1.1 tunnel research / commission / duration match the code',
+    blueprint.includes('초기 비용 ' + tunnelResearch.cost.gold.toLocaleString('en-US') + 'G') &&
+    blueprint.includes(t.COMMISSION_GOLD.toLocaleString('en-US') + 'G + 마법 합금 ' + t.COMMISSION_PRODUCTS.alloy + '개') &&
+    blueprint.includes('현실 시간 ' + (t.DURATION_SEC / 60) + '분') && Object.keys(t.COMMISSION_PRODUCTS).join() === 'alloy');
+  check('Task96: README tunnel costs match the code',
+    readme.includes('"터널 굴착"(' + tunnelResearch.cost.gold.toLocaleString('en-US') + 'G)') &&
+    readme.includes(t.COMMISSION_GOLD.toLocaleString('en-US') + 'G + 마법 합금 ' + t.COMMISSION_PRODUCTS.alloy + '개') &&
+    readme.includes('현실 시간 ' + (t.DURATION_SEC / 60) + '분'));
+  check('Task96: README saveVersion matches the code', readme.includes('`saveVersion` 1') && win.saveGame() && JSON.parse(win.localStorage.getItem('gachaFactorySave')).saveVersion === 1);
+  // removed or already built: the docs no longer say otherwise
+  check('Task96: README no longer gives the removed prestige formula', !/√\(골드|골드 200부터 명성/.test(readme));
+  check('Task96: blueprint no longer calls the land beyond empty or its scenery missing', !blueprint.includes('현재는 빈 땅') && !blueprint.includes('환경 오브젝트 배치는 아직 없'));
+  check('Task96: blueprint no longer lists the removed Factory Node/Link model for reuse', !blueprint.includes('- Factory Node 기본 데이터와 검증') && !blueprint.includes('- Factory Link 기본 데이터와 검증'));
+  check('Task96: the removed factory model is really gone from the code', typeof win.addFactoryNode === 'undefined' && !('factory' in win.state));
+  check('Task96: blueprint 11.1 no longer says research resets', !blueprint.includes('환생하면 월드와 함께 초기화된다'));
+  // the grandfathering rule 11.1 now describes is what loading does
+  const storage = makeMemoryStorage();
+  newDom(storage).window.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  delete sv.run.research;
+  sv.run.world.workshops = [{ id: 'workshop_doc', x: 3, y: 1, level: 1, recipeKey: null, auto: true, progress: null }];
+  sv.run.world.tunnelContract = { startedAt: 1, durationSec: 600 };
+  storage.setItem('gachaFactorySave', JSON.stringify(sv));
+  const loaded = newDom(storage).window;
+  check('Task96: blueprint 11.1 grandfathering (tunnel job, workshop, auto-craft) is what the code does',
+    loaded.isResearchDone('tunnelWork') && loaded.isResearchDone('workshopBuild') && loaded.isResearchDone('autoCraftDevice') && !loaded.isResearchDone('deliveryContract'));
+})();
+
 // =============================================================================
 // Task 94: a fixed order and a repeat order that are open together must come
 // back after save/load (sanitizeOpenOrders must accept what issueOrder issues).

@@ -383,3 +383,62 @@
     header h1{font-size:1.2rem;}
     .tab-btn{flex:1; font-size:0.82rem;}
   }
+
+  /* ---------------------------------------------------------------------------
+     Task 104-106: world-first screen (body.view-topdown). The canvas world fills
+     the screen; the existing tabs and the log open as panels from a dock.
+     ?view=classic keeps the page above unchanged.
+     --------------------------------------------------------------------------- */
+  body.view-topdown{padding:0; margin:0; overflow:hidden; height:100vh; height:100dvh; background:#1d2f22;}
+  #tdCanvas{position:fixed; inset:0; width:100vw; height:100vh; height:100dvh; display:block; z-index:0; touch-action:none; image-rendering:pixelated;}
+  #tdHud{display:none;}
+  body.view-topdown #tdHud{display:block;}
+  body.view-topdown .wrap{position:fixed; inset:0; max-width:none; margin:0; pointer-events:none; z-index:2;}
+  /* HUD: currencies and the next step, top left */
+  body.view-topdown header{position:fixed; right:12px; bottom:70px; border:none; padding:0; margin:0; z-index:2;}
+  body.view-topdown header > div:first-child{display:none;}
+  body.view-topdown header .sub{font-size:0.66rem; color:rgba(231,236,239,0.6); text-shadow:0 1px 0 #000;}
+  body.view-topdown .currencies{position:fixed; left:10px; top:10px; margin:0; gap:6px; flex-wrap:nowrap; pointer-events:auto;}
+  body.view-topdown .cur{flex:none; min-width:0; padding:4px 10px; background:rgba(18,22,26,0.82); border-color:rgba(255,255,255,0.14); backdrop-filter:blur(2px);}
+  body.view-topdown .cur .label{font-size:0.6rem;}
+  body.view-topdown .cur .value{font-size:0.98rem;}
+  body.view-topdown .next-hint{position:fixed; left:10px; top:60px; margin:0; max-width:min(440px, calc(100vw - 160px)); font-size:0.7rem; line-height:1.45; padding:6px 10px; background:rgba(18,22,26,0.8); pointer-events:auto;}
+  /* dock */
+  body.view-topdown .tabbar{position:fixed; left:50%; bottom:12px; transform:translateX(-50%); margin:0; gap:6px; padding:6px; pointer-events:auto;
+    background:rgba(18,22,26,0.88); border:1px solid rgba(255,255,255,0.14); border-radius:10px; z-index:4;}
+  body.view-topdown .tab-btn, body.view-topdown .td-log-btn{width:auto; padding:8px 14px; border:1px solid var(--line); border-radius:6px; background:var(--panel-2); color:var(--text); font-family:var(--font-display); font-weight:700; font-size:0.85rem;}
+  body.view-topdown .tab-btn.active{border-color:var(--line); color:var(--text);}
+  body.view-topdown.td-panel-open .tab-btn.active, body.view-topdown.td-log-open .td-log-btn{background:var(--amber); border-color:var(--amber); color:#1a1208;}
+  body:not(.view-topdown) .td-log-btn{display:none;}
+  /* panels: the old tabs and the log, unchanged inside */
+  body.view-topdown .tab-panel.active, body.view-topdown #logSection{display:none;}
+  body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{
+    display:block; position:fixed; top:0; right:0; bottom:0; width:min(480px, 100vw); margin:0; overflow-y:auto; overscroll-behavior:contain;
+    background:rgba(20,24,28,0.97); border-left:1px solid var(--line); padding:52px 16px 96px; pointer-events:auto; z-index:3;}
+  body.view-topdown.td-log-open #log{height:auto; max-height:none;}
+  body.view-topdown #worldStage, body.view-topdown #worldStage + p, body.view-topdown section:has(> #worldStage){display:none;}
+  /* minimap, close button, phone controls */
+  #tdMinimap{position:fixed; right:10px; top:10px; width:128px; height:128px; image-rendering:pixelated; border:2px solid rgba(255,255,255,0.18); border-radius:6px; background:#000; z-index:2; pointer-events:none;}
+  body.td-panel-open #tdMinimap, body.td-log-open #tdMinimap{display:none;}
+  .td-close{display:none; position:fixed; top:10px; right:12px; z-index:5; width:auto; background:var(--panel-2); border-color:var(--line);}
+  body.td-panel-open .td-close, body.td-log-open .td-close{display:block;}
+  .td-stick, .td-action{display:none;}
+  body.td-touch .td-stick{display:block; position:fixed; left:18px; bottom:86px; width:124px; height:124px; border-radius:50%; z-index:2; touch-action:none;
+    background:rgba(255,255,255,0.07); border:2px solid rgba(255,255,255,0.2);}
+  .td-knob{position:absolute; left:50%; top:50%; width:54px; height:54px; margin:-27px 0 0 -27px; border-radius:50%; background:rgba(255,255,255,0.3); border:2px solid rgba(255,255,255,0.45); pointer-events:none;}
+  .td-stick.is-active .td-knob{background:rgba(255,214,120,0.55);}
+  body.td-touch .td-action{display:block; position:fixed; right:22px; bottom:98px; width:86px; height:86px; border-radius:50%; z-index:2; touch-action:manipulation;
+    background:rgba(214,139,61,0.92); border:3px solid #ffd27a; color:#1a1208; font-family:var(--font-display); font-weight:700; font-size:1.05rem;}
+  body.td-touch .td-action.is-idle{opacity:0.45;}
+  body.td-touch.td-panel-open .td-stick, body.td-touch.td-panel-open .td-action, body.td-touch.td-log-open .td-stick, body.td-touch.td-log-open .td-action{display:none;}
+  @media (max-width: 760px){
+    body.view-topdown .tabbar{left:0; right:0; bottom:0; transform:none; border-radius:0; border-width:1px 0 0; gap:4px; padding:6px 6px calc(6px + env(safe-area-inset-bottom));}
+    body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex:1; padding:9px 2px; font-size:0.78rem;}
+    body.view-topdown .cur{padding:3px 8px;}
+    body.view-topdown .cur .value{font-size:0.86rem;}
+    body.view-topdown .next-hint{top:52px; max-width:calc(100vw - 112px); font-size:0.64rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+    #tdMinimap{width:88px; height:88px;}
+    body.view-topdown header{bottom:auto; top:104px; right:10px;}
+    body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{top:auto; height:72vh; height:72dvh; width:100vw; border-left:none; border-top:1px solid var(--line); border-radius:12px 12px 0 0; padding:48px 12px 80px;}
+    .td-close{top:auto; bottom:calc(72dvh - 44px);}
+  }

@@ -148,3 +148,125 @@ function tdKey(win, target, key) {
   check('Task105: the art is drawn in code — no image files or image URLs in the top-down code', !/\.(png|jpe?g|gif|webp)\b|url\(|new Image\(|https?:\/\//i.test(tdSrc));
   check('Task105: without a canvas, baking a sprite returns nothing and does not fail', win.tdSpriteImage(win.tdPlayerSprite('down', 0)) === null);
 })();
+
+// -----------------------------------------------------------------------------
+// Task 106: the world-first screen, proximity interaction, phone controls
+// -----------------------------------------------------------------------------
+(function test_T106_screen() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const doc = win.document, body = doc.body;
+  check('Task106: the top-down view is the default — world canvas, HUD, minimap, dock', body.classList.contains('view-topdown') &&
+    !!doc.getElementById('tdCanvas') && body.firstElementChild.id === 'tdCanvas' && !!doc.getElementById('tdMinimap') && !!doc.querySelector('.tabbar .td-log-btn'));
+  check('Task106: the five tabs stay in the dock with their content', doc.querySelectorAll('.tabbar .tab-btn').length === 5 && !!doc.querySelector('#tab-research #researchList'));
+  check('Task106: no panel is open at the start (the world is the screen)', !body.classList.contains('td-panel-open') && !body.classList.contains('td-log-open'));
+  const devBtn = doc.querySelector('.tab-btn[data-tab="dev"]');
+  devBtn.click();
+  check('Task106: a dock button opens its panel', body.classList.contains('td-panel-open') && devBtn.classList.contains('active') && doc.getElementById('tab-dev').classList.contains('active'));
+  devBtn.click();
+  check('Task106: pressing the open tab again closes it', !body.classList.contains('td-panel-open'));
+  doc.querySelector('.tab-btn[data-tab="research"]').click();
+  tdKey(win, doc.body, 'Escape');
+  check('Task106: Escape closes a panel', !body.classList.contains('td-panel-open'));
+  doc.querySelector('.td-log-btn').click();
+  check('Task106: the log opens as its own panel', body.classList.contains('td-log-open') && !body.classList.contains('td-panel-open'));
+  doc.getElementById('tdClose').click();
+  check('Task106: the close button closes it', !body.classList.contains('td-log-open'));
+  doc.querySelector('.tab-btn[data-tab="workers"]').click();
+  doc.querySelector('.td-log-btn').click();
+  check('Task106: only one panel at a time', body.classList.contains('td-log-open') && !body.classList.contains('td-panel-open'));
+  // the classic page is still there with ?view=classic, remembered apart from the save
+  const store2 = makeMemoryStorage();
+  const classic = tdDomAt('https://example.test/?view=classic', store2);
+  check('Task106: ?view=classic keeps the old page (no world canvas, 2.5D stage in place)', !classic.document.body.classList.contains('view-topdown') &&
+    !classic.document.getElementById('tdCanvas') && !!classic.document.getElementById('worldStage'));
+  check('Task106: the view choice is kept in its own key, not in the game save', store2.getItem('gachaFactoryView') === 'classic' &&
+    (classic.saveGame(), !/classic|topdown|view/.test(store2.getItem('gachaFactorySave'))));
+  const again = tdDomAt('https://example.test/', store2);
+  check('Task106: the remembered choice applies on the next visit; ?view=topdown switches back', !again.document.body.classList.contains('view-topdown') &&
+    tdDomAt('https://example.test/?view=topdown', store2).document.body.classList.contains('view-topdown') && store2.getItem('gachaFactoryView') === 'topdown');
+})();
+
+(function test_T106_interaction() {
+  const win = newDom(makeMemoryStorage()).window;
+  const doc = win.document, s = win.state, p = s.world.player;
+  const iron = win.mineById('mine_start_iron');
+  const stand = (x, y) => { p.x = x; p.y = y; };
+  stand(iron.x + 3, iron.y + 3);
+  const far = win.tdInteractTarget(p.x, p.y);
+  check('Task106: far from everything there is nothing to act on', far === null || (far.type !== 'mine'));
+  stand(iron.x + 1.1, iron.y);
+  check('Task106: within reach (1.1) of an unsecured vein the action is "secure"', win.tdInteractTarget(p.x, p.y).action === 'secure' && win.tdInteractTarget(p.x, p.y).id === iron.id);
+  stand(iron.x + 1.3, iron.y);
+  const t13 = win.tdInteractTarget(p.x, p.y);
+  check('Task106: just out of reach (1.3) it is not offered', !t13 || t13.id !== iron.id);
+  stand(iron.x + 0.4, iron.y);
+  tdKey(win, doc.body, 'e');
+  check('Task106: E secures the vein through the game\'s own secureMine', iron.developmentState === 'secured' && doc.querySelector('[data-secure-mine="' + iron.id + '"]').disabled === true);
+  check('Task106: next the action is "mine" with the amount', win.tdInteractTarget(p.x, p.y).action === 'mine' && /\+1/.test(win.tdInteractTarget(p.x, p.y).label));
+  const i0 = s.resources.iron;
+  tdKey(win, doc.body, 'e'); tdKey(win, doc.body, ' ');
+  check('Task106: E and Space mine it (miningPower x multiplier each)', Math.abs(s.resources.iron - i0 - 2 * iron.miningPower * win.mult()) < 1e-9);
+  const field = doc.querySelector('[data-craft-target="steel"]');
+  const i1 = s.resources.iron;
+  tdKey(win, field, 'e');
+  const btn = doc.querySelector('.tab-btn');
+  tdKey(win, btn, ' ');
+  check('Task106: E typed in a field and Space on a button do not act', s.resources.iron === i1);
+  doc.querySelector('[data-mine-mine="' + iron.id + '"]').click();
+  check('Task106: the remote panel buttons still work (kept by decision)', s.resources.iron > i1);
+  // a vein whose site is still locked
+  const mana = win.addMine({ id: 'mine_t106_mana', x: s.world.base.x + 4, y: s.world.base.y - 4, resource: 'mana', grade: 2, miningPower: 1, developmentState: 'unsecured' });
+  stand(mana.x - 0.5, mana.y);
+  const lk = win.tdInteractTarget(p.x, p.y);
+  tdKey(win, doc.body, 'e');
+  check('Task106: a vein of a locked site says what is needed and stays unsecured', lk.action === 'locked' && /해금 필요/.test(lk.label) && mana.developmentState === 'unsecured');
+  // hidden veins are never a target
+  const hid = win.addMine({ id: 'mine_t106_hidden', x: s.world.base.x - 2, y: s.world.base.y + 4, resource: 'coal', grade: 1, miningPower: 1, developmentState: 'unsecured' });
+  s.world.hiddenMineIds.push(hid.id);
+  check('Task106: an undiscovered vein is not offered (walking near discovers it instead)', win.tdInteractTarget(hid.x + 0.3, hid.y) === null || win.tdInteractTarget(hid.x + 0.3, hid.y).id !== hid.id);
+  // the workshop and a craft hut open the craft panel
+  stand(s.world.base.x, s.world.base.y + 0.3);
+  tdKey(win, doc.body, 'e');
+  check('Task106: E at the workshop door opens the craft (개발) panel', doc.body.classList.contains('td-panel-open') && doc.querySelector('.tab-btn.active').dataset.tab === 'dev');
+  tdKey(win, doc.body, 'Escape');
+  const hut = win.addWorkshop({ x: s.world.base.x + 3, y: s.world.base.y + 3, level: 1 });
+  stand(hut.x + 0.3, hut.y);
+  check('Task106: a craft hut is a target too', win.tdInteractTarget(p.x, p.y).type === 'workshop' && win.tdInteract(win.tdInteractTarget(p.x, p.y)).open === 'dev');
+  // the action button (phone) does the same
+  stand(iron.x + 0.4, iron.y);
+  win.TD.target = win.tdInteractTarget(p.x, p.y);
+  win.tdUpdateActionButton();
+  const action = doc.getElementById('tdAction');
+  const i2 = s.resources.iron;
+  action.click();
+  check('Task106: the action button shows the action and does it', action.textContent === '캐기' && !action.classList.contains('is-idle') && s.resources.iron > i2);
+  win.TD.target = null; win.tdUpdateActionButton();
+  check('Task106: with nothing in reach the button is idle', action.classList.contains('is-idle'));
+})();
+
+(function test_T106_joystickAndSave() {
+  const storage = makeMemoryStorage(T103_FIXTURE_RAW);
+  storage.setItem('gachaFactorySave', T103_FIXTURE_RAW);
+  const win = newDom(storage).window;
+  const s = win.state, p = s.world.player;
+  const D = (dx, dy) => win.tdStickDirs(dx, dy, 60).sort().join();
+  check('Task106: joystick — inside the dead zone nothing is held', D(5, 5) === '' && D(0, 0) === '');
+  check('Task106: joystick — 8 directions', D(50, 0) === 'right' && D(-50, 0) === 'left' && D(0, -50) === 'up' && D(0, 50) === 'down' &&
+    D(40, 40) === 'down,right' && D(-40, -40) === 'left,up' && D(40, -40) === 'right,up' && D(-40, 40) === 'down,left');
+  check('Task106: joystick — a mostly-sideways push is one direction', D(55, 15) === 'right');
+  const x0 = p.x;
+  win.tdSetStickDirs(['right']);
+  for (let i = 0; i < 4; i++) win.tickPlayer();
+  win.tdSetStickDirs([]);
+  win.tickPlayer();
+  check('Task106: joystick directions walk the player and letting go stops', p.x > x0 && p.pose === 'idle' && win.isWorldPointWalkable(p.x, p.y));
+  check('Task106: the stick and the action button exist for touch screens', !!win.document.querySelector('#tdStick .td-knob') && !!win.document.getElementById('tdAction'));
+  // nothing of the new screen reaches the save
+  win.document.querySelector('.tab-btn[data-tab="delivery"]').click();
+  win.tdInteractNow();
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task106: after using the new screen the save has exactly the fixture\'s structure (saveVersion 1)', sv.saveVersion === 1 && JSON.stringify(t103Shape(sv)) === JSON.stringify(t103Shape(T103_FIXTURE)));
+  check('Task106: no camera, zoom, panel or joystick state in the save', !/camera|zoom|panel|stick|tdView|topdown/i.test(JSON.stringify(sv)));
+})();

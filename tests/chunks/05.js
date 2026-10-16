@@ -696,7 +696,7 @@ function t110Arrived(win) {
 (function test_T110_randomWorlds() {
   // generated worlds (tunnel open, 8 huts, all regions) with 16 workers on random resources, walking and then reassigned
   const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
-  let bad = 0, worlds = 0, walkers = 0;
+  let bad = 0, worlds = 0, walkers = 0, beyondWalkers = 0;
   for (let seed = 1; seed <= 6; seed++) {
     const rnd = t103Random(seed * 104729);
     const fresh = win.freshRunState(), s = win.state;
@@ -708,6 +708,7 @@ function t110Arrived(win) {
     Object.keys(s.products).forEach((k) => { s.products[k] = 1e6; });
     for (let i = 0; i < 8; i++) win.buildWorkshop();
     win.unlockTunnel({ random: rnd }); win.surveyMines({ random: rnd });
+    s.world.hiddenMineIds = []; // every vein known, so some workers walk beyond the mountain (through the trees)
     s.world.mines.forEach((m) => { if (rnd() < 0.5) m.developmentState = 'secured'; });
     s.world.base.level = 4;
     const res = [...new Set(s.world.mines.map((m) => m.resource))];
@@ -717,8 +718,85 @@ function t110Arrived(win) {
     const a = t110Run(win, 30000), ok1 = t110Arrived(win);
     s.characters.forEach((c, i) => { if (i % 3 === 0) c.resource = res[(res.indexOf(c.resource) + 1) % res.length]; });
     const b2 = t110Run(win, 30000), ok2 = t110Arrived(win);
-    worlds++; walkers += s.characters.length;
+    worlds++; walkers += s.characters.length; beyondWalkers += win.tdWorkerPlacements().filter((p) => win.tdWorkerSide(p.x, p.y) === 'west').length;
     if (!ok1 || !ok2 || a.inside + b2.inside || a.inRock + b2.inRock || Object.values(win.TD.workerSim.byId).some((x) => x.snaps)) bad++;
   }
   check('Task110: in 6 generated worlds 16 workers each walk to their veins (and again after new jobs) without getting stuck, through anything or into rock', worlds === 6 && walkers === 96 && bad === 0);
+  check('Task110: ...including workers walking to veins beyond the mountain, past its trees and rocks', beyondWalkers >= 3);
+})();
+
+// -----------------------------------------------------------------------------
+// Task 111: solid scenery blocks the player and the workers
+// -----------------------------------------------------------------------------
+(function test_T111_scenery() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, p = s.world.player, F = win.PLAYER_FOOT, BOX = win.SCENERY_BLOCK_BOXES;
+  check('Task111: with the tunnel closed the land beyond (and its scenery) is out of play', !win.worldObstacles().some((o) => o.kind === 'scenery'));
+  s.research.tunnelWork = true; win.unlockTunnel();
+  const sc = win.worldScenery(), obs = win.worldObstacles().filter((o) => o.kind === 'scenery');
+  const solidKinds = ['bigTree', 'sparseTree', 'rock', 'crystal', 'mineCart', 'timberSupport', 'oldShaftEntrance'];
+  check('Task111: trees, boulders, crystal clusters, the cart, timber supports and the shaft entrance are solid', Object.keys(BOX).sort().join() === solidKinds.slice().sort().join() &&
+    obs.length === sc.solid.length && obs.length > 25 && solidKinds.every((k) => sc.props.some((pr) => pr.kind === k)));
+  check('Task111: grass, the clearing, digging marks and the low exposed veins stay walkable', sc.props.filter((pr) => !pr.box).length > 10 &&
+    sc.props.filter((pr) => !pr.box).every((pr) => ['grass', 'clearing', 'diggingMarks', 'exposedVein', 'undevelopedVein', 'rareVein'].includes(pr.kind)) &&
+    !obs.some((o) => ['grass', 'clearing', 'diggingMarks', 'exposedVein'].includes(o.prop)));
+  check('Task111: each block is the small foot of its picture (under 0.45 wide, 0.2 deep)', Object.values(BOX).every((b) => b.maxX - b.minX <= 0.45 && b.maxY - b.minY <= 0.2 && b.minX < 0 && b.maxX > 0 && b.minY < 0 && b.maxY > 0));
+  // what is drawn is what blocks
+  const drawn = win.tdDrawList(null).filter((it) => it.kind === 'prop' && it.prop !== 'lamp');
+  check('Task111: the drawn scenery is exactly the world\'s scenery (nothing solid is invisible, nothing visible is missing)', drawn.length === sc.props.length &&
+    sc.solid.every((pr) => drawn.some((it) => it.x === pr.x && it.y === pr.y && it.prop === pr.kind)));
+  check('Task111: nothing that would wall ground in had to be left out of the current scenery (all pieces kept)', win.worldSceneryBase().length === win.terrainBeyondProps().length);
+  check('Task111: pieces on a vein are still left out (0.9), so a vein is always readable and reachable', s.world.mines.every((m) => sc.props.every((pr) => Math.hypot(pr.x - m.x, pr.y - m.y) >= 0.9)));
+  // the near lookup gives the same boxes as the full list
+  const sample = [[-8, 2], [-7, -4], [-9, 6], [-6.8, 1]];
+  check('Task111: the quick nearby lookup agrees with the full list', sample.every(([x, y]) => {
+    const near = win.worldObstacles(x, y, 1).filter((o) => o.kind === 'scenery').map((o) => o.id).sort().join();
+    const all = obs.filter((o) => Math.hypot((o.minX + o.maxX) / 2 - x, (o.minY + o.maxY) / 2 - y) <= 1.8).map((o) => o.id);
+    return all.every((id) => near.includes(id));
+  }));
+  // walking into a tree stops at its trunk; walking past grass does not
+  const tree = sc.solid.find((pr) => pr.kind === 'bigTree' && win.playerCanStand(pr.x, pr.box.maxY + F.HALF_H + 0.6) && win.playerCanStand(pr.x, pr.box.maxY + F.HALF_H + 0.01));
+  p.x = tree.x; p.y = tree.box.maxY + F.HALF_H + 0.6; t107Hold(win, ['up'], 8);
+  const stopped = Math.abs(p.y - (tree.box.maxY + F.HALF_H)) < 1e-3 || (Math.abs(p.x - tree.x) > 0 && Math.abs(p.x - tree.x) <= 0.2 + 1e-9);
+  check('Task111: walking into a tree trunk stops (or glides round it), never through it', stopped && !win.worldObstacles(p.x, p.y, 1).some((o) => win.playerFootOverlaps(o, p.x, p.y)));
+  const grass = sc.props.find((pr) => pr.kind === 'grass' && win.playerCanStand(pr.x + 0.5, pr.y) && win.playerCanStand(pr.x, pr.y) && win.playerCanStand(pr.x - 0.5, pr.y) &&
+    !win.worldObstacles(pr.x, pr.y, 1).some((o) => o.minY < pr.y + 0.1 && o.maxY > pr.y - 0.1 && o.maxX > pr.x - 0.7 && o.minX < pr.x + 0.7));
+  if (grass) { p.x = grass.x + 0.5; p.y = grass.y; t107Hold(win, ['left'], 4); }
+  check('Task111: grass is walked straight through', !!grass && p.x < grass.x - 0.4 && p.y === grass.y);
+  // an older save standing inside a tree simply walks out
+  p.x = tree.x; p.y = tree.y - 0.04;
+  check('Task111: (a position inside a tree, as an older save could have)', win.worldObstacles(p.x, p.y, 1).some((o) => o.kind === 'scenery' && win.playerFootOverlaps(o, p.x, p.y)));
+  t107Hold(win, ['down'], 4);
+  check('Task111: ...walks out of it and is not let back in', !win.worldObstacles(p.x, p.y, 1).some((o) => win.playerFootOverlaps(o, p.x, p.y)) && p.y > tree.y);
+  // the terrain itself is unchanged
+  check('Task111: scenery does not change the terrain (mountain, tunnel and walkability as before)', win.isWorldPointWalkable(-8, 4) === true && win.isWorldPointWalkable(-5, -5) === false && win.WORLD_TERRAIN.PLAYER_MARGIN === 0.3);
+  win.saveGame();
+  check('Task111: nothing about scenery or obstacles is saved', !/scenery|obstacle|SCENERY/i.test(win.localStorage.getItem('gachaFactorySave')));
+})();
+
+(function test_T111_reachBeyond() {
+  // the land beyond, with all its solid scenery, is one connected walk from the tunnel exit (no pockets),
+  // in the fixture save and with veins generated all over it
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state;
+  s.research.tunnelWork = true; win.unlockTunnel();
+  const B = win.BALANCE.world, st = 0.1, exit = win.terrainTunnelExit();
+  const nx = Math.round((exit.x - B.BOUNDS_MIN_X) / st) + 1, ny = Math.round((B.BOUNDS_MAX_Y - B.BOUNDS_MIN_Y) / st) + 1;
+  const P = (i, j) => [B.BOUNDS_MIN_X + i * st, B.BOUNDS_MIN_Y + j * st];
+  const fill = () => {
+    const can = new Uint8Array(nx * ny), seen = new Uint8Array(nx * ny);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const [x, y] = P(i, j); can[j * nx + i] = win.playerCanStand(x, y) ? 1 : 0; }
+    const si = Math.round((exit.x - 0.3 - B.BOUNDS_MIN_X) / st), sj = Math.round((exit.y - B.BOUNDS_MIN_Y) / st), q = [[si, sj]];
+    seen[sj * nx + si] = 1;
+    while (q.length) { const [i, j] = q.pop(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const u = i + a, v = j + b; if (u < 0 || v < 0 || u >= nx || v >= ny) return; const k = v * nx + u; if (seen[k] || !can[k]) return; seen[k] = 1; q.push([u, v]); }); }
+    let pockets = 0, open = 0; for (let k = 0; k < nx * ny; k++) if (can[k]) { open++; if (!seen[k]) pockets++; }
+    return { pockets, open };
+  };
+  const r = fill();
+  check('Task111: beyond the mountain every open spot is reachable from the tunnel exit despite the trees and rocks', r.pockets === 0 && r.open > 3000);
+  const st2 = makeMemoryStorage(); st2.setItem('gachaFactorySave', T103_FIXTURE_RAW);
+  const fx = newDom(st2).window;
+  check('Task111: the fixture save\'s veins beyond can all be walked to (and its workers have free spots)', fx.state.world.mines.filter((m) => fx.terrainRegionAt(m.x, m.y) === 'beyond').every((m) => {
+    for (let a = 0; a < 16; a++) { const x = m.x + Math.cos(a * Math.PI / 8) * 0.6, y = m.y + Math.sin(a * Math.PI / 8) * 0.6; if (fx.playerCanStand(x, y)) return true; } return false;
+  }) && fx.tdWorkerPlacements().every((p) => fx.playerCanStand(p.x, p.y)));
 })();

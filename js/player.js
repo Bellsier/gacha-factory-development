@@ -47,6 +47,98 @@ const WORLD_OBSTACLE_BOXES = {
 };
 const CORNER_SLIP = 0.18; // a corner this close is slipped around instead of stopping dead (enough to glide round a vein head-on, not round the cabin)
 
+// ---------------------------------------------------------------------------
+// Task 111: the scenery of the land beyond that looks solid blocks too —
+// tree trunks, boulders, crystal clusters, the mine cart, timber supports and
+// the old shaft entrance — by a small box at its foot. Grass, the clearing,
+// digging marks and the low exposed veins stay walkable. The same boxes stop
+// the player and the walking workers (worldObstacles).
+//
+// So that no scenery can wall anything in, the land beyond is flood-filled
+// once (a 0.05 grid of foot positions, from the tunnel exit): while some open
+// ground cannot be reached, the solid piece that walls it off (touching both
+// the cut-off ground and the reached ground) is left out of the world
+// altogether — not drawn either, so what is drawn is what blocks. Mines only
+// ever remove scenery near them, so they cannot cut anything off.
+// Fixed data (the same in every game); nothing is saved.
+// ---------------------------------------------------------------------------
+const SCENERY_BLOCK_BOXES = {
+  bigTree:          { minX: -0.07, maxX: 0.07, minY: -0.10, maxY: 0.02 }, // trunk and its shadow
+  sparseTree:       { minX: -0.06, maxX: 0.06, minY: -0.09, maxY: 0.02 },
+  rock:             { minX: -0.08, maxX: 0.08, minY: -0.09, maxY: 0.02 },
+  crystal:          { minX: -0.08, maxX: 0.08, minY: -0.09, maxY: 0.02 },
+  mineCart:         { minX: -0.13, maxX: 0.13, minY: -0.10, maxY: 0.02 },
+  timberSupport:    { minX: -0.09, maxX: 0.09, minY: -0.06, maxY: 0.02 },
+  oldShaftEntrance: { minX: -0.20, maxX: 0.20, minY: -0.16, maxY: 0.03 },
+};
+const SCENERY_FILL_STEP = 0.05; // grid of the reachability fill
+const SCENERY_MINE_CLEAR = 0.9; // pieces this close to a mine are left out (as drawn since Task 89)
+
+let worldSceneryFixed = null, worldSceneryCache = null;
+
+// The fixed scenery with nothing walled in: [{...prop, box | null}].
+function worldSceneryBase(){
+  if(worldSceneryFixed) return worldSceneryFixed;
+  const F = PLAYER_FOOT;
+  const all = terrainBeyondProps().map(pr => {
+    const b = SCENERY_BLOCK_BOXES[pr.kind];
+    return Object.assign({}, pr, { box: b ? { minX: pr.x + b.minX, maxX: pr.x + b.maxX, minY: pr.y + b.minY, maxY: pr.y + b.maxY } : null });
+  });
+  // the grid over the land beyond (and the tunnel passage, where the fill starts)
+  const B = BALANCE.world, st = SCENERY_FILL_STEP, x0 = B.BOUNDS_MIN_X, y0 = B.BOUNDS_MIN_Y;
+  const exit = terrainTunnelExit(), x1 = exit.x + 0.5;
+  const nx = Math.floor((x1 - x0) / st) + 1, ny = Math.floor((B.BOUNDS_MAX_Y - y0) / st) + 1;
+  const walk = new Uint8Array(nx * ny);
+  for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++) walk[j * nx + i] = isWorldPointWalkable(x0 + i * st, y0 + j * st, true) ? 1 : 0;
+  const hits = (o, x, y) => x + F.HALF_W > o.minX && x - F.HALF_W < o.maxX && y + F.HALF_H > o.minY && y - F.HALF_H < o.maxY;
+  let solid = all.filter(p => p.box), guard = 0;
+  for(;;){
+    const blocked = new Uint8Array(nx * ny); // cell -> 1 + index of a blocking piece
+    solid.forEach((p, k) => {
+      const i0 = Math.max(0, Math.floor((p.box.minX - F.HALF_W - x0) / st)), i1 = Math.min(nx - 1, Math.ceil((p.box.maxX + F.HALF_W - x0) / st));
+      const j0 = Math.max(0, Math.floor((p.box.minY - F.HALF_H - y0) / st)), j1 = Math.min(ny - 1, Math.ceil((p.box.maxY + F.HALF_H - y0) / st));
+      for(let j = j0; j <= j1; j++) for(let i = i0; i <= i1; i++) if(hits(p.box, x0 + i * st, y0 + j * st)) blocked[j * nx + i] = k + 1;
+    });
+    const open = (c) => walk[c] && !blocked[c];
+    const seen = new Uint8Array(nx * ny), start = Math.round((exit.y - y0) / st) * nx + Math.round((exit.x - 0.3 - x0) / st);
+    const q = [start]; seen[start] = 1;
+    while(q.length){
+      const c = q.pop(), i = c % nx;
+      [i > 0 ? c - 1 : -1, i < nx - 1 ? c + 1 : -1, c - nx, c + nx].forEach(d => { if(d >= 0 && d < nx * ny && !seen[d] && open(d)){ seen[d] = 1; q.push(d); } });
+    }
+    // a cut-off cell next to a piece that also touches the reached ground: leave that piece out
+    const score = new Map();
+    for(let c = 0; c < nx * ny; c++){
+      if(!open(c) || seen[c]) continue;
+      const i = c % nx;
+      [i > 0 ? c - 1 : -1, i < nx - 1 ? c + 1 : -1, c - nx, c + nx].forEach(d => { if(d >= 0 && d < nx * ny && blocked[d]) score.set(blocked[d] - 1, (score.get(blocked[d] - 1) || 0) + 1); });
+    }
+    if(!score.size || guard++ > 200) break;
+    const touchesReached = (k) => { const p = solid[k].box; for(let x = p.minX - F.HALF_W - st; x <= p.maxX + F.HALF_W + st; x += st) for(let y = p.minY - F.HALF_H - st; y <= p.maxY + F.HALF_H + st; y += st){ const i = Math.round((x - x0) / st), j = Math.round((y - y0) / st); if(i >= 0 && j >= 0 && i < nx && j < ny && seen[j * nx + i]) return true; } return false; };
+    const order = [...score.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]);
+    const drop = order.find(touchesReached);
+    solid = solid.filter((p, k) => k !== (drop === undefined ? order[0] : drop));
+  }
+  const keep = new Set(solid);
+  worldSceneryFixed = all.filter(p => !p.box || keep.has(p));
+  return worldSceneryFixed;
+}
+
+// The scenery of this game: the fixed pieces minus those on a mine, with a
+// grid of the solid ones for quick lookups. Cached until the mines change.
+function worldScenery(){
+  const mines = state.world.mines;
+  const c = worldSceneryCache, last = mines[mines.length - 1];
+  const key = mines.length + '|' + (mines[0] ? mines[0].x + ',' + mines[0].y : '') + '|' + (last ? last.x + ',' + last.y : '');
+  if(c && c.mines === mines && c.key === key) return c;
+  const list = mines.filter(m => m);
+  const props = worldSceneryBase().filter(pr => !list.some(m => Math.hypot(m.x - pr.x, m.y - pr.y) < SCENERY_MINE_CLEAR));
+  const grid = {};
+  props.forEach(pr => { if(!pr.box) return; const k = Math.floor(pr.x) + ',' + Math.floor(pr.y); (grid[k] = grid[k] || []).push(pr); });
+  worldSceneryCache = { mines, key, props, solid: props.filter(pr => pr.box), grid };
+  return worldSceneryCache;
+}
+
 // Obstacle boxes in world coordinates, optionally only those near (x, y).
 function worldObstacles(nearX, nearY, radius){
   const out = [];
@@ -59,6 +151,21 @@ function worldObstacles(nearX, nearY, radius){
   w.mines.forEach(m => { if(m) add('mine', m.id, m.x, m.y); });
   if(w.base) add('base', 'base', w.base.x, w.base.y);
   w.workshops.forEach(ws => { if(ws) add('workshop', ws.id, ws.x, ws.y); });
+  // Task 111: solid scenery beyond the mountain (only reachable, and drawn, with the tunnel open)
+  if(terrainTunnelOpen()){
+    const sc = worldScenery();
+    let cands = sc.solid;
+    if(radius !== undefined){
+      cands = [];
+      const r = Math.ceil(radius + 1);
+      for(let gy = Math.floor(nearY) - r; gy <= Math.floor(nearY) + r; gy++)
+        for(let gx = Math.floor(nearX) - r; gx <= Math.floor(nearX) + r; gx++) (sc.grid[gx + ',' + gy] || []).forEach(pr => cands.push(pr));
+    }
+    cands.forEach(pr => {
+      if(radius !== undefined && Math.hypot(pr.x - nearX, pr.y - nearY) > radius + 1) return;
+      out.push({ kind: 'scenery', id: pr.kind + '@' + pr.x.toFixed(2) + ',' + pr.y.toFixed(2), prop: pr.kind, minX: pr.box.minX, maxX: pr.box.maxX, minY: pr.box.minY, maxY: pr.box.maxY });
+    });
+  }
   return out;
 }
 

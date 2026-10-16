@@ -2147,6 +2147,8 @@ function t68Hold(win, keys, ticks) {
 (function test_T68_movementAtTheEdges() {
   const win = newDom(makeMemoryStorage()).window;
   win.unlockTunnel();
+  // the terrain alone is tested here: no scenery beyond (Task 111 trees and rocks block, tested in Task 111)
+  win.worldScenery = () => ({ props: [], solid: [], grid: {} });
   const p = win.state.world.player;
   // Pushing into the passage wall slides to a stop flush against it.
   p.x = -5; p.y = 1;

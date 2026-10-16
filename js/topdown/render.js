@@ -32,9 +32,8 @@ function tdDrawList(player){
   });
   tdOpenLandTufts().forEach(t => list.push({ kind: 'decor', prop: 'grass', x: t.x, y: t.y, sortY: t.y - 0.2 }));
   if(terrainTunnelOpen()){
-    const mines = state.world.mines.filter(m => m);
-    terrainBeyondProps().forEach(pr => {
-      if(mines.some(m => Math.hypot(m.x - pr.x, m.y - pr.y) < 0.9)) return;
+    // Task 111: the same pieces that block (worldScenery leaves out those on a mine or walling something in)
+    worldScenery().props.forEach(pr => {
       list.push({ kind: 'prop', prop: pr.kind, x: pr.x, y: pr.y, sortY: pr.kind === 'clearing' ? pr.y - 5 : pr.y });
     });
   } else {

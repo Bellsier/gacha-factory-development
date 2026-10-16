@@ -110,7 +110,7 @@ function newDom(storage, opts) {
   TOPDOWN: () => TOPDOWN, TD_UNIT_PX: () => TD_UNIT_PX, TD: () => TD, TD_TILE: () => TD_TILE,
   TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS,
   // Task 107: obstacle boxes and the player's feet
-  WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT,
+  WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT, SCENERY_BLOCK_BOXES: () => SCENERY_BLOCK_BOXES,
   TD_LIGHT: () => TD_LIGHT, // Task 108
   TD_WORKER: () => TD_WORKER, // Task 109
 };
@@ -144,6 +144,7 @@ function newDom(storage, opts) {
     TD_RES_COLORS: { get: () => win.__expose.TD_RES_COLORS(), configurable: true },
     TD_PLAYER_COLORS: { get: () => win.__expose.TD_PLAYER_COLORS(), configurable: true },
     WORLD_OBSTACLE_BOXES: { get: () => win.__expose.WORLD_OBSTACLE_BOXES(), configurable: true },
+    SCENERY_BLOCK_BOXES: { get: () => win.__expose.SCENERY_BLOCK_BOXES(), configurable: true },
     PLAYER_FOOT: { get: () => win.__expose.PLAYER_FOOT(), configurable: true },
     TD_LIGHT: { get: () => win.__expose.TD_LIGHT(), configurable: true },
     TD_WORKER: { get: () => win.__expose.TD_WORKER(), configurable: true },

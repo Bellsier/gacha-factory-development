@@ -2096,8 +2096,8 @@ function t68Hold(win, keys, ticks) {
 
 (function test_T68_walkThroughTunnel() {
   const win = newDom(makeMemoryStorage()).window;
-  win.state.world.mines = []; // Task 107: a terrain route test — no veins on the straight line
   win.unlockTunnel();
+  win.state.world.mines = []; // Task 107: a terrain route test — no veins on the straight line (cleared after the land beyond is filled)
   const p = win.state.world.player;
   p.x = 0; p.y = 1;
   let allWalkable = true, sawTunnel = false, sawBeyond = false, neverMountain = true;

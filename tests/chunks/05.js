@@ -192,9 +192,14 @@ function tdKey(win, target, key) {
   const doc = win.document, s = win.state, p = s.world.player;
   const iron = win.mineById('mine_start_iron');
   const stand = (x, y) => { p.x = x; p.y = y; };
-  stand(iron.x + 3, iron.y + 3);
-  const far = win.tdInteractTarget(p.x, p.y);
-  check('Task106: far from everything there is nothing to act on', far === null || (far.type !== 'mine'));
+  // a spot at least 2 units from every vein and building (the starter veins are random, so search for one)
+  let farSpot = null;
+  for (let y = -9; y <= 9 && !farSpot; y += 0.5) for (let x = -3; x <= 9 && !farSpot; x += 0.5) {
+    const clear = s.world.mines.every((m) => Math.hypot(m.x - x, m.y - y) > 2) && Math.hypot(s.world.base.x - x, s.world.base.y - y) > 2;
+    if (clear && win.playerCanStand(x, y)) farSpot = [x, y];
+  }
+  stand(farSpot[0], farSpot[1]);
+  check('Task106: far from everything there is nothing to act on', win.tdInteractTarget(p.x, p.y) === null);
   stand(iron.x + 1.1, iron.y);
   check('Task106: within reach (1.1) of an unsecured vein the action is "secure"', win.tdInteractTarget(p.x, p.y).action === 'secure' && win.tdInteractTarget(p.x, p.y).id === iron.id);
   stand(iron.x + 1.3, iron.y);
@@ -470,4 +475,82 @@ function t107Overlapping(win, x, y) {
   check('Task108: light and atmosphere change nothing in the game and draw nothing without a canvas', JSON.stringify(win.state) === before && win.autoRate('iron') === rate && ok);
   win.saveGame();
   check('Task108: nothing about light reaches the save', !/darkness|light|cloud|firefl|sway|quality/i.test(win.localStorage.getItem('gachaFactorySave')));
+})();
+
+// -----------------------------------------------------------------------------
+// Task 109: the workers shown in the world (drawing only)
+// -----------------------------------------------------------------------------
+function t109AddWorker(win, rarity, resource) {
+  const r = win.RARITY.find((x) => x.key === rarity);
+  const c = { id: win.makeWorkerId(new Set(win.state.characters.map((x) => x.id))), rarity, resource, mining: r.mining, carry: r.carry, move: r.move, miningLvl: 0, carryLvl: 0, moveLvl: 0 };
+  win.state.characters.push(c);
+  return c;
+}
+
+(function test_T109_workers() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state;
+  win.secureMine('mine_start_iron'); win.secureMine('mine_start_coal');
+  ['common', 'rare', 'epic', 'legend', 'common', 'rare'].forEach((r, i) => t109AddWorker(win, r, i % 2 ? 'coal' : 'iron'));
+  s.unlockedSites.manaVein = true; t109AddWorker(win, 'epic', 'mana'); // no mana vein found yet
+  const rates = win.RESOURCES.map((r) => win.autoRate(r.key)), stateBefore = JSON.stringify(s);
+  const pl = win.tdWorkerPlacements();
+  check('Task109: one figure per hired worker, same ids', pl.length === s.characters.length && pl.every((p, i) => s.characters.some((c) => c.id === p.id)) && new Set(pl.map((p) => p.id)).size === pl.length);
+  check('Task109: every worker stands on free ground (not in rock, a vein or a building)', pl.every((p) => win.playerCanStand(p.x, p.y)));
+  check('Task109: workers stand apart (at least 0.34)', pl.every((a, i) => pl.every((b, j) => i === j || Math.hypot(a.x - b.x, a.y - b.y) >= 0.34 - 1e-9)));
+  const atVein = pl.filter((p) => p.mineId);
+  check('Task109: a worker works at a vein of its own resource, close by, facing it', atVein.length === 6 && atVein.every((p) => {
+    const m = win.mineById(p.mineId); return m.resource === p.resource && Math.hypot(m.x - p.x, m.y - p.y) <= 1 && (p.dir === (p.x > m.x ? 'left' : 'right'));
+  }));
+  check('Task109: secured veins are used first', atVein.every((p) => win.mineById(p.mineId).developmentState === 'secured'));
+  const waiting = pl.find((p) => p.resource === 'mana');
+  check('Task109: a worker with no vein of its resource waits in the workshop yard', waiting && waiting.mineId === null && Math.hypot(waiting.x - s.world.base.x, waiting.y - s.world.base.y) <= 1.6);
+  check('Task109: the same state gives the same places (no randomness, cached)', JSON.stringify(win.tdWorkerPlacements()) === JSON.stringify(pl) && win.tdComputeWorkerPlacements().length === pl.length &&
+    JSON.stringify(win.tdComputeWorkerPlacements().map((p) => [p.id, p.x, p.y])) === JSON.stringify(pl.map((p) => [p.id, p.x, p.y])));
+  // looks
+  const looks = s.characters.map((c) => win.tdWorkerLook(c));
+  check('Task109: the shirt shows the rarity; helmet, hair and skin vary by worker; legendary has a gold pickaxe',
+    s.characters.every((c, i) => looks[i].shirt === win.TD_WORKER.SHIRT[c.rarity]) && new Set(looks.map((l) => l.shirt)).size === 4 &&
+    looks.every((l, i) => l.gold === (s.characters[i].rarity === 'legend')) && new Set(looks.map((l) => l.helmet + l.hair + l.skin)).size >= 3);
+  // sprites and animation
+  const look = looks[0];
+  const frames = [0, 1, 2, 3].map((f) => win.tdWorkerSprite('right', f, look));
+  const inside = (sp) => sp.rects.length > 0 && sp.rects.every(([x, y, w, h]) => x >= 0 && y >= 0 && x + w <= sp.w && y + h <= sp.h);
+  check('Task109: the pickaxe swing has 4 different frames inside a 20 x 24 sprite', frames.every((f) => f.w === 20 && f.h === 24 && inside(f)) && new Set(frames.map((f) => JSON.stringify(f.rects))).size === 4);
+  const left = win.tdWorkerSprite('left', 1, look), right = frames[1];
+  check('Task109: facing left is the mirror of facing right', left.rects.every(([x, y, w, h, c], k) => x === 20 - right.rects[k][0] - right.rects[k][2] && y === right.rects[k][1] && c === right.rects[k][4]));
+  check('Task109: a gold pickaxe for legendary workers', JSON.stringify(win.tdWorkerSprite('right', 1, looks[3]).rects).includes('#e8c050') && !JSON.stringify(frames[1].rects).includes('#e8c050'));
+  const p0 = atVein[0], seq = [];
+  for (let t = 0; t < p0.cycleMs * 2; t += p0.cycleMs / 8) seq.push(win.tdWorkerFrame(p0, t));
+  check('Task109: a working worker cycles raise, overhead, strike, recover', [0, 1, 2, 3].every((f) => seq.includes(f)) && seq.every((f, i) => i === 0 || f === seq[i - 1] || f === (seq[i - 1] + 1) % 4));
+  check('Task109: workers swing at their own pace (rarer is a little faster, phases differ)', new Set(atVein.map((p) => p.phase)).size === atVein.length &&
+    pl.find((p) => s.characters.find((c) => c.id === p.id).rarity === 'legend').cycleMs < pl.find((p) => s.characters.find((c) => c.id === p.id).rarity === 'common').cycleMs);
+  check('Task109: a waiting worker stands still, resting on its pickaxe', [0, 300, 900].every((t) => win.tdWorkerFrame(waiting, t) === 2));
+  check('Task109: each worker has a small helmet lamp', win.tdWorkerLights().length === pl.length && win.tdWorkerLights().every((l) => l.kind === 'worker' && l.strength < 0.5));
+  check('Task109: workers are in the draw list, sorted with everything else', win.tdDrawList(null).filter((it) => it.kind === 'worker').length === pl.length);
+  // the game is untouched
+  check('Task109: worker output (autoRate) and the game state are exactly as before', JSON.stringify(win.RESOURCES.map((r) => win.autoRate(r.key))) === JSON.stringify(rates) && JSON.stringify(s) === stateBefore);
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task109: nothing about where workers stand or how they move is saved', sv.saveVersion === 1 &&
+    sv.run.characters.every((c) => Object.keys(c).sort().join() === 'carry,carryLvl,id,mining,miningLvl,move,moveLvl,rarity,resource'));
+  // walking around the workers: they never block the player (and the player's checks still hold)
+  check('Task109: workers do not block the player (only veins and buildings do)', !win.worldObstacles().some((o) => o.kind === 'worker'));
+})();
+
+(function test_T109_manyWorkers() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state;
+  s.world.base.level = 4; // room for 20 workers
+  win.secureMine('mine_start_iron'); win.secureMine('mine_start_coal');
+  for (let i = 0; i < 20; i++) t109AddWorker(win, ['common', 'rare', 'epic', 'legend'][i % 4], i % 2 ? 'coal' : 'iron');
+  const pl = win.tdWorkerPlacements();
+  check('Task109: 20 workers on two veins all get a free spot apart from each other', pl.length === 20 && pl.every((p) => win.playerCanStand(p.x, p.y)) &&
+    pl.every((a, i) => pl.every((b, j) => i === j || Math.hypot(a.x - b.x, a.y - b.y) >= 0.34 - 1e-9)));
+  check('Task109: as many as fit stand by their vein, the rest wait in the yard', pl.filter((p) => p.mineId).length >= 16 && pl.filter((p) => !p.mineId).every((p) => Math.hypot(p.x - s.world.base.x, p.y - s.world.base.y) <= 1.6));
+  // the fixture save: its five workers appear by their veins
+  const st = makeMemoryStorage(); st.setItem('gachaFactorySave', T103_FIXTURE_RAW);
+  const fx = newDom(st).window, fpl = fx.tdWorkerPlacements();
+  check('Task109: the fixture save shows its five workers, each on free ground', fpl.length === 5 && fpl.every((p) => fx.playerCanStand(p.x, p.y)));
 })();

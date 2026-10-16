@@ -41,6 +41,7 @@ function tdDrawList(player){
     const t = terrainTunnel();
     list.push({ kind: 'gate', x: t.gateX, y: t.y + t.halfWidth, sortY: t.y + t.halfWidth - 0.01 });
   }
+  if(typeof tdWorkerPlacements === 'function') tdWorkerPlacements().forEach(wk => list.push(Object.assign({ kind: 'worker', sortY: wk.y }, wk)));
   if(player) list.push({ kind: 'player', dir: player.dir, frame: player.frame, x: player.x, y: player.y, sortY: player.y + 0.001 });
   return list.sort((a, b) => a.sortY - b.sortY);
 }
@@ -177,6 +178,17 @@ function tdRender(now){
       g.fillStyle = '#8a6440'; for(let yy = top.y + 4 * zoom; yy < sp.y; yy += 10 * zoom) g.fillRect(x0 - 2 * zoom, yy, 10 * zoom, 3 * zoom);
       g.fillStyle = '#e2b23c'; g.fillRect(x0 + zoom, (top.y + sp.y) / 2 - 2 * zoom, 4 * zoom, 4 * zoom);
     } else if(it.kind === 'player') tdDrawSprite(g, sheet.player[it.dir] && sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1);
+    else if(it.kind === 'worker'){
+      // Task 109: a worker swinging at its vein; ore chips fly on the strike
+      const wf = tdWorkerFrame(it, now);
+      tdDrawSprite(g, tdWorkerImage(it.look, it.dir, wf), sp.x, sp.y, zoom, 1);
+      if(wf === 2 && it.mineId){
+        const side = it.dir === 'right' ? 1 : -1, c = (TD_RES_COLORS[it.resource] || ['#ccc'])[1];
+        const t = (now / it.cycleMs + it.phase) % 0.25 * 4;
+        g.fillStyle = c;
+        [[7, -6], [10, -11], [4, -13]].forEach(([dx, dy], i) => g.fillRect(Math.round(sp.x + side * (dx + t * 3 * (i + 1)) * zoom), Math.round(sp.y + (dy - t * 4) * zoom), zoom, zoom));
+      }
+    }
   });
   // Task 108: cloud shadows, then the dusk tint with its lights, then a light vignette (mood only)
   if(TD.quality < 2) tdRenderClouds(g, cam, w, h, zoom, now);

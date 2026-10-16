@@ -11,6 +11,7 @@ const TD = {
   tracker: {}, floats: [], target: null,
   view: { w: 0, h: 0, zoom: 1, dpr: 1 }, cam: { x: 0, y: 0 },
   running: false,
+  quality: 0, // Task 108: 0 full, 1 reduced, 2 low (see tdQualityFor)
 };
 
 // Everything that stands in the world this frame, sorted back to front (by y).
@@ -29,6 +30,7 @@ function tdDrawList(player){
     const look = !isMineDiscovered(m) ? 'undiscovered' : m.developmentState === 'secured' ? 'secured' : 'unsecured';
     list.push({ kind: 'ore', id: m.id, resource: m.resource, look, x: m.x, y: m.y, sortY: m.y });
   });
+  tdOpenLandTufts().forEach(t => list.push({ kind: 'decor', prop: 'grass', x: t.x, y: t.y, sortY: t.y - 0.2 }));
   if(terrainTunnelOpen()){
     const mines = state.world.mines.filter(m => m);
     terrainBeyondProps().forEach(pr => {
@@ -41,6 +43,37 @@ function tdDrawList(player){
   }
   if(player) list.push({ kind: 'player', dir: player.dir, frame: player.frame, x: player.x, y: player.y, sortY: player.y + 0.001 });
   return list.sort((a, b) => a.sortY - b.sortY);
+}
+
+// Task 108: a sprinkle of grass tufts on the open land that sway in the wind
+// (fixed pattern; kept clear of veins, huts and the workshop yard). Cached.
+function tdOpenLandTufts(){
+  const w = state.world, key = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length;
+  if(TD.tuftKey === key && TD.tufts) return TD.tufts;
+  const out = [], b = BALANCE.world;
+  for(let y = b.BOUNDS_MIN_Y + 0.25; y <= b.BOUNDS_MAX_Y; y += 0.5){
+    for(let x = b.BOUNDS_MIN_X + 0.25; x <= b.BOUNDS_MAX_X; x += 0.5){
+      const h = tdHash(Math.round(x * 2), Math.round(y * 2), 21);
+      if(h > 0.07) continue;
+      const jx = x + (tdHash(Math.round(x * 2), Math.round(y * 2), 22) - 0.5) * 0.4, jy = y + (tdHash(Math.round(x * 2), Math.round(y * 2), 23) - 0.5) * 0.4;
+      if(tdTileAt(jx, jy, false, w.base) !== TD_TILE.GRASS) continue;
+      if(Math.hypot(jx - w.base.x, jy - w.base.y) < 1.5) continue;
+      if(w.mines.some(m => m && Math.hypot(m.x - jx, m.y - jy) < 0.6)) continue;
+      if(w.workshops.some(ws => ws && Math.hypot(ws.x - jx, ws.y - jy) < 0.8)) continue;
+      out.push({ x: jx, y: jy });
+    }
+  }
+  TD.tuftKey = key; TD.tufts = out;
+  return out;
+}
+
+// Task 108: draws a plant leaning by `k` (a skew around its base), so the top moves and the roots stay.
+function tdDrawSway(g, img, sx, sy, zoom, anchorY, k){
+  if(!img) return;
+  const dpr = TD.view.dpr, baseY = sy + (anchorY || 0) * zoom;
+  g.setTransform(dpr, 0, dpr * k, dpr, -dpr * k * baseY, 0);
+  tdDrawSprite(g, img, sx, sy, zoom, anchorY);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 // The ground image for the current terrain state (rebuilt only when the tunnel opens or the base moves).
@@ -89,6 +122,14 @@ function tdAddFloat(text, wx, wy, color){
 
 function tdFrame(now){
   if(!TD.running) return;
+  // Task 108: average frame time decides the effect quality (phones start one step lower)
+  TD.frames = (TD.frames || 0) + 1;
+  if(TD.lastFrame && TD.frames > 20){ // the first frames (loading) do not count
+    const dt = Math.min(100, now - TD.lastFrame);
+    TD.frameAvg = TD.frameAvg === undefined ? dt : TD.frameAvg * 0.95 + dt * 0.05;
+  }
+  TD.lastFrame = now;
+  if(TD.frameAvg !== undefined && (TD.qualityCheck = (TD.qualityCheck || 0) + 1) % 30 === 0) TD.quality = tdQualityFor(TD.frameAvg, TD.quality);
   try { tdRender(now); } catch(e){ /* keep the loop alive; the game itself runs on its own tick */ }
   window.requestAnimationFrame(tdFrame);
 }
@@ -118,14 +159,17 @@ function tdRender(now){
   const frame = topdownWalkFrame(pos.walked, p.pose);
   const items = tdDrawList({ dir: p.facing, frame, x: pos.x, y: pos.y });
   const sheet = TD.sheet;
-  const lights = [];
   items.forEach(it => {
     const sp = topdownToScreen(it.x, it.y, cam, w, h, zoom);
     if(sp.x < -200 || sp.y < -200 || sp.x > w + 200 || sp.y > h + 260) return;
     if(it.kind === 'base') tdDrawSprite(g, sheet.base, sp.x, sp.y, zoom, 4);
     else if(it.kind === 'workshop') tdDrawSprite(g, sheet.workshop[it.tier], sp.x, sp.y, zoom, 3);
     else if(it.kind === 'ore') tdDrawSprite(g, it.look === 'undiscovered' ? sheet.ore.undiscovered : (sheet.ore[it.resource] || {})[it.look], sp.x, sp.y, zoom, 6);
-    else if(it.kind === 'prop'){ tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2); if(it.light) lights.push({ x: sp.x, y: sp.y - 18 * zoom }); }
+    else if(it.kind === 'prop' || it.kind === 'decor'){
+      const swaying = it.kind === 'decor' || it.prop === 'bigTree' || it.prop === 'sparseTree' || it.prop === 'grass';
+      if(swaying && TD.quality < 2) tdDrawSway(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2, tdSway(now, it.x, it.y, it.kind === 'decor' ? 'tuft' : it.prop));
+      else tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
+    }
     else if(it.kind === 'gate'){
       const t = terrainTunnel(), top = topdownToScreen(it.x, t.y - t.halfWidth, cam, w, h, zoom);
       const x0 = top.x - 3 * zoom;
@@ -134,15 +178,14 @@ function tdRender(now){
       g.fillStyle = '#e2b23c'; g.fillRect(x0 + zoom, (top.y + sp.y) / 2 - 2 * zoom, 4 * zoom, 4 * zoom);
     } else if(it.kind === 'player') tdDrawSprite(g, sheet.player[it.dir] && sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1);
   });
-  // warm lamp light and a soft vignette (mood only)
-  const flick = 0.85 + 0.15 * Math.sin(now / 140) * Math.sin(now / 53);
-  lights.forEach(l => {
-    const r = 70 * zoom * flick, gr = g.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
-    gr.addColorStop(0, 'rgba(255,214,120,0.28)'); gr.addColorStop(1, 'rgba(255,214,120,0)');
-    g.fillStyle = gr; g.fillRect(l.x - r, l.y - r, r * 2, r * 2);
-  });
-  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
-  vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.45)');
+  // Task 108: cloud shadows, then the dusk tint with its lights, then a light vignette (mood only)
+  if(TD.quality < 2) tdRenderClouds(g, cam, w, h, zoom, now);
+  const darkness = typeof TD.forceDarkness === 'number' ? TD.forceDarkness : tdAmbientDarkness(Date.now());
+  TD.darkness = darkness;
+  const extraLights = typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : [];
+  tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights), darkness, cam, w, h, zoom, TD.quality, now);
+  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.78);
+  vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.32)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);
   // interaction bubble over the target
   TD.target = typeof tdInteractTarget === 'function' ? tdInteractTarget(p.x, p.y) : null;

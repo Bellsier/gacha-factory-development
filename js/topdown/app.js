@@ -100,6 +100,7 @@ function tdInit(){
   body.classList.add('view-topdown');
   TD.touch = tdIsTouch();
   if(TD.touch) body.classList.add('td-touch');
+  TD.quality = TD.touch ? 1 : 0; // Task 108: phones start with the lighter effects
   // the world canvas fills the screen behind the HUD
   const canvas = document.createElement('canvas');
   canvas.id = 'tdCanvas'; canvas.setAttribute('aria-label', '게임 월드');

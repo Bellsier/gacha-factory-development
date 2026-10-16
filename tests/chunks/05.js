@@ -415,3 +415,59 @@ function t107Overlapping(win, x, y) {
   const rf = check1(fx);
   check('Task107: the fixture save\'s world is fully reachable too', rf.pockets === 0 && rf.unreachable === 0 && rf.mines === 26);
 })();
+
+// -----------------------------------------------------------------------------
+// Task 108: light and atmosphere (drawing only)
+// -----------------------------------------------------------------------------
+(function test_T108_light() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, L = win.TD_LIGHT;
+  // the slow day-to-dusk cycle stays gentle and smooth
+  let lo = 1, hi = 0, maxStep = 0, prev = win.tdAmbientDarkness(0);
+  for (let t = 0; t <= 2 * L.CYCLE_MS; t += 1000) { const d = win.tdAmbientDarkness(t); lo = Math.min(lo, d); hi = Math.max(hi, d); maxStep = Math.max(maxStep, Math.abs(d - prev)); prev = d; }
+  check('Task108: the dusk tint stays between 0.10 and 0.34 (never too dark)', lo >= 0.1 - 1e-9 && hi <= 0.34 + 1e-9 && L.MAX_DARK <= 0.35);
+  check('Task108: it changes slowly and smoothly over an 8-minute cycle', hi - lo > 0.2 && maxStep < 0.002 && L.CYCLE_MS === 480000);
+  // the light list
+  const hid = s.world.mines.find((m) => s.world.hiddenMineIds.includes(m.id)) || win.addMine({ id: 'mine_t108_hidden', x: 6, y: 6, resource: 'mana', grade: 2, miningPower: 1, developmentState: 'unsecured' });
+  if (!s.world.hiddenMineIds.includes(hid.id)) s.world.hiddenMineIds.push(hid.id);
+  win.secureMine('mine_start_iron');
+  win.addWorkshop({ x: s.world.base.x + 2, y: s.world.base.y + 2, level: 1 });
+  const lights = win.tdLightList({ x: 1, y: 1, dir: 'left' }, 5000, [{ kind: 'extra', x: 0, y: 0, r: 0.5, rgb: [1, 2, 3], strength: 0.3 }]);
+  const of = (k) => lights.filter((l) => l.kind === k);
+  check('Task108: the helmet lamp is a cone pointing where the player faces, plus a soft aura', of('headlamp').length === 1 && Math.abs(of('headlamp')[0].cone.angle - Math.PI) < 1e-9 && of('aura').length === 1);
+  check('Task108: the lamp turns with the player', ['right', 'down', 'up'].every((d, i) => Math.abs(win.tdLightList({ x: 0, y: 0, dir: d }, 0)[0].cone.angle - [0, Math.PI / 2, -Math.PI / 2][i]) < 1e-9));
+  check('Task108: the workshop lamp, its two windows and each hut\'s forge give light', of('lamp').length === 1 && of('window').length === 2 && of('forge').length === s.world.workshops.length);
+  const discovered = s.world.mines.filter((m) => win.isMineDiscovered(m));
+  check('Task108: every discovered vein glows softly in its ore colour, a secured one more', of('vein').length === discovered.length &&
+    of('vein').every((l) => l.strength <= 0.5) && lights.find((l) => l.kind === 'vein' && Math.abs(l.x - win.mineById('mine_start_iron').x) < 1e-9).strength === 0.5);
+  check('Task108: a hidden vein never glows (light must not give it away)', !of('vein').some((l) => Math.abs(l.x - hid.x) < 1e-9 && Math.abs(l.y - (hid.y - 0.05)) < 1e-9));
+  check('Task108: extra lights (the workers\') are added', of('extra').length === 1);
+  check('Task108: lights flicker gently but stay within 12%', [0, 100, 777, 5000].every((t) => { const f = win.tdFlicker(t, 1); return f >= 0.76 && f <= 1; }));
+  // quality steps by frame time
+  check('Task108: at 60 fps the effects stay full; slower frames step down; fast frames step back up',
+    win.tdQualityFor(16.7, 0) === 0 && win.tdQualityFor(26, 0) === 1 && win.tdQualityFor(40, 0) === 2 && win.tdQualityFor(20, 1) === 1 &&
+    win.tdQualityFor(17, 2) === 1 && win.tdQualityFor(17, 1) === 0);
+  check('Task108: touch screens (phones) start one step lower, others at full', win.TD.quality === (win.TD.touch ? 1 : 0));
+  // clouds, fireflies, sway
+  const c0 = win.tdCloudShadows(0), c1 = win.tdCloudShadows(10000);
+  check('Task108: three cloud shadows drift slowly east', c0.length === 3 && c1.every((c, i) => c.x !== c0[i].x) && c1.every((c, i) => Math.abs(c.x - c0[i].x) < 3 || c.x < c0[i].x));
+  check('Task108: no fireflies in the brighter part of the cycle, some at dusk', win.tdFireflies(0, 0.12).length === 0 && win.tdFireflies(0, 0.3).length === 6);
+  s.world.tunnelUnlocked = true;
+  check('Task108: more fireflies over the land beyond once the tunnel is open', win.tdFireflies(0, 0.3).length === 12);
+  s.world.tunnelUnlocked = false;
+  const sw = [0, 400, 1300, 2600].map((t) => win.tdSway(t, -7, 2, 'bigTree')), sg = [0, 400, 1300].map((t) => win.tdSway(t, 3, 3, 'tuft'));
+  check('Task108: trees and grass sway a little (tree lean under 0.03, grass under 0.1) and keep moving', sw.every((k) => Math.abs(k) < 0.03) && sg.every((k) => Math.abs(k) < 0.1) && new Set(sw.map((k) => k.toFixed(5))).size === 4);
+  // swaying tufts on the open land
+  const tufts = win.tdOpenLandTufts();
+  check('Task108: grass tufts dot the open land, always the same, clear of veins, huts and the workshop yard', tufts.length > 30 &&
+    JSON.stringify(win.tdOpenLandTufts()) === JSON.stringify(tufts) && tufts.every((t) => win.tdTileAt(t.x, t.y, false, s.world.base) === win.TD_TILE.GRASS &&
+      !s.world.mines.some((m) => Math.hypot(m.x - t.x, m.y - t.y) < 0.6) && Math.hypot(t.x - s.world.base.x, t.y - s.world.base.y) >= 1.5));
+  check('Task108: the tufts are drawn (as decoration, not scenery of the land beyond)', win.tdDrawList(null).filter((it) => it.kind === 'decor').length === tufts.length);
+  // drawing only: the game is untouched
+  const before = JSON.stringify(win.state), rate = win.autoRate('iron');
+  win.tdLightList({ x: 0, y: 0, dir: 'down' }, 123); win.tdFireflies(123, 0.3); win.tdCloudShadows(123);
+  let ok = true; try { win.tdRender(1000); } catch (e) { ok = false; }
+  check('Task108: light and atmosphere change nothing in the game and draw nothing without a canvas', JSON.stringify(win.state) === before && win.autoRate('iron') === rate && ok);
+  win.saveGame();
+  check('Task108: nothing about light reaches the save', !/darkness|light|cloud|firefl|sway|quality/i.test(win.localStorage.getItem('gachaFactorySave')));
+})();

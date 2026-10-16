@@ -28,7 +28,7 @@ const html = fs.readFileSync(HTML_PATH, 'utf8');
 const JS_DIR = path.join(__dirname, '..', 'js');
 const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'ui.js', 'main.js',
   // Task 104-106: the top-down world (loaded after main.js, as in index.html)
-  'topdown/view.js', 'topdown/tiles.js', 'topdown/sprites.js', 'topdown/interact.js', 'topdown/render.js', 'topdown/app.js'];
+  'topdown/view.js', 'topdown/tiles.js', 'topdown/sprites.js', 'topdown/interact.js', 'topdown/light.js', 'topdown/render.js', 'topdown/app.js'];
 const moduleSource = MODULE_FILES.map((f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8')).join('\n');
 
 let passCount = 0;
@@ -111,6 +111,7 @@ function newDom(storage, opts) {
   TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS,
   // Task 107: obstacle boxes and the player's feet
   WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT,
+  TD_LIGHT: () => TD_LIGHT, // Task 108
 };
 `;
   win.eval(moduleSource + expose);
@@ -143,6 +144,7 @@ function newDom(storage, opts) {
     TD_PLAYER_COLORS: { get: () => win.__expose.TD_PLAYER_COLORS(), configurable: true },
     WORLD_OBSTACLE_BOXES: { get: () => win.__expose.WORLD_OBSTACLE_BOXES(), configurable: true },
     PLAYER_FOOT: { get: () => win.__expose.PLAYER_FOOT(), configurable: true },
+    TD_LIGHT: { get: () => win.__expose.TD_LIGHT(), configurable: true },
   });
   // Task 81: sites also cost upper parts. Older tests only care about gold, so
   // by default the parts check always passes and unlockSite is given the parts

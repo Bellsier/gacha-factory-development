@@ -6,7 +6,9 @@
 
 ## 설계 문서
 
-- [`docs/BLUEPRINT_V3.md`](docs/BLUEPRINT_V3.md) — 현재 게임의 최종 디자인 기준선.
+- [`docs/BLUEPRINT_V3.md`](docs/BLUEPRINT_V3.md) — 게임의 최종 디자인 기준선. 23장(통합 최종 설계)이 우선하고, 24장은 지금 코드의 구현 기록이다.
+- [`docs/TOPDOWN_TRANSITION.md`](docs/TOPDOWN_TRANSITION.md) — 탑다운 화면의 기술 설계와 Task별 구현 기록.
+- [`docs/HANDOFF.md`](docs/HANDOFF.md) — 인수인계 문서: 구현·미구현 기능, 파일 구조, 실행·빌드·테스트 방법.
 
 ## 실행
 
@@ -42,7 +44,7 @@ node tools/build-dist.js
 
 ## 탑다운 전환
 
-그래픽은 2D 탑다운 픽셀아트로 전환하는 중입니다(청사진 3.0, 설계 [`docs/TOPDOWN_TRANSITION.md`](docs/TOPDOWN_TRANSITION.md)). 기본 화면은 탑다운 월드입니다.
+그래픽은 2D 탑다운 픽셀아트로 전환하는 중입니다(청사진 23.1, 구현 기록 24장, 설계 [`docs/TOPDOWN_TRANSITION.md`](docs/TOPDOWN_TRANSITION.md)). 기본 화면은 탑다운 월드입니다. 지금의 월드(산맥·터널·산 너머가 있는 작은 월드)는 현행 프로토타입이며, 최종 월드(지상 7개 지역 등)는 청사진 23장에 있습니다.
 
 - PC: WASD·방향키로 걷고, 광맥이나 공방 앞에서 **E** 또는 **Space**로 확보·캐기·들어가기. **T**로 앞에 횃불을 놓거나 거둡니다(최대 12개). 아래 독의 버튼으로 채굴/개발/인부/연구/납품/기록 패널을 열고 **Esc**로 닫습니다.
 - 휴대폰: 왼쪽 아래 조이스틱으로 걷고, 오른쪽 아래 버튼으로 행동합니다. 그 위의 횃불 버튼으로 횃불을 놓거나 거둡니다.

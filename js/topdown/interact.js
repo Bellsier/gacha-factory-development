@@ -3,7 +3,7 @@
 // a craft workshop and press E / Space (PC) or the action button (phone).
 // Every action goes through the existing game functions (secureMine,
 // mineMine), so the rules are the same as the panel buttons, which stay
-// (blueprint 25 #4). Nothing here is saved.
+// (blueprint 24.4 #1). Nothing here is saved.
 // ---------------------------------------------------------------------------
 
 // What the player could act on right now: the nearest target within reach, or null.

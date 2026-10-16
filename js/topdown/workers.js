@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Task 109: the hired workers, shown in the top-down world (blueprint 14,
-// 25 #9). Each worker stands by a vein of the resource it is assigned to and
+// 24.4 #2). Each worker stands by a vein of the resource it is assigned to and
 // swings a pickaxe. This is drawing only: where a worker stands and how it
 // moves is worked out from the game state every time and never saved, and the
 // workers' output (autoRate) is exactly as before.

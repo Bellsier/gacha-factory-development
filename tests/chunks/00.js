@@ -109,6 +109,8 @@ function newDom(storage, opts) {
   // Task 104-106: the top-down world
   TOPDOWN: () => TOPDOWN, TD_UNIT_PX: () => TD_UNIT_PX, TD: () => TD, TD_TILE: () => TD_TILE,
   TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS,
+  // Task 107: obstacle boxes and the player's feet
+  WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT,
 };
 `;
   win.eval(moduleSource + expose);
@@ -139,6 +141,8 @@ function newDom(storage, opts) {
     TD_TILE: { get: () => win.__expose.TD_TILE(), configurable: true },
     TD_RES_COLORS: { get: () => win.__expose.TD_RES_COLORS(), configurable: true },
     TD_PLAYER_COLORS: { get: () => win.__expose.TD_PLAYER_COLORS(), configurable: true },
+    WORLD_OBSTACLE_BOXES: { get: () => win.__expose.WORLD_OBSTACLE_BOXES(), configurable: true },
+    PLAYER_FOOT: { get: () => win.__expose.PLAYER_FOOT(), configurable: true },
   });
   // Task 81: sites also cost upper parts. Older tests only care about gold, so
   // by default the parts check always passes and unlockSite is given the parts

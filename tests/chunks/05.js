@@ -270,3 +270,148 @@ function tdKey(win, target, key) {
   check('Task106: after using the new screen the save has exactly the fixture\'s structure (saveVersion 1)', sv.saveVersion === 1 && JSON.stringify(t103Shape(sv)) === JSON.stringify(t103Shape(T103_FIXTURE)));
   check('Task106: no camera, zoom, panel or joystick state in the save', !/camera|zoom|panel|stick|tdView|topdown/i.test(JSON.stringify(sv)));
 })();
+
+// -----------------------------------------------------------------------------
+// Task 107: veins, the workshop and the craft huts block the player's feet
+// -----------------------------------------------------------------------------
+function t107Hold(win, dirs, ticks) {
+  ['up', 'down', 'left', 'right'].forEach((d) => win.setPlayerHeld(d, dirs.includes(d)));
+  for (let i = 0; i < ticks; i++) win.tickPlayer();
+  ['up', 'down', 'left', 'right'].forEach((d) => win.setPlayerHeld(d, false));
+  win.tickPlayer();
+}
+function t107Overlapping(win, x, y) {
+  return win.worldObstacles(x, y, 1).filter((o) => win.playerFootOverlaps(o, x, y));
+}
+
+(function test_T107_obstacles() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, p = s.world.player, b = s.world.base;
+  const hut = win.addWorkshop({ x: b.x + 3, y: b.y + 2, level: 1 });
+  const obs = win.worldObstacles();
+  check('Task107: every vein, the workshop and every craft hut is an obstacle', obs.filter((o) => o.kind === 'mine').length === s.world.mines.length &&
+    obs.filter((o) => o.kind === 'base').length === 1 && obs.filter((o) => o.kind === 'workshop').length === 1);
+  const B = win.WORLD_OBSTACLE_BOXES, F = win.PLAYER_FOOT;
+  check('Task107: boxes are the small base of each picture (vein under 0.3 wide, cabin walls 0.78, hut 0.5) and the feet 0.18 x 0.12',
+    B.mine.maxX - B.mine.minX <= 0.3 && Math.abs(B.base.maxX - B.base.minX - 0.78) < 1e-9 && Math.abs(B.workshop.maxX - B.workshop.minX - 0.5) < 1e-9 && F.HALF_W === 0.09 && F.HALF_H === 0.06);
+  check('Task107: the door steps (workshop and hut points) stay free; a vein centre does not', win.playerCanStand(b.x, b.y) && win.playerCanStand(hut.x, hut.y) &&
+    !win.playerCanStand(s.world.mines[0].x, s.world.mines[0].y));
+  // walking north from the door into the cabin stops at the wall
+  s.world.mines = s.world.mines.filter((m) => Math.hypot(m.x - b.x, m.y - b.y) > 1.6);
+  p.x = b.x; p.y = b.y; t107Hold(win, ['up'], 10);
+  check('Task107: walking into the cabin from the door stops at its wall', Math.abs(p.y - (b.y + B.base.maxY + F.HALF_H)) < 1e-3 && p.x === b.x);
+  const order = win.tdDrawList({ dir: 'up', frame: 0, x: p.x, y: p.y }).map((it) => it.kind);
+  check('Task107: standing against the cabin wall the player is drawn in front of the cabin (sorted by the footprint front)', order.indexOf('player') > order.indexOf('base'));
+  // from the east side: flush against the wall, then sliding along it
+  p.x = b.x + 1.2; p.y = b.y - 0.25; t107Hold(win, ['left'], 10);
+  const flush = b.x + B.base.maxX + F.HALF_W;
+  check('Task107: walking into the cabin wall from the east stops flush against it', Math.abs(p.x - flush) < 1e-3);
+  const y0 = p.y; t107Hold(win, ['left', 'up'], 2);
+  check('Task107: pushing diagonally along the wall slides along it', Math.abs(p.x - flush) < 1e-3 && p.y < y0);
+  // the craft hut stops the player at its wall too
+  p.x = hut.x; p.y = hut.y; t107Hold(win, ['up'], 10);
+  check('Task107: a craft hut stops the player at its wall', Math.abs(p.y - (hut.y + B.workshop.maxY + F.HALF_H)) < 1e-3);
+  // veins: head-on the player glides round a small boulder; slightly off-centre it slips past
+  const vein = win.addMine({ id: 'mine_t107', x: b.x + 4, y: b.y - 4, resource: 'iron', grade: 1, miningPower: 1, developmentState: 'unsecured' });
+  p.x = vein.x + 1.5; p.y = vein.y; let touched = false;
+  win.setPlayerHeld('left', true);
+  for (let i = 0; i < 12; i++) { win.tickPlayer(); if (t107Overlapping(win, p.x, p.y).length) touched = true; }
+  win.clearPlayerHeld(); win.tickPlayer();
+  check('Task107: walking straight at a vein, the player glides round it (side step under 0.2) and never walks through it', p.x < vein.x - 0.5 && Math.abs(p.y - vein.y) <= 0.2 && !touched);
+  p.x = vein.x + 1.5; p.y = vein.y + 0.1; t107Hold(win, ['left'], 12);
+  check('Task107: brushing a vein\'s corner slips past it', p.x < vein.x - 0.5 && Math.abs(p.y - vein.y) <= 0.25);
+  // but the cabin is too wide to slip round
+  p.x = b.x + 1.2; p.y = b.y - 0.27; t107Hold(win, ['left'], 10);
+  check('Task107: the cabin is too wide to glide round — the player stops', Math.abs(p.x - flush) < 1e-3);
+  // the mountain still stops the player (Task 66)
+  p.x = 0; p.y = -5; t107Hold(win, ['left'], 40);
+  check('Task107: the mountain face still stops the player flush', Math.abs(p.x - (win.terrainFaceX(-5) + win.WORLD_TERRAIN.PLAYER_MARGIN)) < 1e-3);
+  check('Task107: walking speed is unchanged (3 units a second)', win.BALANCE.world.PLAYER_SPEED === 3);
+})();
+
+(function test_T107_neverInsideAndEscape() {
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  const s = win.state, p = s.world.player;
+  s.research.workshopBuild = true; s.research.workshopExpansion = true; s.gold = 1e9;
+  Object.keys(s.products).forEach((k) => { s.products[k] = 1e5; });
+  for (let i = 0; i < 8; i++) win.buildWorkshop();
+  const rnd = t103Random(107);
+  const dirsets = [['up'], ['down'], ['left'], ['right'], ['up', 'left'], ['up', 'right'], ['down', 'left'], ['down', 'right']];
+  let inside = 0, rock = 0;
+  for (let i = 0; i < 6000; i++) {
+    if (i % 10 === 0) ['up', 'down', 'left', 'right'].forEach((d) => win.setPlayerHeld(d, false)), dirsets[Math.floor(rnd() * 8)].forEach((d) => win.setPlayerHeld(d, true));
+    win.tickPlayer();
+    if (t107Overlapping(win, p.x, p.y).length) inside++;
+    if (!win.isWorldPointWalkable(p.x, p.y)) rock++;
+  }
+  win.clearPlayerHeld();
+  check('Task107: 6000 random steps among 8 huts and the veins never end inside an obstacle or the rock', s.world.workshops.length === 8 && inside === 0 && rock === 0);
+  // an older save can put the player inside a vein or a hut: the player walks out
+  const m = s.world.mines.find((x) => x.id === 'mine_start_iron');
+  ['left', 'right', 'up', 'down'].forEach((d) => {
+    p.x = m.x; p.y = m.y;
+    t107Hold(win, [d], 4);
+    check('Task107: standing inside a vein (older save) the player can walk out ' + d, t107Overlapping(win, p.x, p.y).length === 0 && Math.hypot(p.x - m.x, p.y - m.y) > 0.3);
+  });
+  p.x = m.x + 1; p.y = m.y; t107Hold(win, ['left'], 10);
+  check('Task107: once out, walking back does not enter it again', t107Overlapping(win, p.x, p.y).length === 0);
+  // the fixture save: the saved position is kept as it is on load, and play goes on
+  const storage = makeMemoryStorage();
+  const sv = JSON.parse(T103_FIXTURE_RAW);
+  const fm = sv.run.world.mines.find((x) => x.developmentState === 'secured');
+  sv.run.world.player = { x: fm.x, y: fm.y, facing: 'up', pose: 'idle' };
+  storage.setItem('gachaFactorySave', JSON.stringify(sv));
+  const w2 = newDom(storage).window;
+  const p2 = w2.state.world.player;
+  check('Task107: a saved position on top of a vein is kept exactly on load (nothing is moved or rewritten)', p2.x === fm.x && p2.y === fm.y);
+  t107Hold(w2, ['down'], 5);
+  check('Task107: ...and the player simply walks off it', !w2.worldObstacles(p2.x, p2.y, 1).some((o) => w2.playerFootOverlaps(o, p2.x, p2.y)));
+  w2.saveGame();
+  check('Task107: the save keeps its structure (saveVersion 1, no obstacle data)', JSON.stringify(t103Shape(JSON.parse(storage.getItem('gachaFactorySave')))) === JSON.stringify(t103Shape(T103_FIXTURE)));
+})();
+
+(function test_T107_everythingReachable() {
+  // Flood fill from the workshop door over every spot the player can stand on.
+  // Every standable spot must be connected and every vein reachable to within
+  // acting distance — in many generated worlds with 8 huts, the land beyond
+  // opened and the geological survey done, and in the fixture world.
+  const check1 = (win) => {
+    const b = win.BALANCE.world, st = 0.1, n = Math.round((b.BOUNDS_MAX_X - b.BOUNDS_MIN_X) / st) + 1;
+    const P = (i) => b.BOUNDS_MIN_X + i * st, idx = (i, j) => j * n + i;
+    const can = new Uint8Array(n * n);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) can[idx(i, j)] = win.playerCanStand(P(i), P(j)) ? 1 : 0;
+    const base = win.state.world.base, seen = new Uint8Array(n * n);
+    const si = Math.round((base.x - b.BOUNDS_MIN_X) / st), sj = Math.round((base.y - b.BOUNDS_MIN_Y) / st), q = [[si, sj]];
+    seen[idx(si, sj)] = 1;
+    while (q.length) { const [i, j] = q.pop(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([di, dj]) => { const a = i + di, c = j + dj; if (a < 0 || c < 0 || a >= n || c >= n) return; const k = idx(a, c); if (seen[k] || !can[k]) return; seen[k] = 1; q.push([a, c]); }); }
+    let pockets = 0; for (let k = 0; k < n * n; k++) if (can[k] && !seen[k]) pockets++;
+    const unreachable = win.state.world.mines.filter((m) => {
+      for (let j = Math.max(0, Math.round((m.y - 1 - b.BOUNDS_MIN_Y) / st)); j <= Math.min(n - 1, Math.round((m.y + 1 - b.BOUNDS_MIN_Y) / st)); j++)
+        for (let i = Math.max(0, Math.round((m.x - 1 - b.BOUNDS_MIN_X) / st)); i <= Math.min(n - 1, Math.round((m.x + 1 - b.BOUNDS_MIN_X) / st)); i++)
+          if (seen[idx(i, j)] && Math.hypot(P(i) - m.x, P(j) - m.y) <= win.TOPDOWN.INTERACT_RANGE - 0.15) return false;
+      return true;
+    });
+    return { pockets, unreachable: unreachable.length, mines: win.state.world.mines.length };
+  };
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  let bad = 0, worlds = 0, mines = 0;
+  for (let seed = 1; seed <= 25; seed++) {
+    const rnd = t103Random(seed * 7919);
+    const fresh = win.freshRunState(), s = win.state;
+    Object.keys(fresh).forEach((k) => { s[k] = fresh[k]; }); // a new game in the same window
+    s.world.hiddenMineIds = [];
+    s.world.mines = win.generateInitialWorldMines(s.world.base, { random: rnd });
+    ['manaVein', 'ruins', 'spaceStation'].forEach((k) => { s.unlockedSites[k] = true; win.seedWorldMinesForSite(k); });
+    s.research.workshopBuild = true; s.research.workshopExpansion = true; s.gold = 1e12;
+    Object.keys(s.products).forEach((k) => { s.products[k] = 1e6; });
+    for (let i = 0; i < 8; i++) win.buildWorkshop();
+    win.unlockTunnel({ random: rnd }); win.surveyMines({ random: rnd });
+    const r = check1(win);
+    worlds++; mines += r.mines;
+    if (r.pockets || r.unreachable) bad++;
+  }
+  check('Task107: in 25 generated worlds (8 huts, tunnel open, survey) every standable spot is connected and every vein can be reached', bad === 0 && worlds === 25 && mines > 25 * 25);
+  const fx = newDom((() => { const st = makeMemoryStorage(); st.setItem('gachaFactorySave', T103_FIXTURE_RAW); return st; })()).window;
+  const rf = check1(fx);
+  check('Task107: the fixture save\'s world is fully reachable too', rf.pockets === 0 && rf.unreachable === 0 && rf.mines === 26);
+})();

@@ -18,9 +18,12 @@ const TD = {
 function tdDrawList(player){
   const list = [];
   const base = state.world.base;
-  list.push({ kind: 'base', x: base.x, y: base.y, sortY: base.y });
+  // Task 107: buildings sort by the front edge of their footprint, so the player
+  // standing against a wall (just above the door point) is drawn in front of it.
+  const front = (kind) => (typeof WORLD_OBSTACLE_BOXES !== 'undefined' ? WORLD_OBSTACLE_BOXES[kind].maxY : 0);
+  list.push({ kind: 'base', x: base.x, y: base.y, sortY: base.y + front('base') });
   list.push({ kind: 'prop', prop: 'lamp', x: base.x + 0.62, y: base.y + 0.02, sortY: base.y + 0.02, light: true });
-  state.world.workshops.forEach(w => { if(w) list.push({ kind: 'workshop', id: w.id, tier: workshopTier(w.level), x: w.x, y: w.y, sortY: w.y }); });
+  state.world.workshops.forEach(w => { if(w) list.push({ kind: 'workshop', id: w.id, tier: workshopTier(w.level), x: w.x, y: w.y, sortY: w.y + front('workshop') }); });
   state.world.mines.forEach(m => {
     if(!m) return;
     const look = !isMineDiscovered(m) ? 'undiscovered' : m.developmentState === 'secured' ? 'secured' : 'unsecured';

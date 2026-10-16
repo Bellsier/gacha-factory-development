@@ -554,3 +554,171 @@ function t109AddWorker(win, rarity, resource) {
   const fx = newDom(st).window, fpl = fx.tdWorkerPlacements();
   check('Task109: the fixture save shows its five workers, each on free ground', fpl.length === 5 && fpl.every((p) => fx.playerCanStand(p.x, p.y)));
 })();
+
+// -----------------------------------------------------------------------------
+// Task 110: the workers walk (renderer-only simulation, nothing saved)
+// -----------------------------------------------------------------------------
+// Runs the walk for `ms` in 16 ms frames; returns what was seen on the way.
+function t110Run(win, ms, each) {
+  const seen = { inside: 0, inRock: 0, maxGhosts: 0 };
+  for (let t = 0; t < ms; t += 16) {
+    win.tdWorkerSimStep(16, t);
+    Object.values(win.TD.workerSim.byId).forEach((s) => {
+      if (s.hidden) return;
+      if (s.ghostMs <= 0 && s.mode === 'walk' && t110Overlapping(win, s)) seen.inside++;
+      if (!win.isWorldPointWalkable(s.x, s.y)) seen.inRock++;
+      seen.maxGhosts = Math.max(seen.maxGhosts, s.ghosts);
+    });
+    if (each) each(t);
+  }
+  return seen;
+}
+function t110Overlapping(win, s) { return win.worldObstacles(s.x, s.y, 1).some((o) => win.playerFootOverlaps(o, s.x, s.y)); }
+function t110Arrived(win) {
+  const pl = win.tdWorkerPlacements(), sim = win.TD.workerSim.byId;
+  return pl.every((p) => sim[p.id] && sim[p.id].mode === (p.mineId ? 'work' : 'wait') && sim[p.id].x === p.x && sim[p.id].y === p.y);
+}
+
+(function test_T110_routes() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, b = s.world.base, t = win.terrainTunnel(), e = win.terrainTunnelExit();
+  const r1 = win.tdWorkerRoute(b.x, b.y, b.x + 3, b.y - 2, 0);
+  check('Task110: on the same side of the mountain a worker walks straight to its spot', r1.length === 1 && r1[0].x === b.x + 3 && r1[0].y === b.y - 2);
+  check('Task110: with the tunnel closed nothing is routed through it', win.tdWorkerRoute(b.x, b.y, -8, 3, 0).length === 1);
+  s.world.tunnelUnlocked = true;
+  const r2 = win.tdWorkerRoute(b.x, b.y, -8, 3, 0.2), r3 = win.tdWorkerRoute(-8, 3, b.x, b.y, -0.2);
+  check('Task110: to a vein beyond the mountain: the tunnel mouth, its far exit, then the spot', r2.length === 3 && r2[0].x > t.mouthX && r2[1].x < e.x && Math.abs(r2[0].y - (t.y + 0.2)) < 1e-9 && r2[2].x === -8 && r2[2].y === 3);
+  check('Task110: and back the other way (exit, mouth, spot), each worker on its own lane', r3.length === 3 && r3[0].x < e.x && r3[1].x > t.mouthX && Math.abs(r3[0].y - (t.y - 0.2)) < 1e-9);
+  check('Task110: the tunnel waypoints are open ground', [r2[0], r2[1]].every((p) => win.playerCanStand(p.x, p.y)));
+  check('Task110: a worker already inside the tunnel skips the mouth', win.tdWorkerRoute((t.mouthX + e.x) / 2, t.y, -8, 3, 0).length === 2);
+  check('Task110: lanes stay well inside the tunnel', win.TD_WORKER.LANE < win.WORLD_TERRAIN.TUNNEL.HALF_WIDTH - 0.3);
+})();
+
+(function test_T110_walk() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state, b = s.world.base;
+  win.secureMine('mine_start_iron'); win.secureMine('mine_start_coal');
+  ['common', 'rare', 'epic', 'legend', 'common'].forEach((r, i) => t109AddWorker(win, r, i % 2 ? 'coal' : 'iron'));
+  s.unlockedSites.manaVein = true; t109AddWorker(win, 'rare', 'mana'); // no mana vein: waits in the yard
+  const rates = JSON.stringify(win.RESOURCES.map((r) => win.autoRate(r.key))), stateBefore = JSON.stringify(s);
+  win.tdWorkerSimReset();
+  win.tdWorkerSimStep(16, 0);
+  const sims = Object.values(win.TD.workerSim.byId);
+  check('Task110: the workers come out of the workshop door', sims.length === 6 && sims.every((x) => Math.abs(x.x - b.x) <= 0.1 + (x.hidden ? 0 : 0.03) && Math.abs(x.y - (b.y + 0.08)) <= (x.hidden ? 1e-9 : 0.03) && win.playerCanStand(x.x, x.y)));
+  check('Task110: ...one after another (the rest are still inside)', sims.filter((x) => !x.hidden).length === 1 && win.tdDrawList(null).filter((it) => it.kind === 'worker').length === 1);
+  let walkingSeen = false, rateSame = true;
+  const seen = t110Run(win, 2000, () => {
+    if (win.tdWorkerStates().some((p) => p.mode === 'walk' && !p.hidden)) walkingSeen = true;
+    if (JSON.stringify(win.RESOURCES.map((r) => win.autoRate(r.key))) !== rates) rateSame = false;
+  });
+  check('Task110: they walk (drawn walking, with a walk frame)', walkingSeen && win.tdDrawList(null).some((it) => it.kind === 'worker' && it.mode === 'walk' && it.walkFrame >= 0 && it.walkFrame < 4));
+  const seen2 = t110Run(win, 14000);
+  check('Task110: every worker reaches its spot and works there (or waits in the yard)', t110Arrived(win));
+  check('Task110: on the way nobody walked through a vein or a building, or into rock', seen.inside + seen2.inside === 0 && seen.inRock + seen2.inRock === 0);
+  check('Task110: nobody needed to be set down (no stuck worker)', Object.values(win.TD.workerSim.byId).every((x) => x.snaps === 0));
+  const mana = win.tdWorkerStates().find((p) => p.resource === 'mana');
+  check('Task110: the worker without a vein waits in the yard, resting', mana.mode === 'wait' && mana.mineId === null && Math.hypot(mana.x - b.x, mana.y - b.y) <= 1.6);
+  check('Task110: output (autoRate) never changed while they walked', rateSame && JSON.stringify(win.RESOURCES.map((r) => win.autoRate(r.key))) === rates);
+  check('Task110: the walk changes nothing in the game state', JSON.stringify(s) === stateBefore);
+  // a new job: the worker walks to the new vein
+  const iron = s.characters.find((c) => c.resource === 'iron');
+  iron.resource = 'coal';
+  win.tdWorkerSimStep(16, 20000);
+  const moving = win.TD.workerSim.byId[iron.id];
+  check('Task110: given a new vein, a worker sets off for it', moving.mode === 'walk');
+  t110Run(win, 12000);
+  const newSpot = win.tdWorkerPlacements().find((p) => p.id === iron.id);
+  check('Task110: ...and works there once arrived', t110Arrived(win) && win.mineById(newSpot.mineId).resource === 'coal');
+  // the vein goes: back to the yard
+  s.characters.filter((c) => c.resource === 'coal').forEach((c) => { c.resource = 'mana'; });
+  t110Run(win, 14000);
+  check('Task110: with no valid vein left, they walk back to the yard and wait', t110Arrived(win) && win.tdWorkerStates().every((p) => p.resource !== 'mana' || (p.mode === 'wait' && Math.hypot(p.x - b.x, p.y - b.y) <= 1.6)));
+  // a worker let go disappears from the walk
+  const gone = s.characters.pop();
+  win.tdWorkerSimStep(16, 50000);
+  check('Task110: a worker who leaves is gone from the world too', !win.TD.workerSim.byId[gone.id] && win.tdWorkerStates().length === s.characters.length);
+  // facing: no flickering while walking up or down
+  const st = { id: 'wk_t110', x: b.x + 3, y: b.y - 3, dir: 'left', route: [{ x: b.x + 3.05, y: b.y + 1 }], walked: 0, best: Infinity, stuckMs: 0, detours: 0, ghostMs: 0, ghosts: 0, snaps: 0 };
+  win.tdWorkerWalk(st, 500);
+  check('Task110: walking (almost) straight down a worker keeps facing the same way', st.dir === 'left');
+  // the walk sprite
+  const look = win.tdWorkerLook(s.characters[0]);
+  const frames = [0, 1, 2, 3].map((f) => win.tdWorkerWalkSprite('right', f, look));
+  const inside = (sp) => sp.rects.length > 0 && sp.rects.every(([x, y, w, h]) => x >= 0 && y >= 0 && x + w <= sp.w && y + h <= sp.h);
+  check('Task110: the walk has 4 frames (legs and a little bob) inside the 20 x 24 sprite', frames.every((f) => f.w === 20 && f.h === 24 && inside(f)) && new Set(frames.map((f) => JSON.stringify(f.rects))).size === 4);
+  const left = win.tdWorkerWalkSprite('left', 2, look);
+  check('Task110: walking left is the mirror of walking right', left.rects.every(([x, y, w, h, c], k) => x === 20 - frames[2].rects[k][0] - frames[2].rects[k][2] && y === frames[2].rects[k][1] && c === frames[2].rects[k][4]));
+  const lamps = win.tdWorkerLights(), shown = win.tdWorkerStates().filter((p) => !p.hidden);
+  check('Task110: the helmet lamps follow the workers', lamps.length === shown.length && lamps.every((l, i) => Math.abs(l.x - shown[i].x) < 1e-9 && Math.abs(l.y + 0.3 - shown[i].y) < 1e-9));
+  win.saveGame();
+  const raw = storage.getItem('gachaFactorySave'), sv = JSON.parse(raw);
+  check('Task110: nothing about the walk is saved (saveVersion 1, workers keep their 9 fields)', sv.saveVersion === 1 && !/workerSim|route|ghost|detour|walked/i.test(raw) &&
+    sv.run.characters.every((c) => Object.keys(c).sort().join() === 'carry,carryLvl,id,mining,miningLvl,move,moveLvl,rarity,resource'));
+})();
+
+(function test_T110_aroundThePlayer() {
+  // the player standing right in a worker's way: the worker goes round (or, at worst, briefly through) and still arrives
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, b = s.world.base;
+  win.secureMine('mine_start_iron');
+  t109AddWorker(win, 'common', 'iron');
+  const spot = win.tdWorkerPlacements()[0];
+  win.tdWorkerSimReset(); win.tdWorkerSimStep(16, 0);
+  const sim = Object.values(win.TD.workerSim.byId)[0];
+  const p = s.world.player;
+  p.x = (sim.x + spot.x) / 2; p.y = (sim.y + spot.y) / 2;
+  let touchedPlayer = 0;
+  t110Run(win, 15000, () => { if (sim.ghostMs <= 0 && sim.mode === 'walk' && win.playerFootOverlaps(win.tdWorkerPlayerBox(), sim.x, sim.y)) touchedPlayer++; });
+  check('Task110: a worker walks round the player standing in its way and arrives', t110Arrived(win) && sim.snaps === 0 && touchedPlayer === 0);
+  p.x = spot.x; p.y = spot.y; // the player stands on the worker's very spot
+  s.characters[0].resource = 'coal'; win.secureMine('mine_start_coal'); t110Run(win, 100);
+  s.characters[0].resource = 'iron';
+  t110Run(win, 15000);
+  check('Task110: even with the player on its spot, the worker gets there (never stuck for good)', t110Arrived(win) && sim.snaps === 0);
+  check('Task110: workers still never block the player', !win.worldObstacles().some((o) => o.kind === 'worker' || o.kind === 'player'));
+})();
+
+(function test_T110_throughTheTunnel() {
+  // the fixture save: the tunnel is open and veins lie beyond — the workers walk there through the tunnel
+  const st = makeMemoryStorage(); st.setItem('gachaFactorySave', T103_FIXTURE_RAW);
+  const win = newDom(st).window;
+  const pl = win.tdWorkerPlacements(), beyond = pl.filter((p) => win.tdWorkerSide(p.x, p.y) === 'west');
+  win.tdWorkerSimReset();
+  let throughTunnel = 0;
+  const seen = t110Run(win, 40000, () => { Object.values(win.TD.workerSim.byId).forEach((x) => { if (win.terrainRegionAt(x.x, x.y) === 'tunnel') x.wasInTunnel = true; }); });
+  throughTunnel = Object.values(win.TD.workerSim.byId).filter((x) => x.wasInTunnel).length;
+  check('Task110: the fixture save\'s five workers all reach their veins', pl.length === 5 && t110Arrived(win));
+  check('Task110: those working beyond the mountain went through the tunnel (never over the rock)', throughTunnel >= beyond.length && seen.inRock === 0 && seen.inside === 0);
+  check('Task110: and nobody was stuck', Object.values(win.TD.workerSim.byId).every((x) => x.snaps === 0));
+})();
+
+(function test_T110_randomWorlds() {
+  // generated worlds (tunnel open, 8 huts, all regions) with 16 workers on random resources, walking and then reassigned
+  const win = newDom(makeMemoryStorage(), { fullWorld: true }).window;
+  let bad = 0, worlds = 0, walkers = 0;
+  for (let seed = 1; seed <= 6; seed++) {
+    const rnd = t103Random(seed * 104729);
+    const fresh = win.freshRunState(), s = win.state;
+    Object.keys(fresh).forEach((k) => { s[k] = fresh[k]; });
+    s.world.hiddenMineIds = [];
+    s.world.mines = win.generateInitialWorldMines(s.world.base, { random: rnd });
+    ['manaVein', 'ruins', 'spaceStation'].forEach((k) => { s.unlockedSites[k] = true; win.seedWorldMinesForSite(k); });
+    s.research.workshopBuild = true; s.research.workshopExpansion = true; s.gold = 1e12;
+    Object.keys(s.products).forEach((k) => { s.products[k] = 1e6; });
+    for (let i = 0; i < 8; i++) win.buildWorkshop();
+    win.unlockTunnel({ random: rnd }); win.surveyMines({ random: rnd });
+    s.world.mines.forEach((m) => { if (rnd() < 0.5) m.developmentState = 'secured'; });
+    s.world.base.level = 4;
+    const res = [...new Set(s.world.mines.map((m) => m.resource))];
+    s.characters = [];
+    for (let i = 0; i < 16; i++) t109AddWorker(win, ['common', 'rare', 'epic', 'legend'][i % 4], res[Math.floor(rnd() * res.length)]);
+    win.tdWorkerSimReset();
+    const a = t110Run(win, 30000), ok1 = t110Arrived(win);
+    s.characters.forEach((c, i) => { if (i % 3 === 0) c.resource = res[(res.indexOf(c.resource) + 1) % res.length]; });
+    const b2 = t110Run(win, 30000), ok2 = t110Arrived(win);
+    worlds++; walkers += s.characters.length;
+    if (!ok1 || !ok2 || a.inside + b2.inside || a.inRock + b2.inRock || Object.values(win.TD.workerSim.byId).some((x) => x.snaps)) bad++;
+  }
+  check('Task110: in 6 generated worlds 16 workers each walk to their veins (and again after new jobs) without getting stuck, through anything or into rock', worlds === 6 && walkers === 96 && bad === 0);
+})();

@@ -83,7 +83,23 @@ function tickPlayer(){
   dx /= len;
   dy /= len;
   const step = BALANCE.world.PLAYER_SPEED / TICKS_PER_SECOND;
-  const next = clampPlayerPosition(player.x + dx * step, player.y + dy * step);
+  const startX = player.x, startY = player.y;
+  const moved = worldStepFoot(startX, startY, dx, dy, step);
+  player.x = moved.x;
+  player.y = moved.y;
+  if(Math.abs(dx) >= Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
+  else player.facing = dy > 0 ? 'down' : 'up';
+  player.pose = (player.x !== startX || player.y !== startY) ? 'walk' : 'idle';
+}
+
+// One step of a pair of feet (the player's, or a worker's in the top-down
+// view — Task 110) from (startX, startY) in the unit direction (dx, dy), as far
+// as the terrain and the obstacles allow. Returns the new { x, y }.
+//   opts.extra           more boxes that block (e.g. the player, for a worker)
+//   opts.ignoreObstacles only the terrain blocks (a worker getting unstuck)
+function worldStepFoot(startX, startY, dx, dy, step, opts){
+  const o2 = opts || {};
+  const next = clampPlayerPosition(startX + dx * step, startY + dy * step);
   // Task 66: terrain collision. X and Y are resolved separately, each moving
   // as far toward its target as the rock allows: pushing into the face stops
   // that axis flush against it while the other axis keeps going, so the
@@ -93,14 +109,13 @@ function tickPlayer(){
   // Task 107: the same for obstacles. An obstacle the player already stands
   // in (an older save, a mine found under the feet) does not block, so the
   // player can always walk out of it.
-  const startX = player.x, startY = player.y;
-  const near = worldObstacles(startX, startY, step + 1);
+  const near = o2.ignoreObstacles ? [] : worldObstacles(startX, startY, step + 1).concat(o2.extra || []);
   const blocking = near.filter(o => !playerFootOverlaps(o, startX, startY));
   const free = (x, y) => !blocking.some(o => playerFootOverlaps(o, x, y));
   const terrainOk = isWorldPointWalkable(startX, startY);
   const ok = (x, y) => (!terrainOk || isWorldPointWalkable(x, y)) && free(x, y);
-  player.x = terrainAdvance(startX, next.x, (x) => ok(x, startY));
-  player.y = terrainAdvance(startY, next.y, (y) => ok(player.x, y));
+  let x = terrainAdvance(startX, next.x, (tx) => ok(tx, startY));
+  let y = terrainAdvance(startY, next.y, (ty) => ok(x, ty));
   // Task 107: corner slip. Walking straight into the very edge of a box stops
   // dead; if a small side step would clear it, take that side step instead,
   // so the player glides around corners.
@@ -115,15 +130,13 @@ function tickPlayer(){
     return 0;
   };
   // Only obstacles are slipped around; the mountain behaves exactly as before (Task 66).
-  const terrainAllows = (x, y) => !terrainOk || isWorldPointWalkable(x, y);
-  if(dy === 0 && Math.abs(player.x - next.x) > 1e-9 && Math.abs(player.x - startX) < step * 0.5 && terrainAllows(next.x, startY)){
+  const terrainAllows = (tx, ty) => !terrainOk || isWorldPointWalkable(tx, ty);
+  if(dy === 0 && Math.abs(x - next.x) > 1e-9 && Math.abs(x - startX) < step * 0.5 && terrainAllows(next.x, startY)){
     const s2 = slip('x', startY, next.x);
-    if(s2 && ok(player.x, startY + s2)) player.y = startY + s2;
-  } else if(dx === 0 && Math.abs(player.y - next.y) > 1e-9 && Math.abs(player.y - startY) < step * 0.5 && terrainAllows(startX, next.y)){
+    if(s2 && ok(x, startY + s2)) y = startY + s2;
+  } else if(dx === 0 && Math.abs(y - next.y) > 1e-9 && Math.abs(y - startY) < step * 0.5 && terrainAllows(startX, next.y)){
     const s2 = slip('y', startX, next.y);
-    if(s2 && ok(startX + s2, player.y)) player.x = startX + s2;
+    if(s2 && ok(startX + s2, y)) x = startX + s2;
   }
-  if(Math.abs(dx) >= Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
-  else player.facing = dy > 0 ? 'down' : 'up';
-  player.pose = (player.x !== startX || player.y !== startY) ? 'walk' : 'idle';
+  return { x, y };
 }

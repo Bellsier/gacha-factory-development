@@ -41,7 +41,7 @@ function tdDrawList(player){
     const t = terrainTunnel();
     list.push({ kind: 'gate', x: t.gateX, y: t.y + t.halfWidth, sortY: t.y + t.halfWidth - 0.01 });
   }
-  if(typeof tdWorkerPlacements === 'function') tdWorkerPlacements().forEach(wk => list.push(Object.assign({ kind: 'worker', sortY: wk.y }, wk)));
+  if(typeof tdWorkerStates === 'function') tdWorkerStates().forEach(wk => { if(!wk.hidden) list.push(Object.assign({ kind: 'worker', sortY: wk.y }, wk)); });
   if(player) list.push({ kind: 'player', dir: player.dir, frame: player.frame, x: player.x, y: player.y, sortY: player.y + 0.001 });
   return list.sort((a, b) => a.sortY - b.sortY);
 }
@@ -156,6 +156,8 @@ function tdRender(now){
     const o = topdownToScreen(map.originX + sx0 / unitPx, map.originY + sy0 / unitPx, cam, w, h, zoom);
     if(sx1 > sx0 && sy1 > sy0) g.drawImage(TD.ground, sx0, sy0, sx1 - sx0, sy1 - sy0, o.x, o.y, (sx1 - sx0) * zoom, (sy1 - sy0) * zoom);
   }
+  // Task 110: the workers walk on (renderer state only)
+  if(typeof tdWorkerSimStep === 'function'){ const ws = TD.workerSim; tdWorkerSimStep(ws && ws.last !== null ? now - ws.last : 0, now); }
   // objects, back to front
   const frame = topdownWalkFrame(pos.walked, p.pose);
   const items = tdDrawList({ dir: p.facing, frame, x: pos.x, y: pos.y });
@@ -179,10 +181,10 @@ function tdRender(now){
       g.fillStyle = '#e2b23c'; g.fillRect(x0 + zoom, (top.y + sp.y) / 2 - 2 * zoom, 4 * zoom, 4 * zoom);
     } else if(it.kind === 'player') tdDrawSprite(g, sheet.player[it.dir] && sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1);
     else if(it.kind === 'worker'){
-      // Task 109: a worker swinging at its vein; ore chips fly on the strike
-      const wf = tdWorkerFrame(it, now);
+      // Task 109: a worker swinging at its vein; ore chips fly on the strike. Task 110: or walking there.
+      const wf = it.mode === 'walk' ? 'w' + it.walkFrame : tdWorkerFrame(it, now);
       tdDrawSprite(g, tdWorkerImage(it.look, it.dir, wf), sp.x, sp.y, zoom, 1);
-      if(wf === 2 && it.mineId){
+      if(wf === 2 && it.mineId && it.mode === 'work'){
         const side = it.dir === 'right' ? 1 : -1, c = (TD_RES_COLORS[it.resource] || ['#ccc'])[1];
         const t = (now / it.cycleMs + it.phase) % 0.25 * 4;
         g.fillStyle = c;

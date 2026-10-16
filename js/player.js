@@ -247,3 +247,88 @@ function worldStepFoot(startX, startY, dx, dy, step, opts){
   }
   return { x, y };
 }
+
+// ---------------------------------------------------------------------------
+// Task 112: torches. The player can set a simple torch down on open ground
+// (T, or the torch button on a phone) and pick it up again. A torch is a real
+// thing in the world — saved in state.world.torches (additive field,
+// saveVersion 1; an older save simply has none) and drawn with its own soft
+// light — but it is thin, so it never blocks anyone's way. Free to place,
+// up to TORCH.MAX, never on rock, a building, a vein, solid scenery or a
+// door step.
+// ---------------------------------------------------------------------------
+const TORCH = {
+  MAX: 12,           // torches in the world at once (also keeps the lighting light on phones)
+  AHEAD: 0.4,        // set down this far in front of the player
+  PICK_AHEAD: 0.4,   // a torch this close to the spot in front is picked up instead...
+  PICK_UNDER: 0.3,   // ...or one this close to the player's feet
+  GAP: 0.5,          // torches stand at least this far apart
+  MINE_CLEAR: 0.45,  // ...and this far from a vein
+  DOOR_CLEAR: 0.35,  // ...and from the workshop's and the huts' doors
+  ROOM: 0.06,        // ...and clear of any obstacle box by this much
+};
+
+function worldTorches(){ return Array.isArray(state.world.torches) ? state.world.torches : (state.world.torches = []); }
+
+// Where a torch would go right now: just in front of the player.
+function torchSpotAhead(){
+  const p = state.world.player;
+  const v = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[p.facing] || [0, 1];
+  return { x: Math.round((p.x + v[0] * TORCH.AHEAD) * 100) / 100, y: Math.round((p.y + v[1] * TORCH.AHEAD) * 100) / 100 };
+}
+
+// Why a torch cannot go at (x, y), or null when it can.
+function torchPlaceProblem(x, y){
+  if(worldTorches().length >= TORCH.MAX) return '횃불은 ' + TORCH.MAX + '개까지 놓을 수 있어요';
+  if(!isWorldPointWalkable(x, y)) return '여기에는 놓을 수 없어요';
+  if(state.world.mines.some(m => m && Math.hypot(m.x - x, m.y - y) < TORCH.MINE_CLEAR)) return '광맥과 너무 가까워요';
+  const w = state.world, doors = [w.base].concat(w.workshops.filter(Boolean));
+  if(doors.some(d => Math.hypot(d.x - x, d.y - y) < TORCH.DOOR_CLEAR)) return '문 앞은 비워 둘게요';
+  const r = TORCH.ROOM;
+  if(worldObstacles(x, y, 1).some(o => x > o.minX - r && x < o.maxX + r && y > o.minY - r && y < o.maxY + r)) return '건물이나 바위에 너무 가까워요';
+  if(worldTorches().some(t => Math.hypot(t.x - x, t.y - y) < TORCH.GAP)) return '횃불끼리 너무 가까워요';
+  return null;
+}
+
+function placeTorch(x, y){
+  if(!Number.isFinite(x) || !Number.isFinite(y) || torchPlaceProblem(x, y)) return false;
+  worldTorches().push({ x, y });
+  return true;
+}
+
+// Index of the torch nearest to (x, y) within `range`, or -1.
+function nearestTorch(x, y, range){
+  let best = -1, bestD = range;
+  worldTorches().forEach((t, i) => { const d = Math.hypot(t.x - x, t.y - y); if(d <= bestD){ best = i; bestD = d; } });
+  return best;
+}
+
+function removeTorch(index){
+  const list = worldTorches();
+  if(!Number.isInteger(index) || index < 0 || index >= list.length) return false;
+  list.splice(index, 1);
+  return true;
+}
+
+// The torch the player would pick up: the one just in front, else one underfoot (-1 if none).
+function torchAtHand(){
+  const p = state.world.player, spot = torchSpotAhead();
+  const ahead = nearestTorch(spot.x, spot.y, TORCH.PICK_AHEAD);
+  return ahead >= 0 ? ahead : nearestTorch(p.x, p.y, TORCH.PICK_UNDER);
+}
+
+// The one torch action: pick up the torch at hand, or set one down in front.
+//   { ok, action: 'place' | 'remove', text, x, y }
+function torchAct(){
+  const near = torchAtHand();
+  if(near >= 0){
+    const t = worldTorches()[near];
+    removeTorch(near);
+    return { ok: true, action: 'remove', text: '횃불을 거뒀어요', x: t.x, y: t.y };
+  }
+  const spot = torchSpotAhead();
+  const problem = torchPlaceProblem(spot.x, spot.y);
+  if(problem) return { ok: false, action: 'place', text: problem, x: spot.x, y: spot.y };
+  placeTorch(spot.x, spot.y);
+  return { ok: true, action: 'place', text: '횃불을 놓았어요', x: spot.x, y: spot.y };
+}

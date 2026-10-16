@@ -431,6 +431,13 @@
     background:rgba(214,139,61,0.92); border:3px solid #ffd27a; color:#1a1208; font-family:var(--font-display); font-weight:700; font-size:1.05rem;}
   body.td-touch .td-action.is-idle{opacity:0.45;}
   body.td-touch.td-panel-open .td-stick, body.td-touch.td-panel-open .td-action, body.td-touch.td-log-open .td-stick, body.td-touch.td-log-open .td-action{display:none;}
+  /* Task 112: the torch button (PC: bottom right; phone: above the action button) */
+  .td-torch{display:none;}
+  body.view-topdown .td-torch{display:block; position:fixed; right:14px; bottom:20px; z-index:2; width:auto; padding:7px 12px; border-radius:8px; touch-action:manipulation;
+    background:rgba(18,22,26,0.86); border:1px solid rgba(255,190,110,0.55); color:#ffd27a; font-family:var(--font-display); font-weight:700; font-size:0.8rem;}
+  body.view-topdown .td-torch.is-full{opacity:0.5;}
+  body.td-touch .td-torch{right:16px; bottom:196px; padding:8px 10px; font-size:0.74rem; border-radius:18px; max-width:104px; line-height:1.25;}
+  body.td-panel-open .td-torch, body.td-log-open .td-torch{display:none;}
   @media (max-width: 760px){
     body.view-topdown .tabbar{left:0; right:0; bottom:0; transform:none; border-radius:0; border-width:1px 0 0; gap:4px; padding:6px 6px calc(6px + env(safe-area-inset-bottom));}
     body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex:1; padding:9px 2px; font-size:0.78rem;}
@@ -441,4 +448,5 @@
     body.view-topdown header{bottom:auto; top:104px; right:10px;}
     body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{top:auto; height:72vh; height:72dvh; width:100vw; border-left:none; border-top:1px solid var(--line); border-radius:12px 12px 0 0; padding:48px 12px 80px;}
     .td-close{top:auto; bottom:calc(72dvh - 44px);}
+    body.view-topdown:not(.td-touch) .td-torch{bottom:70px;} /* Task 112: above the full-width dock */
   }

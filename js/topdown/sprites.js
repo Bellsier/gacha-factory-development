@@ -147,6 +147,21 @@ function tdPropSprite(kind){
   return P.done(false);
 }
 
+// --- Task 112: a torch the player sets down, 10 x 22, with a 3-frame flame.
+function tdTorchSprite(frame){
+  const P = tdPainter(10, 22);
+  P(2, 20, 6, 2, 'rgba(0,0,0,0.25)');
+  P(4, 8, 2, 13, '#6a4a30'); P(4, 8, 1, 13, '#7d5a3c'); // the stick
+  P(3, 6, 4, 3, '#4a4e58'); P(3, 6, 4, 1, '#6e747c');   // the iron cup
+  const flame = [
+    [[4, 1, 2, 5, '#f07a30'], [3, 3, 4, 3, '#f0a040'], [4, 3, 2, 2, '#ffe08a']],
+    [[4, 0, 2, 6, '#f07a30'], [3, 2, 4, 4, '#f0a040'], [4, 2, 2, 3, '#ffe08a']],
+    [[5, 1, 2, 5, '#f07a30'], [3, 3, 4, 3, '#f0a040'], [5, 3, 1, 2, '#fff3b0']],
+  ][frame % 3];
+  flame.forEach(([x, y, w, h, c]) => P(x, y, w, h, c));
+  return P.done(false);
+}
+
 // Bakes sprite rects into a canvas (null without a 2D canvas, e.g. in jsdom).
 function tdSpriteImage(sprite){
   if(typeof document === 'undefined') return null;
@@ -165,6 +180,7 @@ function tdBuildSpriteSheet(){
   Object.keys(TD_RES_COLORS).forEach(r => { sheet.ore[r] = { unsecured: tdSpriteImage(tdOreSprite(r, 'unsecured')), secured: tdSpriteImage(tdOreSprite(r, 'secured')) }; });
   sheet.ore.undiscovered = tdSpriteImage(tdOreSprite(null, 'undiscovered'));
   sheet.base = tdSpriteImage(tdBaseSprite());
+  sheet.torch = [0, 1, 2].map(f => tdSpriteImage(tdTorchSprite(f)));
   [1, 2, 3].forEach(t => { sheet.workshop[t] = tdSpriteImage(tdWorkshopSprite(t)); });
   ['bigTree', 'sparseTree', 'grass', 'rock', 'clearing', 'exposedVein', 'undevelopedVein', 'rareVein', 'crystal', 'oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks', 'lamp']
     .forEach(k => { sheet.prop[k] = tdSpriteImage(tdPropSprite(k)); });

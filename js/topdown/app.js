@@ -2,7 +2,8 @@
 // Task 106: the world-first screen. The top-down world fills the screen; the
 // existing tabs (채굴/개발/인부/연구/납품) and the log become panels opened
 // from a dock, with their content and functions unchanged. PC: WASD/arrows
-// to walk, E or Space to act. Phone: a virtual joystick and an action button.
+// to walk, E or Space to act, T for a torch (Task 112). Phone: a virtual
+// joystick, an action button and a torch button.
 //
 // The old 2.5D page stays available with ?view=classic (remembered in its
 // own localStorage key, never in the game save).
@@ -48,7 +49,22 @@ function tdInteractNow(){
   return r.ok;
 }
 
+// Task 112: set a torch down in front, or pick up the one at hand (T / the torch button).
+function tdTorchNow(){
+  const r = torchAct();
+  tdAddFloat(r.text, r.x, r.y, r.ok ? '#ffd27a' : '#b8c0c6');
+  tdUpdateActionButton();
+  return r.ok;
+}
+
 function tdUpdateActionButton(){
+  const torch = document.getElementById('tdTorch');
+  if(torch){
+    const take = torchAtHand() >= 0;
+    const label = (TD.touch ? '' : '[T] ') + (take ? '횃불 거두기' : '횃불 놓기') + ' ' + worldTorches().length + '/' + TORCH.MAX;
+    if(torch.textContent !== label) torch.textContent = label;
+    torch.classList.toggle('is-full', !take && worldTorches().length >= TORCH.MAX);
+  }
   const btn = document.getElementById('tdAction');
   if(!btn) return;
   const t = TD.target;
@@ -117,7 +133,8 @@ function tdInit(){
     '<canvas id="tdMinimap" width="96" height="96" aria-label="탐험 지도"></canvas>' +
     '<button id="tdClose" class="td-close" type="button" aria-label="패널 닫기">닫기 ✕</button>' +
     '<div id="tdStick" class="td-stick" aria-label="이동"><div class="td-knob"></div></div>' +
-    '<button id="tdAction" class="td-action is-idle" type="button" aria-label="행동">·</button>';
+    '<button id="tdAction" class="td-action is-idle" type="button" aria-label="행동">·</button>' +
+    '<button id="tdTorch" class="td-torch" type="button" aria-label="횃불 놓기 또는 거두기">횃불 놓기</button>';
   body.appendChild(hud);
   TD.mini = document.getElementById('tdMinimap');
   const tabbar = document.querySelector('.tabbar');
@@ -137,6 +154,7 @@ function tdInit(){
   }, true);
   document.getElementById('tdClose').onclick = tdClosePanels;
   document.getElementById('tdAction').onclick = () => { tdInteractNow(); };
+  document.getElementById('tdTorch').onclick = () => { tdTorchNow(); };
   tdBindStick(document.getElementById('tdStick'), document.querySelector('#tdStick .td-knob'));
   // E / Space acts, Escape closes panels (never while typing in a field)
   document.addEventListener('keydown', (e) => {
@@ -147,6 +165,7 @@ function tdInit(){
       if(e.key === ' ') e.preventDefault();
       tdInteractNow();
     }
+    if(e.key === 't' || e.key === 'T') tdTorchNow(); // Task 112
   });
   // clicking the world puts the keyboard back on the world (out of any panel field)
   canvas.addEventListener('pointerdown', () => { if(document.activeElement && document.activeElement !== body && document.activeElement.blur) document.activeElement.blur(); });

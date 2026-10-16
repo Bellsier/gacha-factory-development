@@ -272,7 +272,7 @@ function tdKey(win, target, key) {
   win.tdInteractNow();
   win.saveGame();
   const sv = JSON.parse(storage.getItem('gachaFactorySave'));
-  check('Task106: after using the new screen the save has exactly the fixture\'s structure (saveVersion 1)', sv.saveVersion === 1 && JSON.stringify(t103Shape(sv)) === JSON.stringify(t103Shape(T103_FIXTURE)));
+  check('Task106: after using the new screen the save has exactly the fixture\'s structure (saveVersion 1)', sv.saveVersion === 1 && JSON.stringify(t103Shape(sv)) === JSON.stringify(t103ShapeNow()));
   check('Task106: no camera, zoom, panel or joystick state in the save', !/camera|zoom|panel|stick|tdView|topdown/i.test(JSON.stringify(sv)));
 })();
 
@@ -372,7 +372,7 @@ function t107Overlapping(win, x, y) {
   t107Hold(w2, ['down'], 5);
   check('Task107: ...and the player simply walks off it', !w2.worldObstacles(p2.x, p2.y, 1).some((o) => w2.playerFootOverlaps(o, p2.x, p2.y)));
   w2.saveGame();
-  check('Task107: the save keeps its structure (saveVersion 1, no obstacle data)', JSON.stringify(t103Shape(JSON.parse(storage.getItem('gachaFactorySave')))) === JSON.stringify(t103Shape(T103_FIXTURE)));
+  check('Task107: the save keeps its structure (saveVersion 1, no obstacle data)', JSON.stringify(t103Shape(JSON.parse(storage.getItem('gachaFactorySave')))) === JSON.stringify(t103ShapeNow()));
 })();
 
 (function test_T107_everythingReachable() {
@@ -799,4 +799,95 @@ function t110Arrived(win) {
   check('Task111: the fixture save\'s veins beyond can all be walked to (and its workers have free spots)', fx.state.world.mines.filter((m) => fx.terrainRegionAt(m.x, m.y) === 'beyond').every((m) => {
     for (let a = 0; a < 16; a++) { const x = m.x + Math.cos(a * Math.PI / 8) * 0.6, y = m.y + Math.sin(a * Math.PI / 8) * 0.6; if (fx.playerCanStand(x, y)) return true; } return false;
   }) && fx.tdWorkerPlacements().every((p) => fx.playerCanStand(p.x, p.y)));
+})();
+
+// -----------------------------------------------------------------------------
+// Task 112: torches the player sets down (saved, additive field, saveVersion 1)
+// -----------------------------------------------------------------------------
+(function test_T112_torches() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state, p = s.world.player, b = s.world.base, T = win.TORCH;
+  check('Task112: a new game starts with no torches', Array.isArray(s.world.torches) && s.world.torches.length === 0);
+  const rates = JSON.stringify(win.RESOURCES.map((r) => win.autoRate(r.key)));
+  // set down in front of the player
+  p.x = b.x + 2.5; p.y = b.y + 2.5; p.facing = 'right';
+  const spot = win.torchSpotAhead();
+  check('Task112: the torch goes just in front of the player (by facing)', Math.abs(spot.x - (p.x + T.AHEAD)) < 0.006 && Math.abs(spot.y - p.y) < 0.006);
+  const r1 = win.torchAct();
+  check('Task112: on open ground it is set down', r1.ok && r1.action === 'place' && s.world.torches.length === 1 && s.world.torches[0].x === spot.x && s.world.torches[0].y === spot.y);
+  const r2 = win.torchAct();
+  check('Task112: standing by it, the same action picks it up again', r2.ok && r2.action === 'remove' && s.world.torches.length === 0);
+  // where it may not go
+  const mine = win.mineById('mine_start_iron');
+  check('Task112: not on a vein', /광맥/.test(win.torchPlaceProblem(mine.x + 0.2, mine.y)));
+  check('Task112: not on the workshop door step or inside its walls', /문/.test(win.torchPlaceProblem(b.x, b.y + 0.05)) && !!win.torchPlaceProblem(b.x, b.y - 0.25));
+  const hut = win.addWorkshop({ x: b.x + 3, y: b.y - 2, level: 1 });
+  check('Task112: not in front of a hut\'s door or in it', !!win.torchPlaceProblem(hut.x, hut.y) && !!win.torchPlaceProblem(hut.x, hut.y - 0.2));
+  check('Task112: not on the mountain', /놓을 수 없/.test(win.torchPlaceProblem(-5, -5)));
+  check('Task112: not outside the world', !!win.torchPlaceProblem(11, 0) && !win.placeTorch(NaN, 0));
+  check('Task112: two torches keep a little apart', win.placeTorch(b.x + 2.5, b.y + 3) && /횃불끼리/.test(win.torchPlaceProblem(b.x + 2.7, b.y + 3)) && win.torchPlaceProblem(b.x + 3.1, b.y + 3) === null);
+  // the cap
+  let placed = s.world.torches.length;
+  for (let i = 0; i < 20; i++) if (win.placeTorch(b.x + 4 + (i % 5) * 0.6, b.y + 3 + Math.floor(i / 5) * 0.6)) placed++;
+  check('Task112: at most 12 torches stand at once (keeps the lighting light on phones)', T.MAX === 12 && s.world.torches.length === 12 && /12개까지/.test(win.torchPlaceProblem(b.x + 1, b.y + 4)));
+  // beyond the mountain: not on solid scenery
+  s.research.tunnelWork = true; win.unlockTunnel();
+  const tree = win.worldScenery().solid.find((pr) => pr.kind === 'bigTree');
+  s.world.torches.pop();
+  check('Task112: not on a tree or rock beyond the mountain', /건물이나 바위/.test(win.torchPlaceProblem(tree.x, tree.y - 0.03)));
+  // they never block the way
+  const t0 = s.world.torches[0];
+  p.x = t0.x - 0.6; p.y = t0.y; t107Hold(win, ['right'], 4);
+  check('Task112: a torch never blocks the player (it is thin)', p.x > t0.x + 0.5 && !win.worldObstacles().some((o) => o.kind === 'torch'));
+  // drawn and lit
+  const items = win.tdDrawList(null).filter((it) => it.kind === 'torch');
+  check('Task112: every torch stands in the world, sorted with everything else', items.length === s.world.torches.length && items.every((it, i) => it.x === s.world.torches[i].x && it.sortY === it.y));
+  const lights = win.tdLightList({ x: 0, y: 0, dir: 'down' }, 1000).filter((l) => l.kind === 'torch');
+  check('Task112: each torch gives a soft warm flickering light', lights.length === s.world.torches.length && lights.every((l) => l.r > 1 && l.r <= 1.35 && l.strength < 1 && l.glow > 1));
+  check('Task112: the helmet lamp, workshop lamp and windows are still there', ['headlamp', 'aura', 'lamp', 'window'].every((k) => win.tdLightList({ x: 0, y: 0, dir: 'down' }, 1000).some((l) => l.kind === k)));
+  const sp = [0, 1, 2].map((f) => win.tdTorchSprite(f));
+  check('Task112: the torch has a 3-frame flame inside its 10 x 22 sprite', sp.every((x) => x.w === 10 && x.h === 22 && x.rects.every(([a, c, w, h]) => a >= 0 && c >= 0 && a + w <= 10 && c + h <= 22)) && new Set(sp.map((x) => JSON.stringify(x.rects))).size === 3);
+  check('Task112: the game is otherwise untouched (output unchanged)', JSON.stringify(win.RESOURCES.map((r) => win.autoRate(r.key))) === rates);
+  // saved and loaded back exactly
+  const kept = JSON.stringify(s.world.torches);
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task112: torches are saved as plain points (saveVersion 1)', sv.saveVersion === 1 && JSON.stringify(sv.run.world.torches) === kept && sv.run.world.torches.every((t) => Object.keys(t).sort().join() === 'x,y'));
+  const w2 = newDom(storage).window;
+  check('Task112: ...and come back in the same places', JSON.stringify(w2.state.world.torches) === kept);
+})();
+
+(function test_T112_controls() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, p = s.world.player, b = s.world.base, doc = win.document;
+  p.x = b.x + 2.5; p.y = b.y + 2.5; p.facing = 'down';
+  const btn = doc.getElementById('tdTorch');
+  win.tdUpdateActionButton();
+  check('Task112: a torch button is on the screen and says what it will do', !!btn && /횃불 놓기/.test(btn.textContent) && /0\/12/.test(btn.textContent));
+  btn.click();
+  check('Task112: the button sets a torch down (phone and PC)', s.world.torches.length === 1 && /횃불 거두기/.test(btn.textContent) && /1\/12/.test(btn.textContent));
+  doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 't', bubbles: true }));
+  check('Task112: T picks it up again (PC)', s.world.torches.length === 0);
+  doc.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'T', bubbles: true }));
+  check('Task112: and T sets one down', s.world.torches.length === 1);
+  const input = doc.createElement('input'); input.type = 'text'; doc.body.appendChild(input);
+  input.focus(); input.dispatchEvent(new win.KeyboardEvent('keydown', { key: 't', bubbles: true }));
+  check('Task112: typing a "t" in a field does nothing to torches', s.world.torches.length === 1);
+  check('Task112: a refused spot says why (shown as a floating note)', (() => { p.x = win.terrainFaceX(-5) + win.WORLD_TERRAIN.PLAYER_MARGIN + 0.02; p.y = -5; p.facing = 'left'; const n = win.TD.floats.length; win.tdTorchNow(); return win.TD.floats.length === n + 1 && s.world.torches.length === 1; })());
+})();
+
+(function test_T112_oldSaves() {
+  // an older save has no torch list: it loads with none, everything else exactly as saved
+  const st = makeMemoryStorage(); st.setItem('gachaFactorySave', T103_FIXTURE_RAW);
+  const win = newDom(st).window;
+  check('Task112: a save from before torches loads with none', Array.isArray(win.state.world.torches) && win.state.world.torches.length === 0 && !('torches' in T103_FIXTURE.run.world));
+  check('Task112: ...and the rest of its world is as saved', t103Canon(win.state.world.mines) === t103Canon(T103_FIXTURE.run.world.mines) && win.state.world.player.x === T103_FIXTURE.run.world.player.x && win.state.gold >= T103_FIXTURE.run.gold);
+  const bad = JSON.parse(T103_FIXTURE_RAW);
+  bad.run.world.torches = [{ x: 1, y: 2 }, { x: 'a', y: 1 }, null, { x: 50, y: 0 }, { x: 3.25, y: -1.5, extra: 1 }].concat(Array.from({ length: 20 }, (_, i) => ({ x: i * 0.5 - 5, y: 5 })));
+  const st2 = makeMemoryStorage(); st2.setItem('gachaFactorySave', JSON.stringify(bad));
+  const w2 = newDom(st2).window, tl = w2.state.world.torches;
+  check('Task112: broken torch entries are dropped, good ones kept exactly, at most 12', tl.length === 12 && tl[0].x === 1 && tl[0].y === 2 && tl[1].x === 3.25 && tl[1].y === -1.5 && tl.every((t) => Object.keys(t).sort().join() === 'x,y'));
+  const st3 = makeMemoryStorage(); bad.run.world.torches = 'lots'; st3.setItem('gachaFactorySave', JSON.stringify(bad));
+  check('Task112: a torch field that is not a list means no torches', newDom(st3).window.state.world.torches.length === 0);
 })();

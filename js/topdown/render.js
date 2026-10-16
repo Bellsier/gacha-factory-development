@@ -40,6 +40,8 @@ function tdDrawList(player){
     const t = terrainTunnel();
     list.push({ kind: 'gate', x: t.gateX, y: t.y + t.halfWidth, sortY: t.y + t.halfWidth - 0.01 });
   }
+  // Task 112: torches the player has set down
+  (state.world.torches || []).forEach((t, i) => list.push({ kind: 'torch', x: t.x, y: t.y, sortY: t.y, seed: i * 1.7 + t.x * 3.1 }));
   if(typeof tdWorkerStates === 'function') tdWorkerStates().forEach(wk => { if(!wk.hidden) list.push(Object.assign({ kind: 'worker', sortY: wk.y }, wk)); });
   if(player) list.push({ kind: 'player', dir: player.dir, frame: player.frame, x: player.x, y: player.y, sortY: player.y + 0.001 });
   return list.sort((a, b) => a.sortY - b.sortY);
@@ -172,6 +174,7 @@ function tdRender(now){
       if(swaying && TD.quality < 2) tdDrawSway(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2, tdSway(now, it.x, it.y, it.kind === 'decor' ? 'tuft' : it.prop));
       else tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
     }
+    else if(it.kind === 'torch') tdDrawSprite(g, sheet.torch && sheet.torch[Math.floor(now / 130 + it.seed) % 3], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'gate'){
       const t = terrainTunnel(), top = topdownToScreen(it.x, t.y - t.halfWidth, cam, w, h, zoom);
       const x0 = top.x - 3 * zoom;
@@ -244,6 +247,7 @@ function tdRenderMinimap(cam){
     g.fillStyle = (TD_RES_COLORS[m.resource] || ['#ccc'])[0]; g.fillRect(Math.round(x) - 2, Math.round(y) - 2, 4, 4);
     if(m.developmentState === 'secured'){ g.fillStyle = '#3fc9b0'; g.fillRect(Math.round(x) - 2, Math.round(y) + 2, 4, 1); }
   });
+  (state.world.torches || []).forEach(t => { const [x, y] = at(t.x, t.y); g.fillStyle = '#ffb04a'; g.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2); });
   const [bx, by] = at(state.world.base.x, state.world.base.y);
   g.fillStyle = '#d68b3d'; g.fillRect(Math.round(bx) - 3, Math.round(by) - 3, 6, 6);
   const p = state.world.player, [px, py] = at(p.x, p.y);

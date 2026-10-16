@@ -17,6 +17,9 @@ function t103Shape(v) {
   if (v && typeof v === 'object') { const o = {}; Object.keys(v).sort().forEach((k) => { o[k] = t103Shape(v[k]); }); return o; }
   return v === null ? 'null' : typeof v;
 }
+// Task 112: the one field added to the save since the fixture was made
+// (additive, saveVersion 1): the world's torches, [] for a save without any.
+function t103ShapeNow() { const f = JSON.parse(JSON.stringify(T103_FIXTURE)); f.run.world.torches = []; return t103Shape(f); }
 // JSON with object keys sorted, so two values compare by content, not key order
 // (loading rebuilds objects field by field, e.g. a worker's id moves to the end).
 function t103Canon(v) {
@@ -83,9 +86,9 @@ function t103Random(seed) {
   // load -> save gives the same file (savedAt aside)
   win.saveGame();
   const again = JSON.parse(storage.getItem('gachaFactorySave'));
-  check('Task103: fixture — load then save writes the same run and permanent data', again.saveVersion === 1 &&
-    t103Canon(again.run) === t103Canon(r) && t103Canon(again.permanent) === t103Canon(p));
-  check('Task103: fixture — the save structure is unchanged at every level', t103Canon(t103Shape(again)) === t103Canon(t103Shape(T103_FIXTURE)));
+  check('Task103: fixture — load then save writes the same run and permanent data (plus the empty torch list, Task 112)', again.saveVersion === 1 &&
+    t103Canon(again.run) === t103Canon(Object.assign({}, r, { world: Object.assign({}, r.world, { torches: [] }) })) && t103Canon(again.permanent) === t103Canon(p));
+  check('Task103: fixture — the save structure is unchanged at every level (plus the empty torch list, Task 112)', t103Canon(t103Shape(again)) === t103Canon(t103ShapeNow()));
   // the game goes on from it
   const iron0 = s.resources.iron, gold0 = s.gold;
   for (let i = 0; i < 60; i++) win.tickLoop();
@@ -305,10 +308,10 @@ function t103Random(seed) {
   win.renderAll(); win.renderWorldGround(); win.renderExplorationMap();
   win.saveGame();
   const sv = JSON.parse(storage.getItem('gachaFactorySave'));
-  check('Task103: view state — the save structure is the fixture structure (no new keys anywhere)', JSON.stringify(t103Shape(sv)) === JSON.stringify(t103Shape(T103_FIXTURE)));
+  check('Task103: view state — the save structure is the fixture structure (no new keys anywhere but the Task 112 torch list)', JSON.stringify(t103Shape(sv)) === JSON.stringify(t103ShapeNow()));
   check('Task103: view state — top level keys are exactly saveVersion, savedAt, permanent, run', Object.keys(sv).sort().join() === 'permanent,run,saveVersion,savedAt');
   check('Task103: view state — world keys are exactly the saved world fields',
-    Object.keys(sv.run.world).sort().join() === 'base,hiddenMineIds,mines,player,tunnelContract,tunnelUnlocked,workshops');
+    Object.keys(sv.run.world).sort().join() === 'base,hiddenMineIds,mines,player,torches,tunnelContract,tunnelUnlocked,workshops');
   check('Task103: view state — the player keeps x, y, facing, pose only', Object.keys(sv.run.world.player).sort().join() === 'facing,pose,x,y');
   check('Task103: view state — nothing about selection, camera, zoom or tabs is saved', !/selected|selection|camera|zoom|activeTab|"view"/i.test(JSON.stringify(sv)));
   check('Task103: view state — saveVersion is 1', sv.saveVersion === 1);

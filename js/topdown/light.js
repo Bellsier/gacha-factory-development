@@ -2,7 +2,8 @@
 // Task 108: light and atmosphere. A gentle dusk tint over the world that
 // slowly comes and goes, with soft holes of light: the miner's helmet lamp
 // (a cone in the facing direction), the workshop lamp and windows, the craft
-// huts' forge windows, and a faint glow on discovered veins. Cloud shadows
+// huts' forge windows, a faint glow on discovered veins and (Task 112) the
+// torches the player sets down. Cloud shadows
 // drift over the land and fireflies come out at dusk. All of it is drawing
 // only: no game value depends on it and nothing is saved.
 //
@@ -16,7 +17,7 @@ const TD_LIGHT = {
   MAX_DARK: 0.34,            // darkest dusk: everything stays readable
   AMBIENT_RGB: [16, 22, 42], // cool evening blue
   FIREFLY_DARK: 0.2,         // fireflies come out above this darkness
-  MAP_SCALE: [0.5, 0.34, 0.25], // light-map size per quality level (0 = full)
+  MAP_SCALE: [0.34, 0.25, 0.2], // light-map size per quality level (0 = full; Task 112: smaller, it is blurred anyway)
 };
 
 // Darkness (0..1 alpha of the tint) at a moment: a smooth cycle between MIN and MAX.
@@ -52,6 +53,8 @@ function tdLightList(player, nowMs, extra){
     const secured = m.developmentState === 'secured';
     lights.push({ kind: 'vein', x: m.x, y: m.y - 0.05, r: secured ? 0.8 : 0.55, rgb, strength: secured ? 0.5 : 0.32 });
   });
+  // Task 112: torches — a warm, flickering light a little wider than a hut's forge
+  (state.world.torches || []).forEach((t, i) => lights.push({ kind: 'torch', x: t.x, y: t.y - 0.25, r: 1.35 * tdFlicker(nowMs, 11 + i * 2.3), rgb: [255, 176, 92], strength: 0.95, glow: 2.4 }));
   (extra || []).forEach(l => lights.push(l));
   return lights;
 }
@@ -62,9 +65,9 @@ function tdHexRgb(hex){
 }
 
 // Quality from the average frame time (ms), with a little hysteresis.
-//   0 full (clouds, fireflies, coloured glows, large light map)
+//   0 full (clouds, fireflies, larger light map)
 //   1 reduced (no fireflies, smaller light map)
-//   2 low (no clouds or coloured glows, smallest light map)
+//   2 low (no clouds or swaying, smallest light map; Task 112: coloured glows stay, they are cheap now)
 // (60 frames a second is 16.7 ms; 30 a second is 33 ms.)
 function tdQualityFor(avgMs, current){
   const q = current === undefined ? 0 : current;
@@ -130,21 +133,26 @@ function tdRenderLighting(g, lights, darkness, cam, w, h, zoom, quality, nowMs){
     else lg.arc(cx, cy, r, 0, Math.PI * 2);
     lg.fill();
   });
+  // soft coloured glows (warm lamps, ore colours, torches).
+  // Task 112: painted into the same small light map (a warm see-through colour where
+  // the dark was cleared), so any number of lights costs no extra full-screen pass —
+  // cheap enough for every quality level now.
   lg.globalCompositeOperation = 'source-over';
+  const k = 0.35 + darkness * 1.4;
+  onScreen.forEach(({ l, sp, R }) => {
+    if(l.kind === 'headlamp') return; // the lamp only clears the dark; it does not tint
+    const cx = sp.x * scale, cy = sp.y * scale, rr = R * 0.75 * scale, gr = lg.createRadialGradient(cx, cy, 0, cx, cy, rr);
+    const a = Math.min(0.42, 0.16 * l.strength * k * (l.glow || 1));
+    gr.addColorStop(0, 'rgba(' + l.rgb[0] + ',' + l.rgb[1] + ',' + l.rgb[2] + ',' + a.toFixed(3) + ')');
+    gr.addColorStop(0.5, 'rgba(' + l.rgb[0] + ',' + l.rgb[1] + ',' + l.rgb[2] + ',' + (a * 0.4).toFixed(3) + ')');
+    gr.addColorStop(1, 'rgba(' + l.rgb[0] + ',' + l.rgb[1] + ',' + l.rgb[2] + ',0)');
+    lg.fillStyle = gr; lg.fillRect(cx - rr, cy - rr, rr * 2, rr * 2);
+  });
   g.save();
   g.imageSmoothingEnabled = true;
   g.drawImage(lc, 0, 0, w, h);
-  // soft coloured glows (warm lamps, ore colours); skipped at the lowest quality
-  if(quality < 2){
-    g.globalCompositeOperation = 'lighter';
-    const k = 0.35 + darkness * 1.4;
-    onScreen.forEach(({ l, sp, R }) => {
-      if(l.kind === 'headlamp') return; // the lamp only clears the dark; it does not tint
-      const rr = R * 0.75, gr = g.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, rr);
-      gr.addColorStop(0, 'rgba(' + l.rgb[0] + ',' + l.rgb[1] + ',' + l.rgb[2] + ',' + (0.13 * l.strength * k).toFixed(3) + ')');
-      gr.addColorStop(1, 'rgba(' + l.rgb[0] + ',' + l.rgb[1] + ',' + l.rgb[2] + ',0)');
-      g.fillStyle = gr; g.fillRect(sp.x - rr, sp.y - rr, rr * 2, rr * 2);
-    });
+  g.globalCompositeOperation = 'lighter';
+  {
     if(quality === 0){
       tdFireflies(nowMs, darkness).forEach(f => {
         const sp = topdownToScreen(f.x, f.y, cam, w, h, zoom);

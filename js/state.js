@@ -33,6 +33,8 @@ function freshWorldState(){
     // Task 65: every generated mine except the starters begins undiscovered;
     // walking near one reveals it (tickExploration in systems.js).
     hiddenMineIds: mines.filter(m => !m.id.startsWith('mine_start_')).map(m => m.id),
+    // Task 112: torches the player has set down in the world ({ x, y } each)
+    torches: [],
   };
 }
 
@@ -277,7 +279,17 @@ function sanitizeWorldState(raw){
     tunnelUnlocked,
     tunnelContract: tunnelUnlocked ? null : sanitizeTunnelContract(raw.tunnelContract),
     hiddenMineIds: sanitizeHiddenMineIds(raw.hiddenMineIds, mines),
+    torches: sanitizeTorches(raw.torches),
   };
+}
+
+// Task 112: additive field (saveVersion unchanged). Missing or invalid (any
+// older save) = no torches. Keeps valid in-world points only, up to the cap;
+// positions are kept exactly as saved.
+function sanitizeTorches(raw){
+  if(!Array.isArray(raw)) return [];
+  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && terrainInBounds(t.x, t.y))
+    .slice(0, typeof TORCH !== 'undefined' ? TORCH.MAX : 12).map(t => ({ x: t.x, y: t.y }));
 }
 
 // Task 93: additive field. Anything that is not a valid job = no job.

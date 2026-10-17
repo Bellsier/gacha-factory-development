@@ -845,6 +845,9 @@
 
 (function test_T62_movementInAllDirections() {
   const win = newDom(makeMemoryStorage()).window;
+  // Task 107: veins now block the feet; this test is about bounds and terrain,
+  // so the random starter veins are taken off the straight routes it walks.
+  win.state.world.mines = [];
   const p = win.state.world.player;
   const hold = (dir, ticks) => { win.setPlayerHeld(dir, true); for(let i=0;i<ticks;i++) win.tickPlayer(); win.clearPlayerHeld(); win.tickPlayer(); };
   hold('left', 20);   // 2 s at 3 u/s = 6 units west
@@ -1757,6 +1760,7 @@ const T66_STEP = 3 / 10; // PLAYER_SPEED / TICKS_PER_SECOND
     win.clearPlayerHeld(); win.tickPlayer();
   };
   // Straight west on several rows: stops flush against the face, never inside.
+  win.state.world.mines = []; // Task 107: veins block the feet; this is a terrain test, so the rows are cleared
   let rowsOk = true;
   [-9, -5, -1, 0, 2.5, 5, 9].forEach(y => {
     p.x = 3; p.y = y;
@@ -2093,6 +2097,7 @@ function t68Hold(win, keys, ticks) {
 (function test_T68_walkThroughTunnel() {
   const win = newDom(makeMemoryStorage()).window;
   win.unlockTunnel();
+  win.state.world.mines = []; // Task 107: a terrain route test — no veins on the straight line (cleared after the land beyond is filled)
   const p = win.state.world.player;
   p.x = 0; p.y = 1;
   let allWalkable = true, sawTunnel = false, sawBeyond = false, neverMountain = true;
@@ -2142,6 +2147,8 @@ function t68Hold(win, keys, ticks) {
 (function test_T68_movementAtTheEdges() {
   const win = newDom(makeMemoryStorage()).window;
   win.unlockTunnel();
+  // the terrain alone is tested here: no scenery beyond (Task 111 trees and rocks block, tested in Task 111)
+  win.worldScenery = () => ({ props: [], solid: [], grid: {} });
   const p = win.state.world.player;
   // Pushing into the passage wall slides to a stop flush against it.
   p.x = -5; p.y = 1;
@@ -2387,7 +2394,8 @@ function t69Problems(win, before, after) {
     win.clearPlayerHeld(); win.tickPlayer();
   };
   walk('left', 60);
-  check('Task69: the player gets through the tunnel to the west edge of the world', p.x === -10 && p.y === 1);
+  // Task 107: a vein of the land beyond can stand on this row; the player now glides round it (a side step of under 0.2).
+  check('Task69: the player gets through the tunnel to the west edge of the world', p.x === -10 && Math.abs(p.y - 1) <= 0.2);
   walk('up', 80);
   walk('down', 160);
   check('Task69: the whole route stayed on walkable ground and ended at the south edge', win.isWorldPointWalkable(p.x, p.y) && p.y === 10);

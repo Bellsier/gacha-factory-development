@@ -1164,12 +1164,12 @@ function updateTunnelContract(){
 }
 
 // Task 89: scenery on the land beyond the range — shown once the tunnel is open.
-// Pieces standing on a mine are left out so a mine is always readable.
+// Pieces standing on a mine are left out so a mine is always readable
+// (Task 111: worldScenery in player.js, which also gives the solid ones).
 function renderBeyondProps(layer){
   if(!terrainTunnelOpen()) return;
-  const mines = state.world.mines.filter(m => m);
-  terrainBeyondProps().forEach(pr => {
-    if(mines.some(m => Math.hypot(m.x - pr.x, m.y - pr.y) < 0.9)) return;
+  // Task 111: the same pieces the top-down view draws and that block walking
+  worldScenery().props.forEach(pr => {
     const el = document.createElement('div');
     el.className = 'world-prop prop-' + pr.kind;
     el.setAttribute('data-prop', pr.kind);

@@ -26,7 +26,9 @@ const html = fs.readFileSync(HTML_PATH, 'utf8');
 // in the exact same order the browser loads them — this is not a reimplementation,
 // it is the literal file content index.html points at.
 const JS_DIR = path.join(__dirname, '..', 'js');
-const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'ui.js', 'main.js'];
+const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'ui.js', 'main.js',
+  // Task 104-106: the top-down world (loaded after main.js, as in index.html)
+  'topdown/view.js', 'topdown/tiles.js', 'topdown/sprites.js', 'topdown/interact.js', 'topdown/light.js', 'topdown/workers.js', 'topdown/render.js', 'topdown/app.js'];
 const moduleSource = MODULE_FILES.map((f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8')).join('\n');
 
 let passCount = 0;
@@ -104,6 +106,13 @@ function newDom(storage, opts) {
   REPUTATION_EFFECTS: () => REPUTATION_EFFECTS,
   TICK_MS: () => TICK_MS,
   TICKS_PER_SECOND: () => TICKS_PER_SECOND,
+  // Task 104-106: the top-down world
+  TOPDOWN: () => TOPDOWN, TD_UNIT_PX: () => TD_UNIT_PX, TD: () => TD, TD_TILE: () => TD_TILE,
+  TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS,
+  // Task 107: obstacle boxes and the player's feet
+  WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT, SCENERY_BLOCK_BOXES: () => SCENERY_BLOCK_BOXES, TORCH: () => TORCH,
+  TD_LIGHT: () => TD_LIGHT, // Task 108
+  TD_WORKER: () => TD_WORKER, // Task 109
 };
 `;
   win.eval(moduleSource + expose);
@@ -128,6 +137,18 @@ function newDom(storage, opts) {
     REPUTATION_EFFECTS: { get: () => win.__expose.REPUTATION_EFFECTS(), configurable: true },
     TICK_MS: { get: () => win.__expose.TICK_MS(), configurable: true },
     TICKS_PER_SECOND: { get: () => win.__expose.TICKS_PER_SECOND(), configurable: true },
+    TOPDOWN: { get: () => win.__expose.TOPDOWN(), configurable: true },
+    TD_UNIT_PX: { get: () => win.__expose.TD_UNIT_PX(), configurable: true },
+    TD: { get: () => win.__expose.TD(), configurable: true },
+    TD_TILE: { get: () => win.__expose.TD_TILE(), configurable: true },
+    TD_RES_COLORS: { get: () => win.__expose.TD_RES_COLORS(), configurable: true },
+    TD_PLAYER_COLORS: { get: () => win.__expose.TD_PLAYER_COLORS(), configurable: true },
+    WORLD_OBSTACLE_BOXES: { get: () => win.__expose.WORLD_OBSTACLE_BOXES(), configurable: true },
+    SCENERY_BLOCK_BOXES: { get: () => win.__expose.SCENERY_BLOCK_BOXES(), configurable: true },
+    TORCH: { get: () => win.__expose.TORCH(), configurable: true },
+    PLAYER_FOOT: { get: () => win.__expose.PLAYER_FOOT(), configurable: true },
+    TD_LIGHT: { get: () => win.__expose.TD_LIGHT(), configurable: true },
+    TD_WORKER: { get: () => win.__expose.TD_WORKER(), configurable: true },
   });
   // Task 81: sites also cost upper parts. Older tests only care about gold, so
   // by default the parts check always passes and unlockSite is given the parts

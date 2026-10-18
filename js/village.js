@@ -100,11 +100,24 @@ function villageBox(key, x, y){
 }
 
 // Walls of the facilities that have a site (they block like craft huts, in every stage).
+// Cached (it is asked for on every step and by every reach check) until any of what it is made of changes.
+let villageObstacleCache = null, villageDecorVersion = 0;
 function villageObstacleBoxes(){
   const v = state && state.village;
   if(!v || !v.sites) return [];
+  const carry = typeof VILLAGE_GARDEN_UI !== 'undefined' ? VILLAGE_GARDEN_UI.carry : -1;
+  const parts = [v, v.district, VILLAGE.ORDER.map(k => v.sites[k]), v.decor, v.decor && v.decor.length, villageDecorVersion, carry];
+  const c = villageObstacleCache;
+  if(c && c.parts.length === parts.length && c.parts.every((x, i) => i === 2 ? x.every((y, j) => y === parts[2][j]) : x === parts[i])) return c.boxes;
+  const boxes = villageObstacleBoxesNow();
+  villageObstacleCache = { parts, boxes };
+  return boxes;
+}
+function villageObstacleBoxesNow(){
+  const v = state.village;
   const out = VILLAGE.ORDER.filter(k => v.sites[k]).map(k => villageBox(k, v.sites[k].x, v.sites[k].y));
   if(v.district && VILLAGE.DISTRICT) out.push(villageHouseBox(villageDistrictParts(v.district).house)); // Task 119: the player's house
+  if(VILLAGE.GARDEN) villageDecorObstacles().forEach(o => out.push(o)); // Task 120: the garden's decorations
   return out;
 }
 
@@ -144,19 +157,25 @@ function villageReachChecker(){
 // still be walked to from the workshop door, and no ground that could be
 // reached before is cut off (Task 118 checks the plaza and the house this way).
 function villageReachGrid(reach){
-  const S = VILLAGE.SITE, base = state.world.base, st = S.GRID;
-  const x0 = base.x - reach, y0 = base.y - reach, n = Math.round(2 * reach / st) + 1;
-  const can = new Uint8Array(n * n);
-  for(let j = 0; j < n; j++) for(let i = 0; i < n; i++) can[j * n + i] = playerCanStand(x0 + i * st, y0 + j * st) ? 1 : 0;
-  const cell = (x, y) => { const i = Math.round((x - x0) / st), j = Math.round((y - y0) / st); return i < 0 || j < 0 || i >= n || j >= n ? -1 : j * n + i; };
+  const base = state.world.base;
+  return villageReachArea(base.x - reach, base.y - reach, base.x + reach, base.y + reach, { x: base.x, y: base.y + 0.05 });
+}
+
+// The same check over any rectangle, flood-filled from `start` (Task 120: the garden's
+// own neighbourhood from the plaza — a decoration can only cut off ground near it).
+function villageReachArea(x0, y0, x1, y1, start){
+  const st = VILLAGE.SITE.GRID, nx = Math.round((x1 - x0) / st) + 1, ny = Math.round((y1 - y0) / st) + 1, N = nx * ny;
+  const can = new Uint8Array(N);
+  for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++) can[j * nx + i] = playerCanStand(x0 + i * st, y0 + j * st) ? 1 : 0;
+  const cell = (x, y) => { const i = Math.round((x - x0) / st), j = Math.round((y - y0) / st); return i < 0 || j < 0 || i >= nx || j >= ny ? -1 : j * nx + i; };
   const fill = (blocked) => {
-    const seen = new Uint8Array(n * n), start = cell(base.x, base.y + 0.05);
-    if(start < 0 || !can[start] || blocked(start)) return seen;
-    const q = [start]; seen[start] = 1;
+    const seen = new Uint8Array(N), s0 = cell(start.x, start.y);
+    if(s0 < 0 || !can[s0] || blocked(s0)) return seen;
+    const q = [s0]; seen[s0] = 1;
     while(q.length){
-      const c = q.pop(), i = c % n;
-      for(const d of [i > 0 ? c - 1 : -1, i < n - 1 ? c + 1 : -1, c - n, c + n]){
-        if(d < 0 || d >= n * n || seen[d] || !can[d] || blocked(d)) continue;
+      const c = q.pop(), i = c % nx;
+      for(const d of [i > 0 ? c - 1 : -1, i < nx - 1 ? c + 1 : -1, c - nx, c + nx]){
+        if(d < 0 || d >= N || seen[d] || !can[d] || blocked(d)) continue;
         seen[d] = 1; q.push(d);
       }
     }
@@ -164,10 +183,10 @@ function villageReachGrid(reach){
   };
   const before = fill(() => false);
   return (boxes, doors) => {
-    const hit = (c) => { const px = x0 + (c % n) * st, py = y0 + Math.floor(c / n) * st; return boxes.some(o => playerFootOverlaps(o, px, py)); };
+    const hit = (c) => { const px = x0 + (c % nx) * st, py = y0 + Math.floor(c / nx) * st; return boxes.some(o => playerFootOverlaps(o, px, py)); };
     const after = fill(hit);
     for(const d of doors){ const c = cell(d.x, d.y); if(c < 0 || !after[c]) return false; } // the doors can be walked to
-    for(let c = 0; c < n * n; c++) if(before[c] && !after[c] && !hit(c)) return false; // nothing else is cut off
+    for(let c = 0; c < N; c++) if(before[c] && !after[c] && !hit(c)) return false; // nothing else is cut off
     return true;
   };
 }
@@ -634,7 +653,7 @@ function villageGroundLayout(){
   const parts = villageDistrict();
   if(!parts) return null;
   const roads = villageRoads();
-  return { key: villageRoadKey(), plaza: parts.plaza, garden: null, roads: roads.map(r => r.points), roadHalf: VILLAGE.DISTRICT.ROAD_HALF };
+  return { key: villageRoadKey(), plaza: parts.plaza, garden: parts.garden, roads: roads.map(r => r.points), roadHalf: VILLAGE.DISTRICT.ROAD_HALF }; // Task 120: the garden lawn too
 }
 
 // ---------------------------------------------------------------------------
@@ -744,6 +763,183 @@ function villageHomeTarget(){
   if(!S.inside) return null;
   const dx = S.x - H.DOOR.x, dy = S.y - H.ROOM.h;
   return Math.hypot(dx, dy) <= 0.8 ? { type: 'homeDoor', id: 'door', x: H.DOOR.x, y: H.ROOM.h - 0.05, action: 'exit', label: '밖으로 나가기' } : null;
+}
+
+// ---------------------------------------------------------------------------
+// Task 120: the garden. Its lot (VILLAGE.DISTRICT, next to the plaza) is a
+// lawn with a grid of cells; a decoration stands on one cell. The player sets
+// decorations down (free: there is no new money or stock), picks one up to
+// move it to another cell, or takes it back. Saved as kind + cell in
+// state.village.decor (additive field, saveVersion 1), so the garden moves
+// with the district. Cells are 0.6 x 0.55 apart and every decoration's foot is
+// narrower than the gap the player's feet need, so even a full garden can be
+// walked through; on top of that a placement is refused near a door or a
+// road, under the player, and wherever it would cut any walkable ground off
+// (the same reach check as the village sites).
+// Carrying a decoration (moving it) is not saved: until it is set down again
+// it stays saved on its old cell.
+// ---------------------------------------------------------------------------
+VILLAGE.GARDEN = {
+  COLS: 4, ROWS: 3,      // cells round the garden centre
+  DX: 0.6, DY: 0.55,     // cell spacing
+  AHEAD: 0.4,            // the cell in front of the player is looked for this far ahead...
+  CELL_REACH: 0.38,      // ...within this of a cell centre
+  NEAR: 0.6,             // the garden can be worked from this close to its edge
+  DOOR_CLEAR: 0.6,       // no decoration this near a door step
+  ROAD_CLEAR: 0.15,      // ...or this near the edge of a road
+};
+// The decorations. box: the foot that blocks (relative to the cell centre), all narrower than 0.42.
+VILLAGE.DECOR = [
+  { key: 'flowerPot', name: '화분', desc: '계절 꽃을 심은 작은 화분.', box: { minX: -0.1, maxX: 0.1, minY: -0.08, maxY: 0.03 } },
+  { key: 'bench', name: '나무 벤치', desc: '잠깐 앉아 쉬기 좋은 벤치.', box: { minX: -0.2, maxX: 0.2, minY: -0.08, maxY: 0.03 } },
+  { key: 'lantern', name: '돌 등롱', desc: '밤이면 은은하게 빛나는 돌 등.', light: true, box: { minX: -0.09, maxX: 0.09, minY: -0.08, maxY: 0.03 } },
+  { key: 'shrub', name: '둥근 덤불', desc: '둥글게 다듬은 작은 덤불.', box: { minX: -0.13, maxX: 0.13, minY: -0.09, maxY: 0.03 } },
+];
+
+function villageDecorDef(key){ return VILLAGE.DECOR.find(d => d.key === key) || null; }
+function villageDecorList(){ const v = villageState(); return Array.isArray(v.decor) ? v.decor : (v.decor = []); }
+function villageGardenCellCount(){ return VILLAGE.GARDEN.COLS * VILLAGE.GARDEN.ROWS; }
+
+// Can this kind be set down? The four basic kinds always; more come with the museum (Task 122).
+function villageDecorUnlocked(key){
+  const d = villageDecorDef(key);
+  if(!d) return false;
+  return !d.reward || (typeof villageRewardDecorUnlocked === 'function' && villageRewardDecorUnlocked(key));
+}
+
+// The garden's cells in the world: [{ cell, x, y }] (empty before the village has a place).
+function villageGardenCells(){
+  const parts = villageDistrict(), G = VILLAGE.GARDEN;
+  if(!parts) return [];
+  const out = [];
+  for(let r = 0; r < G.ROWS; r++) for(let c = 0; c < G.COLS; c++){
+    out.push({ cell: r * G.COLS + c, x: Math.round((parts.garden.x + (c - (G.COLS - 1) / 2) * G.DX) * 100) / 100, y: Math.round((parts.garden.y + (r - (G.ROWS - 1) / 2) * G.DY) * 100) / 100 });
+  }
+  return out;
+}
+
+function villageDecorAt(cell){ return villageDecorList().findIndex(d => d.cell === cell); }
+
+function villageDecorBox(kind, cell){
+  const d = villageDecorDef(kind), at = villageGardenCells()[cell];
+  if(!d || !at) return null;
+  return { kind: 'decor', id: 'decor' + cell, minX: at.x + d.box.minX, maxX: at.x + d.box.maxX, minY: at.y + d.box.minY, maxY: at.y + d.box.maxY };
+}
+
+// Runtime choices (never saved): the kind the next placement uses and the cell being carried (-1: none).
+const VILLAGE_GARDEN_UI = { selected: 'flowerPot', carry: -1, panelMove: -1, msg: '' };
+function villageGardenUi(){ return VILLAGE_GARDEN_UI; }
+function villageDecorDefs(){ return VILLAGE.DECOR; }
+
+function villageDecorSelect(kind){
+  if(!villageDecorUnlocked(kind)) return false;
+  VILLAGE_GARDEN_UI.selected = kind;
+  return true;
+}
+// The kind after the selected one among those that can be set down; villageDecorCycle selects it
+// (Q on a keyboard, the phone's garden button).
+function villageDecorNext(){
+  const keys = VILLAGE.DECOR.filter(d => villageDecorUnlocked(d.key)).map(d => d.key);
+  return keys[(keys.indexOf(villageDecorSelected()) + 1) % keys.length];
+}
+function villageDecorCycle(){
+  VILLAGE_GARDEN_UI.selected = villageDecorNext();
+  return VILLAGE_GARDEN_UI.selected;
+}
+function villageDecorSelected(){
+  if(!villageDecorUnlocked(VILLAGE_GARDEN_UI.selected)) VILLAGE_GARDEN_UI.selected = VILLAGE.DECOR[0].key;
+  return VILLAGE_GARDEN_UI.selected;
+}
+
+// Why `kind` cannot stand on `cell` now (moving: `from` is the cell it leaves), or null when it can.
+// `quick` leaves out the reach check (the interaction bubble asks every frame; the action checks fully).
+function villageDecorPlaceProblem(kind, cell, from, quick){
+  const G = VILLAGE.GARDEN, cells = villageGardenCells();
+  if(!cells.length) return '정원 자리가 아직 없어요';
+  if(!villageDecorDef(kind)) return '알 수 없는 장식';
+  if(!villageDecorUnlocked(kind)) return '아직 해금되지 않은 장식이에요';
+  if(!Number.isInteger(cell) || cell < 0 || cell >= cells.length) return '정원 칸이 아니에요';
+  const at = villageDecorAt(cell);
+  if(at >= 0 && cell !== from) return '이미 장식이 있어요';
+  const box = villageDecorBox(kind, cell), here = cells[cell];
+  const p = state.world.player, insideHome = typeof villageHomeInside === 'function' && villageHomeInside();
+  if(!insideHome && playerFootOverlaps(box, p.x, p.y)) return '서 있는 자리에는 놓을 수 없어요';
+  const parts = villageDistrict(), doors = [{ x: state.world.base.x, y: state.world.base.y }, parts.house].concat(VILLAGE.ORDER.map(k => villageState().sites[k]).filter(Boolean));
+  if(doors.some(d => Math.hypot(d.x - here.x, d.y - here.y) < G.DOOR_CLEAR)) return '문 앞은 비워 둘게요';
+  if(villageRoads().some(r => villageSegPolyDist(r.points, here.x, here.y) < VILLAGE.DISTRICT.ROAD_HALF + G.ROAD_CLEAR)) return '길은 비워 둘게요';
+  if((state.world.torches || []).some(t => villageRectDist(box, t.x, t.y) < 0.12)) return '횃불이 있는 칸이에요';
+  if(quick) return null;
+  // nothing may be cut off round the garden: the house door and every bit of ground near it stay reachable from the plaza
+  const g = parts.garden, pz = parts.plaza, h = parts.house, m = 1.2;
+  const reach = villageReachArea(Math.min(g.x - g.hw, pz.x - pz.r, h.x - 0.5) - m, Math.min(g.y - g.hh, pz.y - pz.r, h.y - 0.5) - m,
+    Math.max(g.x + g.hw, pz.x + pz.r, h.x + 0.5) + m, Math.max(g.y + g.hh, pz.y + pz.r, h.y + 0.5) + m, { x: pz.x, y: pz.y });
+  if(!reach([box], [{ x: h.x, y: h.y + 0.1 }])) return '길이 막히는 자리예요';
+  return null;
+}
+
+function villageDecorPlace(kind, cell){
+  if(villageDecorPlaceProblem(kind, cell)) return false;
+  villageDecorList().push({ kind, cell });
+  villageDecorVersion++;
+  return true;
+}
+
+// Moves the decoration on `from` to `to` (the same kind). Returns true when it moved.
+function villageDecorMove(from, to){
+  const list = villageDecorList(), i = villageDecorAt(from);
+  if(i < 0) return false;
+  if(from === to) return true;
+  const kind = list[i].kind;
+  // decide without the piece in the way of itself: take it off for the check
+  list.splice(i, 1);
+  villageDecorVersion++;
+  const problem = villageDecorPlaceProblem(kind, to, from);
+  list.splice(i, 0, { kind, cell: problem ? from : to });
+  villageDecorVersion++;
+  return !problem;
+}
+
+// Takes the decoration on `cell` back. Returns the kind taken, or null.
+function villageDecorRemove(cell){
+  const list = villageDecorList(), i = villageDecorAt(cell);
+  if(i < 0) return null;
+  const kind = list[i].kind;
+  list.splice(i, 1);
+  villageDecorVersion++;
+  if(VILLAGE_GARDEN_UI.carry === cell) VILLAGE_GARDEN_UI.carry = -1;
+  if(VILLAGE_GARDEN_UI.panelMove === cell) VILLAGE_GARDEN_UI.panelMove = -1;
+  return kind;
+}
+
+// The obstacles of the garden (the carried piece does not block while it is held).
+function villageDecorObstacles(){
+  if(!state || !state.village || !state.village.district || !Array.isArray(state.village.decor)) return [];
+  return state.village.decor.filter(d => d.cell !== VILLAGE_GARDEN_UI.carry).map(d => villageDecorBox(d.kind, d.cell)).filter(Boolean);
+}
+
+// The garden cell the player is facing, with what E would do there, or null.
+//   { type: 'garden', id: cell, x, y, action: 'decorPlace' | 'decorPick' | 'decorDrop' | 'locked', label }
+function villageGardenTarget(){
+  const parts = villageDistrict(), G = VILLAGE.GARDEN, p = state.world.player;
+  if(!parts) return null;
+  const g = parts.garden;
+  if(Math.abs(p.x - g.x) > g.hw + G.NEAR || Math.abs(p.y - g.y) > g.hh + G.NEAR) return null;
+  const v = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[p.facing] || [0, 1];
+  const fx = p.x + v[0] * G.AHEAD, fy = p.y + v[1] * G.AHEAD;
+  let best = null, bestD = G.CELL_REACH;
+  villageGardenCells().forEach(c => { const d = Math.hypot(c.x - fx, c.y - fy); if(d <= bestD){ best = c; bestD = d; } });
+  if(!best) return null;
+  const t = { type: 'garden', id: best.cell, x: best.x, y: best.y };
+  const carry = VILLAGE_GARDEN_UI.carry, here = villageDecorAt(best.cell), list = villageDecorList();
+  if(carry >= 0 && villageDecorAt(carry) >= 0){
+    const kind = list[villageDecorAt(carry)].kind, name = villageDecorDef(kind).name;
+    if(best.cell === carry) return Object.assign(t, { action: 'decorDrop', label: name + ' · 제자리에 두기' });
+    const why = villageDecorPlaceProblem(kind, best.cell, carry, true);
+    return Object.assign(t, why ? { action: 'locked', label: name + ' · ' + why } : { action: 'decorDrop', label: name + ' · 여기로 옮기기' });
+  }
+  if(here >= 0) return Object.assign(t, { action: 'decorPick', label: villageDecorDef(list[here].kind).name + ' · 들어 옮기기' });
+  const kind = villageDecorSelected(), name = villageDecorDef(kind).name;
+  return Object.assign(t, { action: 'decorPlace', label: '정원 · ' + name + ' 놓기' });
 }
 
 // What walking up to a facility's door offers:

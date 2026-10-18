@@ -901,7 +901,7 @@ function renderVillage(){
   let html = '<div class="village-list">' +
     '<div class="village-card" data-village="workshop"><div class="village-head"><b>공방</b> <span class="village-stage">운영 중</span></div>' +
     '<div class="rate">마을의 중심 생산 시설. 제작과 판매는 개발 탭에서 합니다.</div></div>';
-  html += villagePlazaCard(v) + villageHouseCard(v); // Task 118, 119
+  html += villagePlazaCard(v) + villageHouseCard(v) + villageGardenCard(v); // Task 118, 119, 120
   VILLAGE.ORDER.forEach(k => {
     const f = VILLAGE.FACILITIES[k], stage = villageStage(k), site = v.sites[k], step = villageNextStep(k);
     html += '<div class="village-card" data-village="' + k + '">' +
@@ -918,6 +918,7 @@ function renderVillage(){
   wrap.innerHTML = html;
   wrap.querySelectorAll('[data-village-restore]').forEach(btn => { btn.onclick = () => { if(villageRestore(btn.dataset.villageRestore)){ renderVillage(); renderCurrencies(); updateNumbers(); } }; });
   bindVillageOpenSections(wrap);
+  bindVillageGarden(wrap);
   refreshVillageButtons();
 }
 
@@ -945,6 +946,54 @@ function villageHouseCard(v){
       '<div class="rate">안에서는 문으로 걸어 나오거나 문 앞에서 E를 누르면 밖으로 나와요. 이전 화면에서는 집 안에 들어갈 수 없어요.</div>';
   }
   return html + '</div>';
+}
+
+// Task 120: the garden. Choose a kind, then a cell: set it down; a placed one can be moved
+// (옮기기, then the new cell) or taken back (회수). The same rules as in the top-down garden.
+function villageGardenCard(v){
+  const UI = VILLAGE_GARDEN_UI, list = villageDecorList(), n = villageGardenCellCount();
+  let html = '<div class="village-card" data-village="garden"><div class="village-head"><b>정원</b> <span class="village-stage" data-village-garden-count>' +
+    (v.district ? '장식 ' + list.length + ' / ' + n : '자리를 찾는 중') + '</span></div>';
+  if(!v.district) return html + '</div>';
+  html += '<div class="rate">광장 옆 정원에 장식을 칸마다 하나씩 놓아요(무료). 탑다운 화면에서는 칸 앞에서 E로 놓거나 들어 옮기고, R(휴대폰은 장식 버튼)로 회수해요.</div>' +
+    '<div class="village-garden-kinds">';
+  VILLAGE.DECOR.forEach(d => {
+    const open = villageDecorUnlocked(d.key);
+    html += '<button data-decor-select="' + d.key + '"' + (d.key === villageDecorSelected() ? ' class="is-selected"' : '') + (open ? '' : ' disabled') + ' title="' + d.desc + '">' +
+      d.name + (open ? '' : ' · 박물관 보상') + '</button>';
+  });
+  html += '</div><div class="village-garden-grid">';
+  for(let cell = 0; cell < n; cell++){
+    const i = villageDecorAt(cell);
+    if(i >= 0){
+      const d = villageDecorDef(list[i].kind);
+      html += '<div class="village-garden-cell is-used' + (UI.panelMove === cell || UI.carry === cell ? ' is-moving' : '') + '" data-garden-cell="' + cell + '"><b>' + d.name + '</b><br>' +
+        '<button data-decor-move="' + cell + '">' + (UI.panelMove === cell ? '취소' : '옮기기') + '</button><button data-decor-remove="' + cell + '">회수</button></div>';
+    } else {
+      html += '<div class="village-garden-cell" data-garden-cell="' + cell + '"><button data-decor-put="' + cell + '">' + (UI.panelMove >= 0 ? '여기로' : '놓기') + '</button></div>';
+    }
+  }
+  return html + '</div><div class="rate" data-garden-msg>' + (UI.msg || '') + '</div></div>';
+}
+
+function bindVillageGarden(wrap){
+  const UI = VILLAGE_GARDEN_UI, done = (msg) => { UI.msg = msg || ''; renderVillage(); };
+  wrap.querySelectorAll('[data-decor-select]').forEach(b => { b.onclick = () => { villageDecorSelect(b.dataset.decorSelect); done(''); }; });
+  wrap.querySelectorAll('[data-decor-move]').forEach(b => { b.onclick = () => { const c = +b.dataset.decorMove; UI.panelMove = UI.panelMove === c ? -1 : c; done(UI.panelMove >= 0 ? '옮길 칸을 고르세요' : ''); }; });
+  wrap.querySelectorAll('[data-decor-remove]').forEach(b => { b.onclick = () => { const k = villageDecorRemove(+b.dataset.decorRemove); done(k ? villageDecorDef(k).name + '을(를) 회수했어요' : ''); }; });
+  wrap.querySelectorAll('[data-decor-put]').forEach(b => { b.onclick = () => {
+    const cell = +b.dataset.decorPut;
+    if(UI.panelMove >= 0){
+      const from = UI.panelMove, i = villageDecorAt(from), why = i < 0 ? '' : villageDecorPlaceProblem(villageDecorList()[i].kind, cell, from);
+      if(why || !villageDecorMove(from, cell)){ done(why || '옮길 수 없어요'); return; }
+      UI.panelMove = -1; if(UI.carry === from) UI.carry = -1;
+      done('옮겼어요');
+      return;
+    }
+    const kind = villageDecorSelected(), why = villageDecorPlaceProblem(kind, cell);
+    if(why || !villageDecorPlace(kind, cell)){ done(why || '놓을 수 없어요'); return; }
+    done(villageDecorDef(kind).name + '을(를) 놓았어요');
+  }; });
 }
 
 // Task 116: unidentified relics held, and how much hand mining until the next one.

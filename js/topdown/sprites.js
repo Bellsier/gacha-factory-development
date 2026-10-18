@@ -313,6 +313,35 @@ function tdFurnitureSprite(key){
   return P.done(false);
 }
 
+// --- Task 120: garden decorations, anchored at the bottom centre of their foot.
+function tdDecorSprite(key){
+  let P;
+  switch(key){
+    case 'flowerPot':
+      P = tdPainter(14, 18); P(2, 16, 10, 2, 'rgba(0,0,0,0.22)'); P(3, 10, 8, 7, '#b8704f'); P(3, 10, 8, 2, '#d08a62'); P(4, 16, 6, 1, '#8a5236');
+      P(5, 5, 2, 6, '#4f8246'); P(8, 4, 2, 7, '#5a8e57'); P(3, 2, 4, 4, '#e06f8a'); P(4, 3, 2, 2, '#f7c0cf'); P(8, 1, 4, 4, '#f0d060'); P(9, 2, 2, 2, '#fff3b0');
+      break;
+    case 'bench':
+      P = tdPainter(30, 20); P(2, 18, 26, 2, 'rgba(0,0,0,0.22)');
+      P(3, 2, 24, 3, '#9a6a40'); P(3, 2, 24, 1, '#b8885a'); P(3, 6, 24, 2, '#8a5a36'); // the back
+      P(2, 9, 26, 4, '#a87a4e'); P(2, 9, 26, 1, '#c49a6a'); P(2, 12, 26, 1, '#7a5236'); // the seat
+      P(4, 13, 3, 6, '#5a3b28'); P(23, 13, 3, 6, '#5a3b28'); P(4, 4, 2, 9, '#6a4630'); P(24, 4, 2, 9, '#6a4630');
+      break;
+    case 'lantern':
+      P = tdPainter(14, 26); P(2, 24, 10, 2, 'rgba(0,0,0,0.25)');
+      P(4, 17, 6, 8, '#8f8a84'); P(3, 23, 8, 2, '#77706a'); // the post
+      P(3, 9, 8, 8, '#9a958e'); P(5, 11, 4, 4, '#ffd27a'); P(6, 12, 2, 2, '#fff3b0'); // the light box
+      P(1, 6, 12, 3, '#77706a'); P(2, 5, 10, 1, '#a9a39a'); P(5, 3, 4, 2, '#8f8a84'); // the cap
+      break;
+    case 'shrub':
+      P = tdPainter(22, 20); P(3, 17, 16, 3, 'rgba(0,0,0,0.25)');
+      P.disc(11, 10, 8, '#3f6e44'); P.disc(10, 9, 6, '#4f8246'); P.disc(8, 7, 3, '#6a9e5f'); P(14, 6, 2, 2, '#e06f8a'); P(6, 12, 2, 2, '#f0d060');
+      break;
+    default: P = tdPainter(8, 8); P(2, 2, 4, 4, '#888');
+  }
+  return P.done(false);
+}
+
 // --- Task 112: a torch the player sets down, 10 x 22, with a 3-frame flame.
 function tdTorchSprite(frame){
   const P = tdPainter(10, 22);

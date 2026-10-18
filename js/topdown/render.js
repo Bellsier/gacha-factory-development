@@ -42,6 +42,14 @@ function tdDrawList(player){
     [-1, 1].forEach(sx => list.push({ kind: 'plazaProp', prop: 'lamp', x: pz.x + sx * 0.72, y: pz.y + 0.5, sortY: pz.y + 0.5 }));
     // Task 119: the player's house (sorted by the front of its walls)
     list.push({ kind: 'house', x: vd.house.x, y: vd.house.y, sortY: vd.house.y + VILLAGE.DISTRICT.HOUSE_BOX.maxY });
+    // Task 120: the garden's decorations; the one being carried is held over the player's head
+    const cells = villageGardenCells(), carry = VILLAGE_GARDEN_UI.carry;
+    villageDecorList().forEach(d => {
+      const c = cells[d.cell];
+      if(!c) return;
+      if(d.cell === carry && player) list.push({ kind: 'gardenDecor', key: d.kind, carried: true, x: player.x, y: player.y, sortY: player.y + 0.002 });
+      else if(d.cell !== carry) list.push({ kind: 'gardenDecor', key: d.kind, x: c.x, y: c.y, sortY: c.y });
+    });
   }
   state.world.mines.forEach(m => {
     if(!m) return;
@@ -90,6 +98,20 @@ function tdHouseLights(now){
   const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
   if(!vd) return [];
   return [{ kind: 'house', x: vd.house.x + 0.1, y: vd.house.y - 0.2, r: 0.75, rgb: [255, 206, 128], strength: 0.5 * tdFlicker(now, 61) }];
+}
+
+// Task 120: stone lanterns in the garden glow at dusk.
+function tdGardenLights(now){
+  if(typeof villageGardenCells !== 'function') return [];
+  const cells = villageGardenCells(), carry = VILLAGE_GARDEN_UI.carry;
+  return villageDecorList().filter(d => d.cell !== carry && cells[d.cell] && (villageDecorDef(d.kind) || {}).light)
+    .map((d, i) => ({ kind: 'garden', x: cells[d.cell].x, y: cells[d.cell].y - 0.2, r: 0.6, rgb: [255, 214, 140], strength: 0.45 * tdFlicker(now, 80 + d.cell + i) }));
+}
+
+function tdDecorImage(key){
+  TD.decorImages = TD.decorImages || {};
+  if(!(key in TD.decorImages)) TD.decorImages[key] = tdSpriteImage(tdDecorSprite(key));
+  return TD.decorImages[key];
 }
 
 // Task 114: baked village facility images, cached by facility, stage and lit niches.
@@ -194,6 +216,7 @@ function tdBubbleLift(target){
   if(target.type === 'plaza') return 40;
   if(target.type === 'house') return 50;
   if(target.type === 'homeDoor') return 30;
+  if(target.type === 'garden') return 32;
   return 34;
 }
 
@@ -263,6 +286,7 @@ function tdRender(now){
     else if(it.kind === 'village') tdDrawSprite(g, tdVillageImage(it.id, it.stage, it.exhibits), sp.x, sp.y, zoom, 3);
     else if(it.kind === 'plazaProp') tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'house') tdDrawSprite(g, sheet.house, sp.x, sp.y, zoom, 3);
+    else if(it.kind === 'gardenDecor') tdDrawSprite(g, tdDecorImage(it.key), sp.x, it.carried ? sp.y - 20 * zoom : sp.y, zoom, 2);
     else if(it.kind === 'torch') tdDrawSprite(g, sheet.torch && sheet.torch[Math.floor(now / 130 + it.seed) % 3], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'gate'){
       const t = terrainTunnel(), top = topdownToScreen(it.x, t.y - t.halfWidth, cam, w, h, zoom);
@@ -287,7 +311,7 @@ function tdRender(now){
   if(TD.quality < 2) tdRenderClouds(g, cam, w, h, zoom, now);
   const darkness = typeof TD.forceDarkness === 'number' ? TD.forceDarkness : tdAmbientDarkness(Date.now());
   TD.darkness = darkness;
-  const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now), tdHouseLights(now));
+  const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now), tdHouseLights(now), tdGardenLights(now));
   tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights), darkness, cam, w, h, zoom, TD.quality, now);
   const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.78);
   vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.32)');

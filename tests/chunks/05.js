@@ -939,7 +939,7 @@ function t110Arrived(win) {
   win.saveGame();
   const sv = JSON.parse(storage.getItem('gachaFactorySave'));
   check('Task113: the village is saved in run.village with saveVersion 1', sv.saveVersion === 1 && sv.run.village &&
-    Object.keys(sv.run.village).sort().join() === 'appraised,codex,digProgress,district,donated,owned,sites,stage,unidentified'); // Task 118: + district
+    Object.keys(sv.run.village).sort().join() === 'appraised,codex,decor,digProgress,district,donated,owned,sites,stage,unidentified'); // Task 118: + district, Task 120: + decor
   check('Task113: village.js loads after player.js and before ui.js (index.html, tests and the simulator agree)',
     win.document.querySelectorAll('script[src="js/village.js"]').length === 1 &&
     Array.from(win.document.querySelectorAll('script[src]')).map((e) => e.getAttribute('src')).join().includes('js/player.js,js/village.js,js/ui.js'));

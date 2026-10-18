@@ -98,6 +98,7 @@ function freshRunState(){
 //   donated      relic keys donated to the museum (one of each, on display)
 //   district     Task 118: the plaza point and the layout of the house and garden
 //                lots round it ({x, y, layout}; null = not yet chosen)
+//   decor        Task 120: decorations set down in the garden ([{kind, cell}], one per cell)
 // The facility and relic lists are in js/village.js; this only checks shapes,
 // so it can run before that file is loaded.
 // ---------------------------------------------------------------------------
@@ -105,7 +106,21 @@ const VILLAGE_FACILITY_KEYS = ['appraiser', 'museum'];
 
 function freshVillageState(){
   return { sites: { appraiser: null, museum: null }, stage: { appraiser: 0, museum: 0 },
-    unidentified: 0, digProgress: 0, appraised: 0, owned: {}, codex: [], donated: [], district: null };
+    unidentified: 0, digProgress: 0, appraised: 0, owned: {}, codex: [], donated: [], district: null, decor: [] };
+}
+
+// Task 120: missing or invalid (any older save) -> an empty garden. Known kinds (when js/village.js
+// is loaded), whole cells of the garden grid, one decoration per cell.
+function sanitizeVillageDecor(raw){
+  if(!Array.isArray(raw)) return [];
+  const V = typeof VILLAGE !== 'undefined' ? VILLAGE : null;
+  const kinds = V && V.DECOR ? V.DECOR.map(d => d.key) : null, cells = V && V.GARDEN ? V.GARDEN.COLS * V.GARDEN.ROWS : 12;
+  const out = [], used = new Set();
+  raw.forEach(d => {
+    if(!isPlainObject(d) || typeof d.kind !== 'string' || (kinds && !kinds.includes(d.kind)) || !Number.isInteger(d.cell) || d.cell < 0 || d.cell >= cells || used.has(d.cell)) return;
+    used.add(d.cell); out.push({ kind: d.kind, cell: d.cell });
+  });
+  return out;
 }
 
 // Task 118: missing or invalid (any older save) -> null, chosen again on load.
@@ -138,6 +153,7 @@ function sanitizeVillageState(raw){
     appraised: isNonNegativeInt(raw.appraised) ? raw.appraised : 0,
     owned, codex: keyList(raw.codex), donated: keyList(raw.donated),
     district: sanitizeVillageDistrict(raw.district),
+    decor: sanitizeVillageDecor(raw.decor),
   };
   VILLAGE_FACILITY_KEYS.forEach(k => {
     out.sites[k] = sanitizeVillageSite(sites[k]);

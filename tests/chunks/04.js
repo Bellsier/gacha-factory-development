@@ -23,7 +23,7 @@ function t103Shape(v) {
 // (Task 114: the facility sites are chosen when the game starts, so a loaded save has them.
 // Task 118: so is the plaza point of the village district.)
 function t103VillageNow(sites, district) { return { sites: sites || { appraiser: { x: 0, y: 0 }, museum: { x: 0, y: 0 } }, stage: { appraiser: 0, museum: 0 }, unidentified: 0, digProgress: 0, appraised: 0, owned: {}, codex: [], donated: [],
-  district: district || { x: 0, y: 0, layout: 0 } }; }
+  district: district || { x: 0, y: 0, layout: 0 }, decor: [] }; } // Task 120: an empty garden
 function t103RunNow(run, sites, district) { const r = JSON.parse(JSON.stringify(run)); r.world.torches = []; r.village = t103VillageNow(sites, district); return r; }
 function t103ShapeNow() { const f = JSON.parse(JSON.stringify(T103_FIXTURE)); f.run = t103RunNow(f.run); return t103Shape(f); }
 // JSON with object keys sorted, so two values compare by content, not key order

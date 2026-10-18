@@ -284,6 +284,119 @@ function t119Hold(win, dirs, ticks) {
   check('Task119: the 마을 panel has a card for the house', !!card && /내 집/.test(card.textContent));
 })();
 
+// -----------------------------------------------------------------------------
+// Task 120: the garden and its decorations
+// -----------------------------------------------------------------------------
+// Stand the player south of the garden, facing it, in front of `cell`.
+function t120Face(win, cell) {
+  const c = win.villageGardenCells()[cell], p = win.state.world.player;
+  p.x = c.x; p.y = c.y + 0.42; p.facing = 'up';
+  return c;
+}
+
+(function test_T120_garden() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state, G = win.VILLAGE.GARDEN, p = s.world.player;
+  const cells = win.villageGardenCells(), parts = win.villageDistrictParts(s.village.district);
+  check('Task120: the garden has a 4 x 3 grid of cells on its lot by the plaza', cells.length === 12 &&
+    cells.every((c) => Math.abs(c.x - parts.garden.x) < parts.garden.hw && Math.abs(c.y - parts.garden.y) < parts.garden.hh));
+  check('Task120: a new game has an empty garden (saved as run.village.decor)', Array.isArray(s.village.decor) && s.village.decor.length === 0);
+  check('Task120: the garden lawn is drawn on its lot', win.tdTileAt(parts.garden.x, parts.garden.y, false, s.world.base, win.villageGroundLayout()) === win.TD_TILE.GARDEN);
+  check('Task120: every decoration is narrower than the gap between cells minus a pair of feet (a full garden can be walked through)',
+    win.VILLAGE.DECOR.every((d) => G.DX - (d.box.maxX - d.box.minX) > 2 * win.PLAYER_FOOT.HALF_W && G.DY - (d.box.maxY - d.box.minY) > 2 * win.PLAYER_FOOT.HALF_H));
+  // the four basic kinds, free
+  const gold = s.gold, res = JSON.stringify(s.resources), prod = JSON.stringify(s.products);
+  p.x = s.world.base.x; p.y = s.world.base.y + 0.3;
+  const kinds = ['flowerPot', 'bench', 'lantern', 'shrub'];
+  check('Task120: the four basic decorations can be set down, one per cell, at no cost', kinds.every((k, i) => win.villageDecorPlace(k, i)) && s.village.decor.length === 4 &&
+    s.gold === gold && JSON.stringify(s.resources) === res && JSON.stringify(s.products) === prod);
+  check('Task120: a cell takes only one decoration', win.villageDecorPlace('bench', 0) === false && /이미/.test(win.villageDecorPlaceProblem('bench', 0)));
+  check('Task120: unknown kinds and cells off the grid are refused', win.villageDecorPlace('castle', 5) === false && win.villageDecorPlace('bench', 12) === false && win.villageDecorPlace('bench', -1) === false && win.villageDecorPlace('bench', 1.5) === false);
+  const box = win.villageDecorBox('bench', 1);
+  check('Task120: a decoration blocks by its small foot (players and workers walk round it)', win.worldObstacles().some((o) => o.kind === 'decor' && o.id === 'decor1') &&
+    !win.playerCanStand((box.minX + box.maxX) / 2, (box.minY + box.maxY) / 2));
+  // not under the player
+  const c5 = cells[5]; p.x = c5.x; p.y = c5.y;
+  check('Task120: nothing is set down where the player stands', win.villageDecorPlace('flowerPot', 5) === false && /서 있는/.test(win.villageDecorPlaceProblem('flowerPot', 5)));
+  // a full garden: everything stays reachable, every road can be walked
+  p.x = s.world.base.x; p.y = s.world.base.y + 0.3;
+  for (let c = 4; c < 12; c++) win.villageDecorPlace('bench', c);
+  const r = t114Reach(win);
+  check('Task120: a garden full of the widest decoration still cuts nothing off (doors, veins, every spot reachable)', s.village.decor.length === 12 && r.doorsOk && r.minesOk && r.pockets === 0);
+  check('Task120: ...the house door and the plaza stay reachable and the roads stay clear', win.playerCanStand(parts.house.x, parts.house.y + 0.1) && t118RoadsStandable(win));
+  // move and take back
+  win.villageDecorRemove(11);
+  check('Task120: a decoration can be taken back (the cell is free again)', s.village.decor.length === 11 && win.villageDecorAt(11) === -1 && !win.worldObstacles().some((o) => o.id === 'decor11'));
+  check('Task120: a decoration can be moved to a free cell (kind kept, old cell freed)', win.villageDecorMove(0, 11) && win.villageDecorAt(0) === -1 && s.village.decor[win.villageDecorAt(11)].kind === 'flowerPot');
+  check('Task120: ...but not onto another decoration (nothing changes)', win.villageDecorMove(11, 1) === false && s.village.decor[win.villageDecorAt(11)].kind === 'flowerPot' && s.village.decor[win.villageDecorAt(1)].kind === 'bench');
+  // saved as kind + cell, loaded back
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task120: the decorations are saved as kind and cell in run.village.decor (saveVersion 1)', sv.saveVersion === 1 && sv.run.village.decor.length === 11 &&
+    sv.run.village.decor.every((d) => Object.keys(d).sort().join() === 'cell,kind'));
+  const w2 = newDom(storage).window;
+  check('Task120: ...and load back on the same cells', t103Canon(w2.state.village.decor) === t103Canon(s.village.decor) && w2.worldObstacles().filter((o) => o.kind === 'decor').length === 11);
+  // invalid saved decorations are dropped one by one
+  check('Task120: invalid saved decorations are dropped (unknown kind, bad cell, a second one on a cell)', JSON.stringify(win.sanitizeVillageDecor([{ kind: 'bench', cell: 2 }, { kind: 'castle', cell: 3 }, { kind: 'bench', cell: 12 },
+    { kind: 'bench', cell: 2 }, { kind: 'lantern', cell: '4' }, null, { kind: 'shrub', cell: 4 }])) === JSON.stringify([{ kind: 'bench', cell: 2 }, { kind: 'shrub', cell: 4 }]) &&
+    JSON.stringify(win.sanitizeVillageDecor('garden')) === '[]');
+})();
+
+(function test_T120_topdown() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state;
+  // set down with E in front of an empty cell
+  win.villageDecorSelect('lantern');
+  const c2 = t120Face(win, 2);
+  let t = win.tdInteractTarget(s.world.player.x, s.world.player.y);
+  check('Task120: facing an empty garden cell, E sets the chosen decoration down there', !!t && t.type === 'garden' && t.id === 2 && t.action === 'decorPlace' && /돌 등롱/.test(t.label) &&
+    win.tdInteract(t).ok && s.village.decor.some((d) => d.cell === 2 && d.kind === 'lantern'));
+  // pick up and carry: it does not block while held, and it is still saved on its cell
+  t = win.tdInteractTarget(s.world.player.x, s.world.player.y);
+  check('Task120: facing a decoration, E picks it up to carry', t.action === 'decorPick' && win.tdInteract(t).ok && win.villageGardenUi().carry === 2);
+  check('Task120: while carried it does not block and is drawn over the player, still saved on its cell', !win.worldObstacles().some((o) => o.id === 'decor2') &&
+    win.tdDrawList({ dir: 'up', frame: 0, x: c2.x, y: c2.y + 0.42 }).some((it) => it.kind === 'gardenDecor' && it.carried) && s.village.decor.some((d) => d.cell === 2));
+  t120Face(win, 1);
+  t = win.tdInteractTarget(s.world.player.x, s.world.player.y);
+  check('Task120: E at another free cell puts it down there (moved)', t.action === 'decorDrop' && win.tdInteract(t).ok && win.villageDecorAt(2) === -1 && win.villageDecorAt(1) >= 0 &&
+    win.villageGardenUi().carry === -1);
+  // take back with R
+  t120Face(win, 1);
+  win.TD.target = win.tdInteractTarget(s.world.player.x, s.world.player.y);
+  win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'r', bubbles: true }));
+  check('Task120: R takes the decoration in front back', win.villageDecorAt(1) === -1 && s.village.decor.length === 0);
+  // Q chooses the next kind
+  t120Face(win, 0);
+  win.TD.target = win.tdInteractTarget(s.world.player.x, s.world.player.y);
+  const before = win.villageDecorSelected();
+  win.document.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'q', bubbles: true }));
+  check('Task120: Q (or the phone\'s garden button) chooses the next kind to set down', win.villageDecorSelected() !== before && win.villageDecorSelected() === 'shrub');
+  win.tdUpdateActionButton();
+  check('Task120: the phone shows the garden button only at the garden, with what it does', win.document.getElementById('tdDecor').classList.contains('is-on') && /다음 장식/.test(win.document.getElementById('tdDecor').textContent));
+  s.world.player.x = s.world.base.x; s.world.player.y = s.world.base.y + 0.3;
+  win.TD.target = win.tdInteractTarget(s.world.player.x, s.world.player.y); win.tdUpdateActionButton();
+  check('Task120: ...and hides it elsewhere', !win.document.getElementById('tdDecor').classList.contains('is-on'));
+})();
+
+(function test_T120_panel() {
+  const win = tdDomAt('https://example.test/?view=classic', makeMemoryStorage());
+  const s = win.state, doc = win.document;
+  s.world.player.x = s.world.base.x; s.world.player.y = s.world.base.y + 0.3;
+  win.renderVillage();
+  check('Task120: the classic screen has the garden card with its 12 cells and the basic kinds', doc.querySelectorAll('[data-garden-cell]').length === 12 &&
+    doc.querySelectorAll('[data-decor-select]').length === win.villageDecorDefs().length);
+  doc.querySelector('[data-decor-select="bench"]').click();
+  doc.querySelector('[data-decor-put="3"]').click();
+  check('Task120: choose a kind, then a cell: it is set down', s.village.decor.length === 1 && s.village.decor[0].kind === 'bench' && s.village.decor[0].cell === 3 &&
+    /나무 벤치/.test(doc.querySelector('[data-garden-msg]').textContent));
+  doc.querySelector('[data-decor-move="3"]').click();
+  doc.querySelector('[data-decor-put="8"]').click();
+  check('Task120: 옮기기 then another cell moves it', s.village.decor.length === 1 && s.village.decor[0].cell === 8);
+  doc.querySelector('[data-decor-remove="8"]').click();
+  check('Task120: 회수 takes it back', s.village.decor.length === 0 && doc.querySelectorAll('.village-garden-cell.is-used').length === 0);
+})();
+
 // SUMMARY
 // =============================================================================
 

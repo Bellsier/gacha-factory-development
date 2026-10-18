@@ -438,6 +438,7 @@
   body.view-topdown .td-torch.is-full{opacity:0.5;}
   body.td-touch .td-torch{right:16px; bottom:196px; padding:8px 10px; font-size:0.74rem; border-radius:18px; max-width:104px; line-height:1.25;}
   body.td-panel-open .td-torch, body.td-log-open .td-torch{display:none;}
+  body.td-inside #tdMinimap, body.td-inside .td-torch{display:none;} /* Task 119: inside the house */
   @media (max-width: 760px){
     body.view-topdown .tabbar{left:0; right:0; bottom:0; transform:none; border-radius:0; border-width:1px 0 0; gap:4px; padding:6px 6px calc(6px + env(safe-area-inset-bottom));}
     body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex:1; padding:9px 2px; font-size:0.78rem;}

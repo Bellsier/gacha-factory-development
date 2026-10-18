@@ -10,6 +10,7 @@
 //   { type: 'mine', id, x, y, action: 'secure' | 'mine' | 'locked', label }
 //   { type: 'base' | 'workshop', id, x, y, action: 'open', label }
 function tdInteractTarget(px, py){
+  if(typeof villageHomeInside === 'function' && villageHomeInside()) return villageHomeTarget(); // Task 119: inside the house only its door
   const range = TOPDOWN.INTERACT_RANGE;
   let best = null, bestD = Infinity;
   const consider = (t, d) => { if(d <= range && d < bestD){ best = t; bestD = d; } };
@@ -45,6 +46,7 @@ function tdInteractTarget(px, py){
   }
   // Task 118: the plaza's notice board opens the 마을 panel
   const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(vd) consider({ type: 'house', id: 'house', x: vd.house.x, y: vd.house.y, action: 'enter', label: '내 집 · 들어가기' }, Math.hypot(vd.house.x - px, vd.house.y - py)); // Task 119
   if(vd) consider({ type: 'plaza', id: 'plaza', x: vd.plaza.x, y: vd.plaza.y - 0.15, action: 'open', label: '마을 광장 · 안내판' }, Math.hypot(vd.plaza.x - px, vd.plaza.y - 0.15 - py));
   return best;
 }
@@ -75,6 +77,9 @@ function tdInteract(target){
   }
   if(target.type === 'village') return tdVillageInteract(target);
   if(target.type === 'plaza') return { ok: true, text: '', open: 'village' };
+  // Task 119: in and out of the house
+  if(target.type === 'house'){ const why = villageHomeEnterBlocker(); return why ? { ok: false, text: why } : { ok: villageHomeEnter(), text: '' }; }
+  if(target.type === 'homeDoor') return { ok: villageHomeExit(), text: '' };
   return { ok: true, text: '', open: 'dev' };
 }
 

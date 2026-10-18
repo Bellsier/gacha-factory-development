@@ -103,7 +103,9 @@ function villageBox(key, x, y){
 function villageObstacleBoxes(){
   const v = state && state.village;
   if(!v || !v.sites) return [];
-  return VILLAGE.ORDER.filter(k => v.sites[k]).map(k => villageBox(k, v.sites[k].x, v.sites[k].y));
+  const out = VILLAGE.ORDER.filter(k => v.sites[k]).map(k => villageBox(k, v.sites[k].x, v.sites[k].y));
+  if(v.district && VILLAGE.DISTRICT) out.push(villageHouseBox(villageDistrictParts(v.district).house)); // Task 119: the player's house
+  return out;
 }
 
 // Is (x, y) too close to a facility site for a new craft hut? (workshopBuildSpot)
@@ -491,7 +493,7 @@ function villageEnsureDistrict(){
 
 function villageHouseBox(door){
   const b = VILLAGE.DISTRICT.HOUSE_BOX;
-  return { kind: 'village', id: 'house', minX: door.x + b.minX, maxX: door.x + b.maxX, minY: door.y + b.minY, maxY: door.y + b.maxY };
+  return { kind: 'house', id: 'house', minX: door.x + b.minX, maxX: door.x + b.maxX, minY: door.y + b.minY, maxY: door.y + b.maxY };
 }
 
 // The district's parts now, or null before it has a place.
@@ -526,6 +528,7 @@ function villageRoads(){
 function villageRoadEnds(){
   const v = villageState(), base = state.world.base, ends = [{ to: 'workshop', x: base.x, y: base.y + 0.2 }];
   VILLAGE.ORDER.forEach(k => { const s = v.sites[k]; if(s) ends.push({ to: k, x: s.x, y: s.y + 0.2 }); });
+  if(v.district){ const h = villageDistrictParts(v.district).house; ends.push({ to: 'house', x: h.x, y: h.y + 0.2 }); } // Task 119
   return ends;
 }
 
@@ -632,6 +635,115 @@ function villageGroundLayout(){
   if(!parts) return null;
   const roads = villageRoads();
   return { key: villageRoadKey(), plaza: parts.plaza, garden: null, roads: roads.map(r => r.points), roadHalf: VILLAGE.DISTRICT.ROAD_HALF };
+}
+
+// ---------------------------------------------------------------------------
+// Task 119: the player's house. It stands on its lot north of the plaza
+// (VILLAGE.DISTRICT layouts) from the start — the player owns it, nothing to
+// restore. Its walls block like the other buildings; the door step stays free.
+// Walking up to the door and pressing E (the phone's action button) goes in.
+// Inside is a small room of its own (a separate scene in room units: x right,
+// y down, the door gap in the bottom wall). Walking out through the door gap,
+// or E at the door, comes back out onto the door step.
+// Being inside is not saved: while inside, the player's world position is the
+// house's door step, so a game saved inside loads with the player outside the
+// door. The furniture is fixed for now; VILLAGE.HOME.FURNITURE is plain data,
+// so a later task can make it placeable (and save it) without changing this.
+// ---------------------------------------------------------------------------
+VILLAGE.HOME = {
+  ROOM: { w: 4.5, h: 3.25 },     // the floor, in room units (the same size as world units)
+  DOOR: { x: 2.25, half: 0.3 },  // the gap in the bottom wall
+  START: { x: 2.25, y: 2.9 },    // where the player stands after coming in
+  EXIT_Y: 3.4,                   // walking out through the door gap past this leaves the house
+  ENTER_RANGE: 1.3,              // how near the door the player has to be to go in
+  SIDE_PX: 10, BACK_PX: 48, BOTTOM_PX: 10, // the drawn walls round the floor (pixels at zoom 1)
+  RUG: { x: 2.25, y: 2.35, w: 1.5, h: 0.75 },
+  // fixed furniture: key, name, foot point (bottom centre) and the box that blocks (null: walk past it)
+  FURNITURE: [
+    { key: 'bed', name: '침대', x: 0.6, y: 1.25, box: { minX: -0.38, maxX: 0.38, minY: -1.25, maxY: 0 } },
+    { key: 'shelf', name: '책장', x: 3.55, y: 0.38, box: { minX: -0.48, maxX: 0.48, minY: -0.38, maxY: 0 } },
+    { key: 'table', name: '탁자', x: 2.25, y: 1.6, box: { minX: -0.34, maxX: 0.34, minY: -0.3, maxY: 0 } },
+    { key: 'stool', name: '의자', x: 1.7, y: 1.6, box: { minX: -0.1, maxX: 0.1, minY: -0.12, maxY: 0 } },
+    { key: 'stool', name: '의자', x: 2.8, y: 1.6, box: { minX: -0.1, maxX: 0.1, minY: -0.12, maxY: 0 } },
+    { key: 'stove', name: '난로', x: 4.05, y: 2.2, box: { minX: -0.24, maxX: 0.24, minY: -0.3, maxY: 0 } },
+    { key: 'chest', name: '상자', x: 0.55, y: 3.0, box: { minX: -0.27, maxX: 0.27, minY: -0.25, maxY: 0 } },
+    { key: 'plant', name: '화분', x: 3.15, y: 3.15, box: { minX: -0.1, maxX: 0.1, minY: -0.12, maxY: 0 } },
+  ],
+};
+
+// The scene inside the house (renderer and game tick read it; never saved).
+const VILLAGE_HOME_SCENE = { inside: false, x: 0, y: 0, facing: 'up', pose: 'idle' };
+function villageHomeScene(){ return VILLAGE_HOME_SCENE; }
+function villageHomeInside(){ return VILLAGE_HOME_SCENE.inside === true; }
+
+// Could the player's feet stand at (x, y) in the room? The walls, the door gap and the furniture.
+function villageHomeCanStand(x, y){
+  const H = VILLAGE.HOME, F = PLAYER_FOOT;
+  if(!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  if(x - F.HALF_W < 0.04 || x + F.HALF_W > H.ROOM.w - 0.04 || y - F.HALF_H < 0.22) return false;
+  if(y + F.HALF_H > H.ROOM.h - 0.02 && (Math.abs(x - H.DOOR.x) + F.HALF_W > H.DOOR.half || y > H.EXIT_Y + 0.3)) return false; // only through the door gap
+  return !H.FURNITURE.some(f => f.box && x + F.HALF_W > f.x + f.box.minX && x - F.HALF_W < f.x + f.box.maxX && y + F.HALF_H > f.y + f.box.minY && y - F.HALF_H < f.y + f.box.maxY);
+}
+
+// The house's door step in the world, or null before the village has a place.
+function villageHouseDoor(){
+  const parts = villageDistrict();
+  return parts ? parts.house : null;
+}
+
+function villageHomeEnterBlocker(){
+  const door = villageHouseDoor(), p = state.world.player;
+  if(!door) return '집 자리가 아직 없어요';
+  if(villageHomeInside()) return '이미 집 안이에요';
+  if(Math.hypot(p.x - door.x, p.y - door.y) > VILLAGE.HOME.ENTER_RANGE) return '집 문 앞으로 가야 해요';
+  return null;
+}
+
+// Goes in. The world position waits on the door step (that is what a save keeps).
+function villageHomeEnter(){
+  if(villageHomeEnterBlocker()) return false;
+  const door = villageHouseDoor(), p = state.world.player, S = VILLAGE_HOME_SCENE, H = VILLAGE.HOME;
+  p.x = door.x; p.y = door.y + 0.2; p.facing = 'down'; p.pose = 'idle';
+  S.inside = true; S.x = H.START.x; S.y = H.START.y; S.facing = 'up'; S.pose = 'idle';
+  return true;
+}
+
+// Comes back out onto the door step, facing away from the house.
+function villageHomeExit(){
+  const S = VILLAGE_HOME_SCENE;
+  if(!S.inside) return false;
+  S.inside = false; S.pose = 'idle';
+  const door = villageHouseDoor(), p = state.world.player;
+  if(door){ p.x = door.x; p.y = door.y + 0.25; }
+  p.facing = 'down'; p.pose = 'idle';
+  return true;
+}
+
+// One game tick inside (tickPlayer calls this instead of moving in the world):
+// the same held keys and speed, the room's walls and furniture, sliding along them.
+function villageHomeTick(){
+  const S = VILLAGE_HOME_SCENE;
+  let dx = (playerHeld.right ? 1 : 0) - (playerHeld.left ? 1 : 0);
+  let dy = (playerHeld.down ? 1 : 0) - (playerHeld.up ? 1 : 0);
+  if(dx === 0 && dy === 0){ S.pose = 'idle'; return; }
+  const len = Math.hypot(dx, dy), step = BALANCE.world.PLAYER_SPEED / TICKS_PER_SECOND;
+  dx /= len; dy /= len;
+  const sx = S.x, sy = S.y, free = villageHomeCanStand(sx, sy);
+  const ok = (x, y) => !free || villageHomeCanStand(x, y);
+  S.x = terrainAdvance(sx, sx + dx * step, (tx) => ok(tx, sy));
+  S.y = terrainAdvance(sy, sy + dy * step, (ty) => ok(S.x, ty));
+  if(Math.abs(dx) >= Math.abs(dy)) S.facing = dx > 0 ? 'right' : 'left';
+  else S.facing = dy > 0 ? 'down' : 'up';
+  S.pose = (S.x !== sx || S.y !== sy) ? 'walk' : 'idle';
+  if(S.y >= VILLAGE.HOME.EXIT_Y) villageHomeExit(); // walked out through the door
+}
+
+// What the player can act on inside: the door (E goes out).
+function villageHomeTarget(){
+  const S = VILLAGE_HOME_SCENE, H = VILLAGE.HOME;
+  if(!S.inside) return null;
+  const dx = S.x - H.DOOR.x, dy = S.y - H.ROOM.h;
+  return Math.hypot(dx, dy) <= 0.8 ? { type: 'homeDoor', id: 'door', x: H.DOOR.x, y: H.ROOM.h - 0.05, action: 'exit', label: '밖으로 나가기' } : null;
 }
 
 // What walking up to a facility's door offers:

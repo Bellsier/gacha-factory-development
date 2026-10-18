@@ -69,7 +69,8 @@ function tdUpdateActionButton(){
   if(!btn) return;
   const t = TD.target;
   const label = !t ? '·' : t.action === 'mine' ? '캐기' : t.action === 'secure' ? '확보' : t.action === 'open' ? '열기'
-    : t.action === 'restore' ? '복구' : t.action === 'appraise' ? '감정' : t.action === 'donate' ? '기증' : '잠김'; // Task 115~117: village actions
+    : t.action === 'restore' ? '복구' : t.action === 'appraise' ? '감정' : t.action === 'donate' ? '기증'
+    : t.action === 'enter' ? '들어가기' : t.action === 'exit' ? '나가기' : '잠김'; // Task 115~119: village actions
   if(btn.textContent !== label) btn.textContent = label;
   btn.classList.toggle('is-idle', !t || t.action === 'locked');
 }

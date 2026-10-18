@@ -40,6 +40,8 @@ function tdDrawList(player){
     const pz = vd.plaza;
     list.push({ kind: 'plazaProp', prop: 'villageBoard', x: pz.x, y: pz.y - 0.15, sortY: pz.y - 0.15 });
     [-1, 1].forEach(sx => list.push({ kind: 'plazaProp', prop: 'lamp', x: pz.x + sx * 0.72, y: pz.y + 0.5, sortY: pz.y + 0.5 }));
+    // Task 119: the player's house (sorted by the front of its walls)
+    list.push({ kind: 'house', x: vd.house.x, y: vd.house.y, sortY: vd.house.y + VILLAGE.DISTRICT.HOUSE_BOX.maxY });
   }
   state.world.mines.forEach(m => {
     if(!m) return;
@@ -81,6 +83,13 @@ function tdPlazaLights(now){
   const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
   if(!vd) return [];
   return [-1, 1].map((sx, i) => ({ kind: 'plaza', x: vd.plaza.x + sx * 0.72, y: vd.plaza.y + 0.5 - 0.3, r: 0.85, rgb: [255, 214, 140], strength: 0.62 * tdFlicker(now, 40 + i) }));
+}
+
+// Task 119: the house's windows and door lantern glow warm.
+function tdHouseLights(now){
+  const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(!vd) return [];
+  return [{ kind: 'house', x: vd.house.x + 0.1, y: vd.house.y - 0.2, r: 0.75, rgb: [255, 206, 128], strength: 0.5 * tdFlicker(now, 61) }];
 }
 
 // Task 114: baked village facility images, cached by facility, stage and lit niches.
@@ -173,7 +182,8 @@ function tdDrawSprite(g, img, sx, sy, zoom, anchorY){
 function tdAddFloat(text, wx, wy, color, lift){
   // Task 117: floats still rising from the same point stack above each other
   const now = performance.now(), stack = TD.floats.filter(f => f.x === wx && f.y === wy && now - f.t0 < 1200).length;
-  TD.floats.push({ text, x: wx, y: wy, t0: now, color: color || '#fff3b0', lift: lift || 34, stack });
+  const scene = typeof villageHomeInside === 'function' && villageHomeInside() ? 'home' : 'world'; // Task 119: drawn in the room or the world
+  TD.floats.push({ text, x: wx, y: wy, t0: now, color: color || '#fff3b0', lift: lift || 34, stack, scene });
 }
 
 // How high (sprite pixels) the interaction bubble sits above a target's point: above its picture.
@@ -182,6 +192,8 @@ function tdBubbleLift(target){
   if(target.type === 'base') return 64;
   if(target.type === 'village') return target.id === 'museum' ? 54 : 46;
   if(target.type === 'plaza') return 40;
+  if(target.type === 'house') return 50;
+  if(target.type === 'homeDoor') return 30;
   return 34;
 }
 
@@ -203,6 +215,17 @@ function tdRender(now){
   const g = TD.ctx;
   if(!g) return;
   tdResize();
+  // Task 119: inside the house the room is drawn instead of the world (the workers walk on)
+  const inside = typeof villageHomeInside === 'function' && villageHomeInside();
+  document.body.classList.toggle('td-inside', inside);
+  if(inside){
+    if(typeof tdWorkerSimStep === 'function'){ const ws = TD.workerSim; tdWorkerSimStep(ws && ws.last !== null ? now - ws.last : 0, now); }
+    const cam = tdRenderHome(now);
+    tdDrawOverlay(g, cam, TD.view.w, TD.view.h, TD.view.zoom, now, 'home');
+    if(typeof tdUpdateActionButton === 'function') tdUpdateActionButton();
+    return;
+  }
+  TD.homeTracker = null;
   tdEnsureGround();
   const { w, h, zoom, dpr } = TD.view;
   const p = state.world.player;
@@ -239,6 +262,7 @@ function tdRender(now){
     }
     else if(it.kind === 'village') tdDrawSprite(g, tdVillageImage(it.id, it.stage, it.exhibits), sp.x, sp.y, zoom, 3);
     else if(it.kind === 'plazaProp') tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
+    else if(it.kind === 'house') tdDrawSprite(g, sheet.house, sp.x, sp.y, zoom, 3);
     else if(it.kind === 'torch') tdDrawSprite(g, sheet.torch && sheet.torch[Math.floor(now / 130 + it.seed) % 3], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'gate'){
       const t = terrainTunnel(), top = topdownToScreen(it.x, t.y - t.halfWidth, cam, w, h, zoom);
@@ -263,13 +287,21 @@ function tdRender(now){
   if(TD.quality < 2) tdRenderClouds(g, cam, w, h, zoom, now);
   const darkness = typeof TD.forceDarkness === 'number' ? TD.forceDarkness : tdAmbientDarkness(Date.now());
   TD.darkness = darkness;
-  const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now));
+  const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now), tdHouseLights(now));
   tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights), darkness, cam, w, h, zoom, TD.quality, now);
   const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.78);
   vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.32)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);
+  tdDrawOverlay(g, cam, w, h, zoom, now, 'world');
+  tdRenderMinimap(cam);
+  if(typeof tdUpdateActionButton === 'function') tdUpdateActionButton();
+}
+
+// The interaction bubble and the floating texts, over the world or the room (Task 119: `scene`).
+function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
+  const p = state.world.player;
   // interaction bubble over the target (Task 115: kept on screen; a label too wide splits after its name)
-  TD.target = typeof tdInteractTarget === 'function' ? tdInteractTarget(p.x, p.y) : null;
+  TD.target = typeof tdInteractTarget === 'function' ? tdInteractTarget(p.x, p.y) : null; // inside the house: its door (Task 119)
   if(TD.target){
     const sp = topdownToScreen(TD.target.x, TD.target.y, cam, w, h, zoom);
     const label = (TD.touch ? '' : '[E] ') + TD.target.label;
@@ -286,7 +318,7 @@ function tdRender(now){
   }
   // floating texts (+1 철광석 ...)
   TD.floats = TD.floats.filter(f => now - f.t0 < 1200);
-  TD.floats.forEach(f => {
+  TD.floats.filter(f => (f.scene || 'world') === scene).forEach(f => {
     const k = (now - f.t0) / 1200, sp = topdownToScreen(f.x, f.y, cam, w, h, zoom);
     const fy = sp.y - (f.lift || 34) * zoom - 26 - (f.stack || 0) * 22 - k * 34; // starts above the interaction bubble and rises
     g.globalAlpha = 1 - k * k; g.font = 'bold ' + (13 + zoom) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
@@ -295,8 +327,6 @@ function tdRender(now){
     g.fillStyle = f.color; g.fillText(f.text, sp.x, fy);
     g.globalAlpha = 1; g.textAlign = 'left';
   });
-  tdRenderMinimap(cam);
-  if(typeof tdUpdateActionButton === 'function') tdUpdateActionButton();
 }
 
 // Minimap (blueprint 3.5): ground, the workshop, DISCOVERED mines only, the player and the view.
@@ -324,10 +354,63 @@ function tdRenderMinimap(cam){
     const [x, y] = at(site.x, site.y), open = (state.village.stage[k] || 0) >= 2;
     g.fillStyle = open ? (k === 'museum' ? '#e6e1d8' : '#5fa0d8') : '#7a746c'; g.fillRect(Math.round(x) - 2, Math.round(y) - 3, 5, 4);
   });
+  const hd = typeof villageHouseDoor === 'function' ? villageHouseDoor() : null; // Task 119: the house
+  if(hd){ const [hx, hy] = at(hd.x, hd.y); g.fillStyle = '#4f8246'; g.fillRect(Math.round(hx) - 2, Math.round(hy) - 3, 5, 4); }
   const [bx, by] = at(state.world.base.x, state.world.base.y);
   g.fillStyle = '#d68b3d'; g.fillRect(Math.round(bx) - 3, Math.round(by) - 3, 6, 6);
   const p = state.world.player, [px, py] = at(p.x, p.y);
   g.fillStyle = '#fff'; g.fillRect(Math.round(px) - 2, Math.round(py) - 2, 4, 4);
   const v = topdownVisibleRect(cam, TD.view.w, TD.view.h, TD.view.zoom), [vx0, vy0] = at(v.minX, v.minY), [vx1, vy1] = at(v.maxX, v.maxY);
   g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 1; g.strokeRect(Math.round(vx0) + 0.5, Math.round(vy0) + 0.5, Math.round(vx1 - vx0), Math.round(vy1 - vy0));
+}
+
+// Task 119: inside the house — the room, its furniture and the player, sorted back to front. Plain data.
+function tdHomeDrawList(player){
+  const list = VILLAGE.HOME.FURNITURE.map((f, i) => ({ kind: 'furniture', key: f.key, i, x: f.x, y: f.y, sortY: f.y }));
+  if(player) list.push({ kind: 'player', dir: player.dir, frame: player.frame, x: player.x, y: player.y, sortY: player.y + 0.001 });
+  return list.sort((a, b) => a.sortY - b.sortY);
+}
+
+// The camera inside: the room centred when it fits, else following the player and kept on the room.
+function tdHomeCamera(target, viewW, viewH, zoom){
+  const H = VILLAGE.HOME, s = topdownScale(zoom), halfW = viewW / (2 * s), halfH = viewH / (2 * s);
+  const axis = (v, min, max, half) => (max - min <= half * 2) ? (min + max) / 2 : Math.min(max - half, Math.max(min + half, v));
+  return { x: axis(target.x, -0.4, H.ROOM.w + 0.4, halfW), y: axis(target.y, -1.1, H.ROOM.h + 0.5, halfH) };
+}
+
+function tdFurnitureImage(key){
+  TD.furnitureImages = TD.furnitureImages || {};
+  if(!(key in TD.furnitureImages)) TD.furnitureImages[key] = tdSpriteImage(tdFurnitureSprite(key));
+  return TD.furnitureImages[key];
+}
+
+function tdRenderHome(now){
+  const g = TD.ctx, { w, h, zoom, dpr } = TD.view, S = villageHomeScene(), H = VILLAGE.HOME;
+  if(!TD.homeTracker) TD.homeTracker = {};
+  const pos = topdownTrack(TD.homeTracker, S.x, S.y, now);
+  const cam = tdHomeCamera(pos, w, h, zoom);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = '#17120e'; g.fillRect(0, 0, w, h);
+  if(!TD.homeRoom) TD.homeRoom = tdSpriteImage(tdHomeRoomSprite());
+  const o = topdownToScreen(-H.SIDE_PX / TD_UNIT_PX, -H.BACK_PX / TD_UNIT_PX, cam, w, h, zoom);
+  if(TD.homeRoom) g.drawImage(TD.homeRoom, o.x, o.y, TD.homeRoom.width * zoom, TD.homeRoom.height * zoom);
+  const items = tdHomeDrawList({ dir: S.facing, frame: topdownWalkFrame(pos.walked, S.pose), x: pos.x, y: pos.y });
+  items.forEach(it => {
+    const sp = topdownToScreen(it.x, it.y, cam, w, h, zoom);
+    if(it.kind === 'player') tdDrawSprite(g, TD.sheet.player[it.dir] && TD.sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1);
+    else tdDrawSprite(g, tdFurnitureImage(it.key), sp.x, sp.y, zoom, 0);
+  });
+  // warm light: the stove's glow and a soft dark edge
+  const stove = H.FURNITURE.find(f => f.key === 'stove');
+  if(stove){
+    const sp = topdownToScreen(stove.x, stove.y - 0.25, cam, w, h, zoom), r = 1.6 * topdownScale(zoom) * (0.95 + 0.05 * tdFlicker(now, 7));
+    const gl = g.createRadialGradient(sp.x, sp.y, 0, sp.x, sp.y, r);
+    gl.addColorStop(0, 'rgba(255,170,90,0.22)'); gl.addColorStop(1, 'rgba(255,170,90,0)');
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = gl; g.fillRect(sp.x - r, sp.y - r, r * 2, r * 2); g.globalCompositeOperation = 'source-over';
+  }
+  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
+  vg.addColorStop(0, 'rgba(20,12,6,0)'); vg.addColorStop(1, 'rgba(20,12,6,0.4)');
+  g.fillStyle = vg; g.fillRect(0, 0, w, h);
+  return cam;
 }

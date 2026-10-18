@@ -901,7 +901,7 @@ function renderVillage(){
   let html = '<div class="village-list">' +
     '<div class="village-card" data-village="workshop"><div class="village-head"><b>공방</b> <span class="village-stage">운영 중</span></div>' +
     '<div class="rate">마을의 중심 생산 시설. 제작과 판매는 개발 탭에서 합니다.</div></div>';
-  html += villagePlazaCard(v); // Task 118
+  html += villagePlazaCard(v) + villageHouseCard(v); // Task 118, 119
   VILLAGE.ORDER.forEach(k => {
     const f = VILLAGE.FACILITIES[k], stage = villageStage(k), site = v.sites[k], step = villageNextStep(k);
     html += '<div class="village-card" data-village="' + k + '">' +
@@ -931,6 +931,19 @@ function villagePlazaCard(v){
     html += '<div class="rate">공방에서 ' + Math.hypot(d.x - base.x, d.y - base.y).toFixed(1) + '칸 떨어진 곳 (' + d.x.toFixed(1) + ', ' + d.y.toFixed(1) + ')</div>' +
       '<div class="rate" data-village-roads>도로: 광장 ↔ ' + (roads.length ? roads.join(' · ') : '없음') + '</div>';
   } else html += '<div class="rate">빈 땅이 생기면 광장 자리를 정해요.</div>';
+  return html + '</div>';
+}
+
+// Task 119: the player's own house (going in is done at its door in the top-down screen).
+function villageHouseCard(v){
+  const inside = typeof villageHomeInside === 'function' && villageHomeInside();
+  let html = '<div class="village-card" data-village="house"><div class="village-head"><b>내 집</b> <span class="village-stage" data-village-house-state>' +
+    (!v.district ? '자리를 찾는 중' : inside ? '집 안' : '내 소유') + '</span></div>';
+  if(v.district){
+    const h = villageDistrictParts(v.district).house;
+    html += '<div class="rate">광장 옆 (' + h.x.toFixed(1) + ', ' + h.y.toFixed(1) + ') · 문 앞에서 E(휴대폰은 들어가기 버튼)로 들어가요.</div>' +
+      '<div class="rate">안에서는 문으로 걸어 나오거나 문 앞에서 E를 누르면 밖으로 나와요. 이전 화면에서는 집 안에 들어갈 수 없어요.</div>';
+  }
   return html + '</div>';
 }
 

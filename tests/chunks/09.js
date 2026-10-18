@@ -71,7 +71,7 @@ function t118Rules(win) {
   const parts = win.villageDistrictParts(v.district);
   check('Task118: the plaza and the house door can be walked to from the workshop', win.playerCanStand(parts.plaza.x, parts.plaza.y) && win.playerCanStand(parts.house.x, parts.house.y + 0.1));
   const roads = win.villageRoads();
-  check('Task118: roads lead from the plaza to the workshop, the appraiser and the museum', roads.map((x) => x.to).join() === 'workshop,appraiser,museum');
+  check('Task118: roads lead from the plaza to the workshop, the appraiser and the museum (Task 119: and the house)', roads.map((x) => x.to).join() === 'workshop,appraiser,museum,house');
   check('Task118: the roads are worked out again the same way (cached, nothing random)', win.villageRoadsCompute().map((x) => JSON.stringify(x.points)).join() === roads.map((x) => JSON.stringify(x.points)).join());
   check('Task118: the plaza and the roads block nothing (no new obstacles)', !win.worldObstacles().some((o) => ['plaza', 'road'].includes(o.kind)) && win.playerCanStand(parts.plaza.x + 0.5, parts.plaza.y));
   // saved, and kept on load (not chosen again)
@@ -187,6 +187,101 @@ function t118Rules(win) {
   const win = tdDomAt('https://example.test/?view=classic', makeMemoryStorage());
   check('Task118: the classic screen has the plaza card too', !win.document.body.classList.contains('view-topdown') && !!win.document.querySelector('#villagePanel [data-village="plaza"]') &&
     !!win.state.village.district);
+})();
+
+// -----------------------------------------------------------------------------
+// Task 119: the player's house and the room inside
+// -----------------------------------------------------------------------------
+function t119Hold(win, dirs, ticks) {
+  dirs.forEach((d) => win.setPlayerHeld(d, true));
+  for (let i = 0; i < ticks; i++) win.tickPlayer();
+  win.clearPlayerHeld(); win.tickPlayer();
+}
+
+(function test_T119_house() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state, H = win.VILLAGE.HOME, door = win.villageHouseDoor(), p = s.world.player;
+  win.villageHomeExit();
+  check('Task119: a new game has the player\'s house on its lot by the plaza (owned from the start, nothing to restore)', !!door &&
+    door.x === s.village.district.x + win.VILLAGE.DISTRICT.LAYOUTS[s.village.district.layout].house.x);
+  const walls = win.worldObstacles().filter((o) => o.kind === 'house');
+  check('Task119: its walls block like the other buildings and its door step stays free', walls.length === 1 && !win.playerCanStand(door.x, door.y - 0.25) && win.playerCanStand(door.x, door.y + 0.15));
+  const r = t114Reach(win);
+  check('Task119: with the house standing, every door and vein is reachable and nothing is cut off', r.doorsOk && r.minesOk && r.pockets === 0);
+  check('Task119: the house is drawn once, sorted by the front of its walls', win.tdDrawList(null).filter((it) => it.kind === 'house').length === 1);
+  // going in
+  p.x = door.x + 3; p.y = door.y + 2;
+  check('Task119: far from the door the player cannot go in', win.villageHomeEnter() === false && !win.villageHomeInside() && /문 앞/.test(win.villageHomeEnterBlocker()));
+  p.x = door.x; p.y = door.y + 0.5; p.facing = 'up';
+  const t = win.tdInteractTarget(p.x, p.y);
+  check('Task119: at the door the house is the thing to act on (E or the phone button: 들어가기)', !!t && t.type === 'house' && t.action === 'enter');
+  const res = win.tdInteract(t);
+  check('Task119: acting on it goes in; the world position waits on the door step', res.ok && win.villageHomeInside() && p.x === door.x && Math.abs(p.y - (door.y + 0.2)) < 1e-9);
+  const sc = win.villageHomeScene();
+  check('Task119: inside, the player stands just inside the door', sc.x === H.START.x && sc.y === H.START.y);
+  // walking inside: the world position does not move, the room's walls and furniture block
+  const wx = p.x, wy = p.y;
+  t119Hold(win, ['up'], 3);
+  check('Task119: walking inside moves the player in the room only', sc.y < H.START.y && p.x === wx && p.y === wy);
+  let maxJump = 0, inWall = false;
+  const before = { x: sc.x, y: sc.y };
+  win.setPlayerHeld('left', true);
+  for (let i = 0; i < 40; i++) { const bx = sc.x, by = sc.y; win.tickPlayer(); maxJump = Math.max(maxJump, Math.hypot(sc.x - bx, sc.y - by)); if (!win.villageHomeCanStand(sc.x, sc.y)) inWall = true; }
+  win.clearPlayerHeld(); win.tickPlayer();
+  check('Task119: the side wall stops the player flush, at the same speed as outside, never inside a wall', sc.x < before.x && !inWall && maxJump <= win.BALANCE.world.PLAYER_SPEED / win.TICKS_PER_SECOND + 1e-9 &&
+    sc.x - win.PLAYER_FOOT.HALF_W >= 0.04 - 1e-9 && sc.x - win.PLAYER_FOOT.HALF_W < 0.1);
+  const bed = H.FURNITURE.find((f) => f.key === 'bed');
+  sc.x = bed.x; sc.y = bed.y + 0.4;
+  t119Hold(win, ['up'], 20);
+  check('Task119: the bed blocks (the player stops at its foot)', Math.abs(sc.y - (bed.y + win.PLAYER_FOOT.HALF_H)) < 0.02 && win.villageHomeInside());
+  sc.x = 1.0; sc.y = 2.5;
+  t119Hold(win, ['down'], 20);
+  check('Task119: the bottom wall holds away from the door gap', win.villageHomeInside() && sc.y < H.ROOM.h);
+  // every spot of the floor can be walked to from the door
+  const st = 0.05, nx = Math.round(H.ROOM.w / st) + 1, ny = Math.round((H.EXIT_Y + 0.2) / st) + 1, can = (i, j) => win.villageHomeCanStand(i * st, j * st);
+  const seen = new Set(), q = [[Math.round(H.START.x / st), Math.round(H.START.y / st)]]; seen.add(q[0].join());
+  while (q.length) { const [i, j] = q.pop(); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const k = (i + a) + ',' + (j + b); if (seen.has(k) || i + a < 0 || j + b < 0 || i + a >= nx || j + b >= ny || !can(i + a, j + b)) return; seen.add(k); q.push([i + a, j + b]); }); }
+  let standable = 0; for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) if (can(i, j)) standable++;
+  check('Task119: the whole floor is one open room (no spot walled in by the furniture), and the door gap leads out', standable > 1500 && seen.size === standable &&
+    [...seen].some((k) => +k.split(',')[1] * st >= H.EXIT_Y));
+  // the torch stays outside
+  const torches = s.world.torches.length;
+  check('Task119: no torch is set down inside', win.torchAct().ok === false && s.world.torches.length === torches);
+  // saved inside: the save keeps the world position (the door step); nothing about the room is saved
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task119: a game saved inside keeps the player on the house\'s door step (no inside state in the save)', sv.run.world.player.x === door.x && Math.abs(sv.run.world.player.y - (door.y + 0.2)) < 1e-9 &&
+    !/inside|homeScene/.test(JSON.stringify(sv)));
+  const w2 = newDom(storage).window;
+  check('Task119: ...and loads outside the door', !w2.villageHomeInside() && w2.state.world.player.x === door.x && w2.playerCanStand(w2.state.world.player.x, w2.state.world.player.y));
+  // leaving by the door: E at the door, or walking out through the gap
+  sc.x = H.DOOR.x; sc.y = H.ROOM.h - 0.25;
+  const out = win.tdInteractTarget(0, 0);
+  check('Task119: at the door inside, the door is the thing to act on (나가기)', !!out && out.type === 'homeDoor' && out.action === 'exit');
+  check('Task119: acting on it goes out onto the door step', win.tdInteract(out).ok && !win.villageHomeInside() && p.x === door.x && Math.abs(p.y - (door.y + 0.25)) < 1e-9 && p.facing === 'down');
+  p.x = door.x; p.y = door.y + 0.3; win.villageHomeEnter();
+  sc.x = H.DOOR.x; sc.y = H.START.y;
+  t119Hold(win, ['down'], 2); // 2.9 -> 3.2 -> out (the next tick would walk on outside)
+  check('Task119: walking down through the door gap also comes out (onto the door step)', !win.villageHomeInside() && Math.abs(p.y - (door.y + 0.25)) < 1e-9);
+  check('Task119: outside again the world moves as before', (() => { const y0 = p.y; t119Hold(win, ['down'], 2); return p.y > y0; })());
+})();
+
+(function test_T119_drawing() {
+  const win = newDom(makeMemoryStorage()).window;
+  const H = win.VILLAGE.HOME;
+  const list = win.tdHomeDrawList({ dir: 'up', frame: 0, x: 2, y: 2 });
+  check('Task119: the room\'s draw list is its furniture and the player, sorted back to front', list.filter((it) => it.kind === 'furniture').length === H.FURNITURE.length &&
+    list.filter((it) => it.kind === 'player').length === 1 && list.every((it, k) => k === 0 || list[k - 1].sortY <= it.sortY));
+  const cam = win.tdHomeCamera({ x: 0.3, y: 0.3 }, 2000, 1400, 2);
+  check('Task119: on a big screen the room is centred; on a small one the camera follows the player within the room',
+    Math.abs(cam.x - H.ROOM.w / 2) < 1e-9 && win.tdHomeCamera({ x: 0.3, y: 2 }, 390, 700, 2).x > 0.3);
+  const room = win.tdHomeRoomSprite();
+  check('Task119: the room picture matches the floor size (64 px a unit plus the drawn walls)', room.w === Math.round(H.ROOM.w * 64) + 2 * H.SIDE_PX && room.h === H.BACK_PX + Math.round(H.ROOM.h * 64) + H.BOTTOM_PX);
+  check('Task119: every piece of furniture has its own picture', H.FURNITURE.every((f) => win.tdFurnitureSprite(f.key).rects.length >= 5) && win.tdHouseSprite().rects.length > 20);
+  win.renderVillage();
+  const card = win.document.querySelector('#villagePanel [data-village="house"]');
+  check('Task119: the 마을 panel has a card for the house', !!card && /내 집/.test(card.textContent));
 })();
 
 // SUMMARY

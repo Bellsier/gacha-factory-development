@@ -195,7 +195,8 @@ function tdKey(win, target, key) {
   // a spot at least 2 units from every vein and building (the starter veins are random, so search for one)
   let farSpot = null;
   for (let y = -9; y <= 9 && !farSpot; y += 0.5) for (let x = -3; x <= 9 && !farSpot; x += 0.5) {
-    const doors = ['appraiser', 'museum'].map((k) => s.village && s.village.sites[k]).filter(Boolean); // Task 114: village doors are targets too
+    const vd = win.villageDistrict(); // Task 118~120: the house door, the plaza board and the garden cells are targets too
+    const doors = ['appraiser', 'museum'].map((k) => s.village && s.village.sites[k]).filter(Boolean).concat(vd ? [vd.house, vd.plaza].concat(win.villageGardenCells()) : []); // Task 114: village doors are targets too
     const clear = s.world.mines.every((m) => Math.hypot(m.x - x, m.y - y) > 2) && Math.hypot(s.world.base.x - x, s.world.base.y - y) > 2 && doors.every((d) => Math.hypot(d.x - x, d.y - y) > 2);
     if (clear && win.playerCanStand(x, y)) farSpot = [x, y];
   }
@@ -203,8 +204,11 @@ function tdKey(win, target, key) {
   check('Task106: far from everything there is nothing to act on', win.tdInteractTarget(p.x, p.y) === null);
   // 1.1 from the vein on a side where nothing else to act on is near: the workshop door, another vein or
   // (Task 114) a village door would be the nearer target (the starter veins are random)
-  const others = [s.world.base].concat(s.world.mines.filter((m) => m.id !== iron.id), ['appraiser', 'museum'].map((k) => s.village.sites[k]).filter(Boolean));
-  const side = [[1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]].find(([dx, dy]) => win.playerCanStand(iron.x + dx, iron.y + dy) &&
+  // (Task 118~120: or the house door, the plaza board or a garden cell; diagonals too, so a side is always found)
+  const vd = win.villageDistrict();
+  const others = [s.world.base].concat(s.world.mines.filter((m) => m.id !== iron.id), ['appraiser', 'museum'].map((k) => s.village.sites[k]).filter(Boolean),
+    vd ? [vd.house, { x: vd.plaza.x, y: vd.plaza.y - 0.15 }].concat(win.villageGardenCells()) : []);
+  const side = [[1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1], [0.78, 0.78], [-0.78, 0.78], [0.78, -0.78], [-0.78, -0.78]].find(([dx, dy]) => win.playerCanStand(iron.x + dx, iron.y + dy) &&
     others.every((o) => Math.hypot(o.x - iron.x - dx, o.y - iron.y - dy) > 1.2));
   stand(iron.x + side[0], iron.y + side[1]);
   check('Task106: within reach (1.1) of an unsecured vein the action is "secure"', win.tdInteractTarget(p.x, p.y).action === 'secure' && win.tdInteractTarget(p.x, p.y).id === iron.id);

@@ -43,6 +43,9 @@ function tdInteractTarget(px, py){
       consider({ type: 'village', id: k, x: site.x, y: site.y, action: t.action, label: t.label }, Math.hypot(site.x - px, site.y - py));
     });
   }
+  // Task 118: the plaza's notice board opens the 마을 panel
+  const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(vd) consider({ type: 'plaza', id: 'plaza', x: vd.plaza.x, y: vd.plaza.y - 0.15, action: 'open', label: '마을 광장 · 안내판' }, Math.hypot(vd.plaza.x - px, vd.plaza.y - 0.15 - py));
   return best;
 }
 
@@ -71,6 +74,7 @@ function tdInteract(target){
     return { ok: false, text: target.label };
   }
   if(target.type === 'village') return tdVillageInteract(target);
+  if(target.type === 'plaza') return { ok: true, text: '', open: 'village' };
   return { ok: true, text: '', open: 'dev' };
 }
 

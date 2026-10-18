@@ -133,8 +133,17 @@ function villageSiteFits(key, x, y, placed){
 // The reach check: a grid of standable foot positions round the workshop, flood-filled
 // from its door, with and without the new walls. Returns a function (key, x, y) -> ok.
 function villageReachChecker(){
+  const check = villageReachGrid(VILLAGE.SITE.REACH);
+  return (key, x, y, extraBoxes) => check([villageBox(key, x, y)].concat(extraBoxes || []), [{ x, y: y + 0.1 }]);
+}
+
+// The grid behind it, `reach` units round the workshop door. Returns a function
+// (boxes, doors) -> ok: with the new walls `boxes`, every point of `doors` can
+// still be walked to from the workshop door, and no ground that could be
+// reached before is cut off (Task 118 checks the plaza and the house this way).
+function villageReachGrid(reach){
   const S = VILLAGE.SITE, base = state.world.base, st = S.GRID;
-  const x0 = base.x - S.REACH, y0 = base.y - S.REACH, n = Math.round(2 * S.REACH / st) + 1;
+  const x0 = base.x - reach, y0 = base.y - reach, n = Math.round(2 * reach / st) + 1;
   const can = new Uint8Array(n * n);
   for(let j = 0; j < n; j++) for(let i = 0; i < n; i++) can[j * n + i] = playerCanStand(x0 + i * st, y0 + j * st) ? 1 : 0;
   const cell = (x, y) => { const i = Math.round((x - x0) / st), j = Math.round((y - y0) / st); return i < 0 || j < 0 || i >= n || j >= n ? -1 : j * n + i; };
@@ -152,12 +161,10 @@ function villageReachChecker(){
     return seen;
   };
   const before = fill(() => false);
-  return (key, x, y, extraBoxes) => {
-    const boxes = [villageBox(key, x, y)].concat(extraBoxes || []);
+  return (boxes, doors) => {
     const hit = (c) => { const px = x0 + (c % n) * st, py = y0 + Math.floor(c / n) * st; return boxes.some(o => playerFootOverlaps(o, px, py)); };
     const after = fill(hit);
-    const door = cell(x, y + 0.1);
-    if(door < 0 || !after[door]) return false; // the door can be walked to
+    for(const d of doors){ const c = cell(d.x, d.y); if(c < 0 || !after[c]) return false; } // the doors can be walked to
     for(let c = 0; c < n * n; c++) if(before[c] && !after[c] && !hit(c)) return false; // nothing else is cut off
     return true;
   };
@@ -168,7 +175,7 @@ let villageSiteFailKey = null; // a search that found no site is not repeated un
 
 function villageEnsureSites(){
   const v = villageState();
-  if(VILLAGE.ORDER.every(k => v.sites[k])) return true;
+  if(VILLAGE.ORDER.every(k => v.sites[k])){ villageEnsureDistrict(); return true; } // Task 118: then the plaza
   const w = state.world, tryKey = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + (w.tunnelUnlocked ? 1 : 0);
   if(villageSiteFailKey === tryKey) return false;
   const S = VILLAGE.SITE, base = state.world.base, placed = VILLAGE.ORDER.filter(k => v.sites[k]).map(k => v.sites[k]);
@@ -201,6 +208,7 @@ function villageEnsureSites(){
   });
   const ok = VILLAGE.ORDER.every(k => v.sites[k]);
   villageSiteFailKey = ok ? null : tryKey;
+  if(ok) villageEnsureDistrict();
   return ok;
 }
 
@@ -348,6 +356,282 @@ function villageDonate(key){
 function villageDonateAll(){
   if(villageDonateBlocker()) return 0;
   return villageDonatable().filter(k => villageDonate(k)).length;
+}
+
+// ---------------------------------------------------------------------------
+// Task 118: the village district — the plaza and the roads (blueprint 24.9).
+// The plaza is the village's anchor: one point chosen once on free open ground
+// a little away from the workshop and saved (state.village.district =
+// { x, y, layout }). The lots of the player's house (Task 119) and the garden
+// (Task 120) are fixed offsets from it — one of a few layouts, whichever fits
+// — so moving the village to a space of its own later (blueprint 24.5/24.9)
+// moves one saved point. The appraiser's and the museum's saved sites stay as
+// they are, and nothing already in the world is moved.
+// Roads are not saved: they are worked out from the saved points and the
+// world (a grid search round whatever stands there, cached), from the plaza to
+// the workshop and to every facility door. The plaza and the roads are open
+// ground: they block nothing, and nothing is built or set down on them.
+// ---------------------------------------------------------------------------
+VILLAGE.DISTRICT = {
+  PLAZA_R: 0.95,             // the paved circle
+  // offsets from the plaza centre: the house door and the garden centre
+  LAYOUTS: [
+    { house: { x: 0, y: -1.5 }, garden: { x: 2.3, y: 0 } },
+    { house: { x: 0, y: -1.5 }, garden: { x: -2.3, y: 0 } },
+    { house: { x: 0, y: -1.5 }, garden: { x: 0, y: 2.05 } },
+    { house: { x: -1.25, y: -1.5 }, garden: { x: 1.45, y: -1.9 } },
+    { house: { x: 1.25, y: -1.5 }, garden: { x: -1.45, y: -1.9 } },
+  ],
+  HOUSE_BOX: { minX: -0.34, maxX: 0.34, minY: -0.44, maxY: -0.1 }, // the house walls, relative to its door
+  HOUSE_ROOM: 0.3,           // ground kept round the house walls
+  GARDEN_HALF: { x: 1.25, y: 0.85 }, // the garden round its centre
+  DIST: [3.5, 7.5],          // plaza centre from the workshop door (then wider, up to DIST_WIDE)
+  DIST_WIDE: 9.5,
+  IDEAL: 4.5,                // candidates nearest this distance are tried first
+  STEP: 0.5,
+  EDGE: 0.6,                 // the district keeps this far inside the world edge
+  BASE_CLEAR: 1.6,           // ...from the workshop door
+  MINE_CLEAR: 0.9,           // ...from every vein and every later expansion vein cell
+  HUT_CLEAR: 1.0,            // ...from a craft hut's door
+  FACILITY_CLEAR: 0.6,       // ...from the appraiser's and museum's walls and doors
+  TUNNEL_ROAD_CLEAR: 0.6,    // ...from the dirt road to the tunnel
+  TORCH_CLEAR: 0.3,          // ...from a torch already set down
+  REACH: 11,                 // reach check area: the workshop door +- this
+  ROAD_GRID: 0.2,            // road search grid
+  ROAD_ROOM: 0.18,           // a road keeps this far from walls and veins (a comfortable lane)
+  ROAD_HALF: 0.22,           // drawn half width of a road
+  BUILD_CLEAR: 0.7,          // a new craft hut keeps this far from the district and the roads
+};
+
+// The district's parts for a plaza point and layout: plaza, house door, garden and the footprint rectangles.
+function villageDistrictParts(d){
+  const D = VILLAGE.DISTRICT, L = D.LAYOUTS[d.layout] || D.LAYOUTS[0], R = D.PLAZA_R, hb = D.HOUSE_BOX, hr = D.HOUSE_ROOM, gh = D.GARDEN_HALF;
+  const house = { x: d.x + L.house.x, y: d.y + L.house.y }, garden = { x: d.x + L.garden.x, y: d.y + L.garden.y, hw: gh.x, hh: gh.y };
+  return {
+    plaza: { x: d.x, y: d.y, r: R }, house, garden,
+    rects: [
+      { minX: d.x - R, maxX: d.x + R, minY: d.y - R, maxY: d.y + R },
+      { minX: house.x + hb.minX - hr, maxX: house.x + hb.maxX + hr, minY: house.y + hb.minY - hr, maxY: house.y + 0.4 },
+      { minX: garden.x - gh.x, maxX: garden.x + gh.x, minY: garden.y - gh.y, maxY: garden.y + gh.y },
+    ],
+  };
+}
+
+function villageRectDist(r, x, y){
+  return Math.hypot(Math.max(r.minX - x, 0, x - r.maxX), Math.max(r.minY - y, 0, y - r.maxY));
+}
+function villageRectsApart(a, b, gap){
+  return a.maxX + gap <= b.minX || b.maxX + gap <= a.minX || a.maxY + gap <= b.minY || b.maxY + gap <= a.minY;
+}
+
+// The simple rules for a district (everything but the reach check).
+function villageDistrictFits(x, y, layout){
+  const D = VILLAGE.DISTRICT, B = BALANCE.world, w = state.world, base = w.base, v = villageState();
+  const rects = villageDistrictParts({ x, y, layout }).rects;
+  const veins = w.mines.filter(Boolean).concat(worldGenExpansionSeedCells(base));
+  const t = terrainTunnel(), tunnelRoad = [];
+  for(let k = 0; k <= 40; k++) tunnelRoad.push({ x: base.x + (t.mouthX - base.x) * k / 40, y: base.y + (t.y - base.y) * k / 40 });
+  for(let i = 0; i < rects.length; i++){
+    const r = rects[i];
+    if(r.minX < B.BOUNDS_MIN_X + D.EDGE || r.maxX > B.BOUNDS_MAX_X - D.EDGE || r.minY < B.BOUNDS_MIN_Y + D.EDGE || r.maxY > B.BOUNDS_MAX_Y - D.EDGE) return false;
+    for(let px = r.minX; px <= r.maxX + 1e-9; px += 0.25) for(let py = r.minY; py <= r.maxY + 1e-9; py += 0.25){
+      if(terrainRegionAt(px, py) !== 'open' || !isWorldPointWalkable(px, py)) return false;
+    }
+    if(villageRectDist(r, base.x, base.y) < D.BASE_CLEAR) return false;
+    if(veins.some(m => villageRectDist(r, m.x, m.y) < D.MINE_CLEAR)) return false;
+    if(w.workshops.some(ws => ws && villageRectDist(r, ws.x, ws.y) < D.HUT_CLEAR)) return false;
+    if(VILLAGE.ORDER.some(k => { const s = v.sites[k]; return s && (!villageRectsApart(r, villageBox(k, s.x, s.y), D.FACILITY_CLEAR) || villageRectDist(r, s.x, s.y + 0.1) < D.FACILITY_CLEAR); })) return false;
+    if(tunnelRoad.some(p => villageRectDist(r, p.x, p.y) < D.TUNNEL_ROAD_CLEAR)) return false;
+    if((w.torches || []).some(tc => villageRectDist(r, tc.x, tc.y) < D.TORCH_CLEAR)) return false;
+  }
+  return true;
+}
+
+// Gives the village its plaza once (the result is saved). Needs the facility
+// sites first, so the district keeps clear of them. Returns true if it has one.
+let villageDistrictFailKey = null; // a search that found no place is not repeated until the world changes
+
+function villageEnsureDistrict(){
+  const v = villageState(), D = VILLAGE.DISTRICT;
+  if(v.district) return true;
+  if(!VILLAGE.ORDER.every(k => v.sites[k])) return false;
+  const w = state.world, base = w.base;
+  const tryKey = base.x + ',' + base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + (w.tunnelUnlocked ? 1 : 0) + '|' + (w.torches || []).length;
+  if(villageDistrictFailKey === tryKey) return false;
+  let reach = null;
+  const rings = [D.DIST[1], D.DIST_WIDE];
+  for(let ri = 0; ri < rings.length && !v.district; ri++){
+    const rmin = ri === 0 ? D.DIST[0] : D.DIST[1], rmax = rings[ri], cands = [];
+    for(let dy = -rmax; dy <= rmax + 1e-9; dy += D.STEP){
+      for(let dx = -rmax; dx <= rmax + 1e-9; dx += D.STEP){
+        const d = Math.hypot(dx, dy);
+        if(d < rmin - 1e-9 || d > rmax + 1e-9 || (ri > 0 && d <= D.DIST[1] + 1e-9)) continue;
+        cands.push({ x: Math.round((base.x + dx) * 2) / 2, y: Math.round((base.y + dy) * 2) / 2, d, a: Math.atan2(dx, dy) });
+      }
+    }
+    // nearest the ideal distance first; then from the south (in front of the workshop) round to the north
+    cands.sort((p, q) => Math.abs(p.d - D.IDEAL) - Math.abs(q.d - D.IDEAL) || Math.abs(p.a) - Math.abs(q.a) || p.a - q.a);
+    for(const c of cands){
+      for(let layout = 0; layout < D.LAYOUTS.length; layout++){
+        if(!villageDistrictFits(c.x, c.y, layout)) continue;
+        if(!reach) reach = villageReachGrid(D.REACH);
+        const parts = villageDistrictParts({ x: c.x, y: c.y, layout });
+        // the house walls cut nothing off; its door and the plaza can be walked to from the workshop
+        if(!reach([villageHouseBox(parts.house)], [{ x: parts.house.x, y: parts.house.y + 0.1 }, { x: c.x, y: c.y }])) continue;
+        v.district = { x: c.x, y: c.y, layout };
+        break;
+      }
+      if(v.district) break;
+    }
+  }
+  villageDistrictFailKey = v.district ? null : tryKey;
+  if(v.district) villageRoadCache = null;
+  return !!v.district;
+}
+
+function villageHouseBox(door){
+  const b = VILLAGE.DISTRICT.HOUSE_BOX;
+  return { kind: 'village', id: 'house', minX: door.x + b.minX, maxX: door.x + b.maxX, minY: door.y + b.minY, maxY: door.y + b.maxY };
+}
+
+// The district's parts now, or null before it has a place.
+function villageDistrict(){
+  const v = state && state.village;
+  return v && v.district ? villageDistrictParts(v.district) : null;
+}
+
+// --- roads ------------------------------------------------------------------
+let villageRoadCache = null;
+
+function villageRoadKey(){
+  const w = state.world, v = state.village, ws = w.workshops.filter(Boolean).map(h => h.x + ',' + h.y).join(';');
+  const last = w.mines[w.mines.length - 1];
+  return w.base.x + ',' + w.base.y + '|' + JSON.stringify(v.district) + '|' + VILLAGE.ORDER.map(k => v.sites[k] ? v.sites[k].x + ',' + v.sites[k].y : '-').join(';') +
+    '|' + w.mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
+}
+
+// The roads: [{ to, points: [{x, y}, ...] }]. Each starts at a door step (or the
+// workshop door) and ends where it meets the plaza or a road laid before it.
+function villageRoads(){
+  const v = state && state.village;
+  if(!v || !v.district) return [];
+  const key = villageRoadKey();
+  if(villageRoadCache && villageRoadCache.key === key) return villageRoadCache.roads;
+  const roads = villageRoadsCompute();
+  villageRoadCache = { key, roads };
+  return roads;
+}
+
+// Where a road leads to (door step points), the workshop first: its road is the main road.
+function villageRoadEnds(){
+  const v = villageState(), base = state.world.base, ends = [{ to: 'workshop', x: base.x, y: base.y + 0.2 }];
+  VILLAGE.ORDER.forEach(k => { const s = v.sites[k]; if(s) ends.push({ to: k, x: s.x, y: s.y + 0.2 }); });
+  return ends;
+}
+
+// A small road network: the main road from the workshop to the plaza first,
+// then a branch from every other door to the nearest point of what is already
+// laid (the plaza or a road). Each road is a breadth-first search on a grid of
+// lanes round the walls, veins and the garden, pulled straight where the way
+// is clear. A lane keeps ROAD_ROOM from walls; where there is no such lane the
+// road only needs room to walk.
+function villageRoadsCompute(){
+  const D = VILLAGE.DISTRICT, B = BALANCE.world, parts = villageDistrict(), st = D.ROAD_GRID;
+  const ends = villageRoadEnds(), plaza = parts.plaza, g = parts.garden;
+  const xs = ends.map(e => e.x).concat(plaza.x), ys = ends.map(e => e.y).concat(plaza.y);
+  const x0 = Math.max(B.BOUNDS_MIN_X, Math.min(...xs) - 2), y0 = Math.max(B.BOUNDS_MIN_Y, Math.min(...ys) - 2);
+  const x1 = Math.min(B.BOUNDS_MAX_X, Math.max(...xs) + 2), y1 = Math.min(B.BOUNDS_MAX_Y, Math.max(...ys) + 2);
+  const nx = Math.floor((x1 - x0) / st) + 1, ny = Math.floor((y1 - y0) / st) + 1;
+  const obstacles = worldObstacles().filter(o => o.kind !== 'decor'); // garden pieces never change a road
+  const F = PLAYER_FOOT, freeWith = (room) => (x, y) => terrainRegionAt(x, y) === 'open' && isWorldPointWalkable(x, y) &&
+    !(Math.abs(x - g.x) < g.hw && Math.abs(y - g.y) < g.hh) &&
+    !obstacles.some(o => x > o.minX - room - F.HALF_W && x < o.maxX + room + F.HALF_W && y > o.minY - room - F.HALF_H && y < o.maxY + room + F.HALF_H);
+  const grids = [freeWith(D.ROAD_ROOM), freeWith(0)].map(free => {
+    const ok = new Uint8Array(nx * ny);
+    for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++) ok[j * nx + i] = free(x0 + i * st, y0 + j * st) ? 1 : 0;
+    return { free, ok };
+  });
+  const px = (c) => Math.round((x0 + (c % nx) * st) * 100) / 100, py = (c) => Math.round((y0 + Math.floor(c / nx) * st) * 100) / 100;
+  // the cells the network already covers: the plaza, then each road as it is laid
+  const net = new Uint8Array(nx * ny);
+  const markDisc = (x, y, r) => {
+    for(let j = Math.max(0, Math.floor((y - r - y0) / st)); j <= Math.min(ny - 1, Math.ceil((y + r - y0) / st)); j++)
+      for(let i = Math.max(0, Math.floor((x - r - x0) / st)); i <= Math.min(nx - 1, Math.ceil((x + r - x0) / st)); i++)
+        if(Math.hypot(x0 + i * st - x, y0 + j * st - y) <= r) net[j * nx + i] = 1;
+  };
+  markDisc(plaza.x, plaza.y, plaza.r - 0.2);
+  const clearOn = (free) => (a, b) => { const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.05)); for(let k = 0; k <= n; k++) if(!free(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n)) return false; return true; };
+  const STEPS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const roads = [];
+  ends.forEach(e => {
+    for(const gr of grids){
+      // the free lane cell nearest the door step
+      let start = -1, bestD = 0.75;
+      for(let j = Math.max(0, Math.floor((e.y - 0.8 - y0) / st)); j <= Math.min(ny - 1, Math.ceil((e.y + 0.8 - y0) / st)); j++){
+        for(let i = Math.max(0, Math.floor((e.x - 0.8 - x0) / st)); i <= Math.min(nx - 1, Math.ceil((e.x + 0.8 - x0) / st)); i++){
+          const c = j * nx + i, d = Math.hypot(x0 + i * st - e.x, y0 + j * st - e.y);
+          if(gr.ok[c] && d < bestD){ start = c; bestD = d; }
+        }
+      }
+      if(start < 0) continue;
+      // search outwards from the door until the network is met
+      const from = new Int32Array(nx * ny).fill(-1);
+      from[start] = start;
+      let hit = net[start] ? start : -1;
+      for(let q = [start], h = 0; h < q.length && hit < 0; h++){
+        const c = q[h], i = c % nx, j = (c - i) / nx;
+        for(const [di, dj] of STEPS){
+          const ii = i + di, jj = j + dj, d = jj * nx + ii;
+          if(ii < 0 || jj < 0 || ii >= nx || jj >= ny || from[d] >= 0) continue;
+          if(!net[d] && !gr.ok[d]) continue;
+          if(di && dj && !((gr.ok[j * nx + ii] || net[j * nx + ii]) && (gr.ok[jj * nx + i] || net[jj * nx + i]))) continue; // no cutting a corner
+          from[d] = c;
+          if(net[d]){ hit = d; break; }
+          q.push(d);
+        }
+      }
+      if(hit < 0) continue;
+      const cells = [];
+      for(let c = hit; ; c = from[c]){ cells.unshift({ x: px(c), y: py(c) }); if(from[c] === c) break; }
+      const clear = clearOn(gr.free), pts = [cells[0]];
+      for(let i = 0; i < cells.length - 1;){
+        let j = cells.length - 1;
+        while(j > i + 1 && !clear(cells[i], cells[j])) j--;
+        pts.push(cells[j]); i = j;
+      }
+      pts.unshift({ x: e.x, y: e.y });
+      const points = pts.filter((q, i) => i === 0 || q.x !== pts[i - 1].x || q.y !== pts[i - 1].y);
+      for(let i = 1; i < points.length; i++){
+        const a = points[i - 1], b = points[i], n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.1));
+        for(let k = 0; k <= n; k++) markDisc(a.x + (b.x - a.x) * k / n, a.y + (b.y - a.y) * k / n, 0.12);
+      }
+      roads.push({ to: e.to, points });
+      break;
+    }
+  });
+  return roads;
+}
+
+function villageSegPolyDist(points, x, y){
+  let d = Infinity;
+  for(let i = 0; i < points.length - 1; i++) d = Math.min(d, villageSegDist(x, y, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y));
+  return d;
+}
+
+// Is (x, y) on the village's ground — the district or a road — within `clear`? (new craft huts keep off it)
+function villageGroundNear(x, y, clear){
+  const parts = villageDistrict();
+  if(!parts) return false;
+  if(parts.rects.some(r => villageRectDist(r, x, y) < clear)) return true;
+  return villageRoads().some(r => villageSegPolyDist(r.points, x, y) < clear);
+}
+
+// What the ground painter needs (plain data): plaza, roads and garden, with a key for caching.
+function villageGroundLayout(){
+  const parts = villageDistrict();
+  if(!parts) return null;
+  const roads = villageRoads();
+  return { key: villageRoadKey(), plaza: parts.plaza, garden: null, roads: roads.map(r => r.points), roadHalf: VILLAGE.DISTRICT.ROAD_HALF };
 }
 
 // What walking up to a facility's door offers:

@@ -141,6 +141,10 @@ function tdPropSprite(kind){
     case 'timberSupport': P = tdPainter(16, 22); P(2, 20, 12, 2, 'rgba(0,0,0,0.2)'); P(2, 4, 3, 17, '#7a5a36'); P(11, 4, 3, 17, '#7a5a36'); P(1, 2, 14, 3, '#8a6440'); break;
     case 'mineCart': P = tdPainter(20, 16); P(2, 14, 16, 2, 'rgba(0,0,0,0.22)'); P(2, 4, 16, 8, '#6a625a'); P(3, 5, 14, 3, '#3a3632'); P(4, 4, 3, 2, '#b8704f'); P(9, 3, 3, 2, '#2c3034'); P(4, 11, 4, 4, '#2b2b2b'); P(12, 11, 4, 4, '#2b2b2b'); break;
     case 'diggingMarks': P = tdPainter(16, 10); P(2, 3, 5, 2, '#6e5a42'); P(8, 6, 6, 2, '#6e5a42'); P(5, 7, 2, 1, '#8a7356'); break;
+    case 'villageBoard': // Task 118: the plaza's notice board
+      P = tdPainter(20, 24); P(3, 22, 14, 2, 'rgba(0,0,0,0.22)'); P(4, 10, 2, 13, '#5a3b28'); P(14, 10, 2, 13, '#5a3b28');
+      P(1, 2, 18, 11, '#7a5236'); P(2, 3, 16, 9, '#c9a26a'); P(1, 1, 18, 2, '#5a3b28');
+      P(4, 5, 5, 3, '#f0e6cc'); P(11, 4, 5, 4, '#e8dcc0'); P(5, 6, 3, 1, '#7a6a52'); P(12, 5, 3, 1, '#7a6a52'); P(12, 7, 2, 1, '#7a6a52'); P(6, 9, 8, 1, '#a07a50'); break;
     case 'lamp': P = tdPainter(8, 22); P(3, 6, 2, 16, '#4a3626'); P(1, 2, 6, 5, '#3a2a1e'); P(2, 3, 4, 3, '#ffd27a'); P(1, 20, 6, 2, 'rgba(0,0,0,0.25)'); break;
     default: P = tdPainter(8, 8); P(2, 2, 4, 4, '#888'); // unknown kind: a pebble
   }
@@ -240,7 +244,7 @@ function tdBuildSpriteSheet(){
   sheet.base = tdSpriteImage(tdBaseSprite());
   sheet.torch = [0, 1, 2].map(f => tdSpriteImage(tdTorchSprite(f)));
   [1, 2, 3].forEach(t => { sheet.workshop[t] = tdSpriteImage(tdWorkshopSprite(t)); });
-  ['bigTree', 'sparseTree', 'grass', 'rock', 'clearing', 'exposedVein', 'undevelopedVein', 'rareVein', 'crystal', 'oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks', 'lamp']
+  ['bigTree', 'sparseTree', 'grass', 'rock', 'clearing', 'exposedVein', 'undevelopedVein', 'rareVein', 'crystal', 'oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks', 'lamp', 'villageBoard']
     .forEach(k => { sheet.prop[k] = tdSpriteImage(tdPropSprite(k)); });
   return sheet;
 }

@@ -34,6 +34,13 @@ function tdDrawList(player){
         x: site.x, y: site.y, sortY: site.y + VILLAGE.FACILITIES[k].box.maxY });
     });
   }
+  // Task 118: the plaza's notice board and its two lamp posts (thin: they block nothing)
+  const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(vd){
+    const pz = vd.plaza;
+    list.push({ kind: 'plazaProp', prop: 'villageBoard', x: pz.x, y: pz.y - 0.15, sortY: pz.y - 0.15 });
+    [-1, 1].forEach(sx => list.push({ kind: 'plazaProp', prop: 'lamp', x: pz.x + sx * 0.72, y: pz.y + 0.5, sortY: pz.y + 0.5 }));
+  }
   state.world.mines.forEach(m => {
     if(!m) return;
     const look = !isMineDiscovered(m) ? 'undiscovered' : m.developmentState === 'secured' ? 'secured' : 'unsecured';
@@ -69,6 +76,13 @@ function tdVillageLights(now){
   return out;
 }
 
+// Task 118: the plaza lamps glow like the workshop lamp.
+function tdPlazaLights(now){
+  const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(!vd) return [];
+  return [-1, 1].map((sx, i) => ({ kind: 'plaza', x: vd.plaza.x + sx * 0.72, y: vd.plaza.y + 0.5 - 0.3, r: 0.85, rgb: [255, 214, 140], strength: 0.62 * tdFlicker(now, 40 + i) }));
+}
+
 // Task 114: baked village facility images, cached by facility, stage and lit niches.
 function tdVillageImage(key, stage, exhibits){
   TD.villageImages = TD.villageImages || {};
@@ -82,7 +96,9 @@ function tdVillageImage(key, stage, exhibits){
 function tdOpenLandTufts(){
   const w = state.world, vs = (state.village && state.village.sites) || {};
   const sites = ['appraiser', 'museum'].map(k => vs[k]).filter(Boolean); // Task 114: none on a village site
-  const key = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';');
+  const vg = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: nor on the plaza, roads or lots
+  const vparts = vg ? villageDistrict() : null;
+  const key = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
   if(TD.tuftKey === key && TD.tufts) return TD.tufts;
   const out = [], b = BALANCE.world;
   for(let y = b.BOUNDS_MIN_Y + 0.25; y <= b.BOUNDS_MAX_Y; y += 0.5){
@@ -90,7 +106,8 @@ function tdOpenLandTufts(){
       const h = tdHash(Math.round(x * 2), Math.round(y * 2), 21);
       if(h > 0.07) continue;
       const jx = x + (tdHash(Math.round(x * 2), Math.round(y * 2), 22) - 0.5) * 0.4, jy = y + (tdHash(Math.round(x * 2), Math.round(y * 2), 23) - 0.5) * 0.4;
-      if(tdTileAt(jx, jy, false, w.base) !== TD_TILE.GRASS) continue;
+      if(tdTileAt(jx, jy, false, w.base, vg) !== TD_TILE.GRASS) continue;
+      if(vparts && vparts.rects.some(r => villageRectDist(r, jx, jy) < 0.2)) continue;
       if(Math.hypot(jx - w.base.x, jy - w.base.y) < 1.5) continue;
       if(w.mines.some(m => m && Math.hypot(m.x - jx, m.y - jy) < 0.6)) continue;
       if(w.workshops.some(ws => ws && Math.hypot(ws.x - jx, ws.y - jy) < 0.8)) continue;
@@ -114,9 +131,10 @@ function tdDrawSway(g, img, sx, sy, zoom, anchorY, k){
 // The ground image for the current terrain state (rebuilt only when the tunnel opens or the base moves).
 function tdEnsureGround(){
   const base = state.world.base;
-  const key = (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y;
+  const village = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: the plaza and roads are ground too
+  const key = (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
   if(TD.groundKey === key && TD.ground) return;
-  const map = tdBuildTileMap(terrainTunnelOpen(), base);
+  const map = tdBuildTileMap(terrainTunnelOpen(), base, village);
   const img = tdPaintTileMap(map);
   const c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
@@ -131,7 +149,8 @@ function tdEnsureGround(){
   mc.width = map.cols; mc.height = map.rows;
   const mg = mc.getContext('2d');
   const mid = mg.createImageData(map.cols, map.rows);
-  const col = { [TD_TILE.GRASS]: [86, 128, 76], [TD_TILE.BEYOND]: [60, 98, 64], [TD_TILE.ROCK]: [120, 114, 106], [TD_TILE.TUNNEL]: [150, 120, 80], [TD_TILE.EDGE]: [34, 58, 40], [TD_TILE.PATH]: [160, 132, 92] };
+  const col = { [TD_TILE.GRASS]: [86, 128, 76], [TD_TILE.BEYOND]: [60, 98, 64], [TD_TILE.ROCK]: [120, 114, 106], [TD_TILE.TUNNEL]: [150, 120, 80], [TD_TILE.EDGE]: [34, 58, 40], [TD_TILE.PATH]: [160, 132, 92],
+    [TD_TILE.ROAD]: [176, 162, 138], [TD_TILE.PLAZA]: [206, 194, 170], [TD_TILE.GARDEN]: [112, 168, 92] };
   for(let k = 0; k < map.types.length; k++){ const c3 = col[map.types[k]]; mid.data.set([c3[0], c3[1], c3[2], 255], k * 4); }
   mg.putImageData(mid, 0, 0);
   TD.miniBase = mc;
@@ -162,6 +181,7 @@ function tdBubbleLift(target){
   if(!target) return 34;
   if(target.type === 'base') return 64;
   if(target.type === 'village') return target.id === 'museum' ? 54 : 46;
+  if(target.type === 'plaza') return 40;
   return 34;
 }
 
@@ -218,6 +238,7 @@ function tdRender(now){
       else tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
     }
     else if(it.kind === 'village') tdDrawSprite(g, tdVillageImage(it.id, it.stage, it.exhibits), sp.x, sp.y, zoom, 3);
+    else if(it.kind === 'plazaProp') tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'torch') tdDrawSprite(g, sheet.torch && sheet.torch[Math.floor(now / 130 + it.seed) % 3], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'gate'){
       const t = terrainTunnel(), top = topdownToScreen(it.x, t.y - t.halfWidth, cam, w, h, zoom);
@@ -242,7 +263,7 @@ function tdRender(now){
   if(TD.quality < 2) tdRenderClouds(g, cam, w, h, zoom, now);
   const darkness = typeof TD.forceDarkness === 'number' ? TD.forceDarkness : tdAmbientDarkness(Date.now());
   TD.darkness = darkness;
-  const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now));
+  const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now));
   tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights), darkness, cam, w, h, zoom, TD.quality, now);
   const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.78);
   vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.32)');

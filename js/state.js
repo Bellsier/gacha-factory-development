@@ -96,6 +96,8 @@ function freshRunState(){
 //   owned        appraised relics in hand: relic key -> count
 //   codex        relic keys registered in the codex (appraised at least once)
 //   donated      relic keys donated to the museum (one of each, on display)
+//   district     Task 118: the plaza point and the layout of the house and garden
+//                lots round it ({x, y, layout}; null = not yet chosen)
 // The facility and relic lists are in js/village.js; this only checks shapes,
 // so it can run before that file is loaded.
 // ---------------------------------------------------------------------------
@@ -103,7 +105,15 @@ const VILLAGE_FACILITY_KEYS = ['appraiser', 'museum'];
 
 function freshVillageState(){
   return { sites: { appraiser: null, museum: null }, stage: { appraiser: 0, museum: 0 },
-    unidentified: 0, digProgress: 0, appraised: 0, owned: {}, codex: [], donated: [] };
+    unidentified: 0, digProgress: 0, appraised: 0, owned: {}, codex: [], donated: [], district: null };
+}
+
+// Task 118: missing or invalid (any older save) -> null, chosen again on load.
+function sanitizeVillageDistrict(raw){
+  const site = sanitizeVillageSite(raw);
+  if(!site || !Number.isInteger(raw.layout) || raw.layout < 0) return null;
+  if(typeof VILLAGE !== 'undefined' && VILLAGE.DISTRICT && raw.layout >= VILLAGE.DISTRICT.LAYOUTS.length) return null;
+  return { x: site.x, y: site.y, layout: raw.layout };
 }
 
 function sanitizeVillageSite(raw){
@@ -127,6 +137,7 @@ function sanitizeVillageState(raw){
     digProgress: isNonNegativeInt(raw.digProgress) ? raw.digProgress : 0,
     appraised: isNonNegativeInt(raw.appraised) ? raw.appraised : 0,
     owned, codex: keyList(raw.codex), donated: keyList(raw.donated),
+    district: sanitizeVillageDistrict(raw.district),
   };
   VILLAGE_FACILITY_KEYS.forEach(k => {
     out.sites[k] = sanitizeVillageSite(sites[k]);

@@ -901,6 +901,7 @@ function renderVillage(){
   let html = '<div class="village-list">' +
     '<div class="village-card" data-village="workshop"><div class="village-head"><b>공방</b> <span class="village-stage">운영 중</span></div>' +
     '<div class="rate">마을의 중심 생산 시설. 제작과 판매는 개발 탭에서 합니다.</div></div>';
+  html += villagePlazaCard(v); // Task 118
   VILLAGE.ORDER.forEach(k => {
     const f = VILLAGE.FACILITIES[k], stage = villageStage(k), site = v.sites[k], step = villageNextStep(k);
     html += '<div class="village-card" data-village="' + k + '">' +
@@ -918,6 +919,19 @@ function renderVillage(){
   wrap.querySelectorAll('[data-village-restore]').forEach(btn => { btn.onclick = () => { if(villageRestore(btn.dataset.villageRestore)){ renderVillage(); renderCurrencies(); updateNumbers(); } }; });
   bindVillageOpenSections(wrap);
   refreshVillageButtons();
+}
+
+// Task 118: the plaza, the village's centre, and the roads from it.
+function villagePlazaCard(v){
+  const d = v.district, base = state.world.base;
+  let html = '<div class="village-card" data-village="plaza"><div class="village-head"><b>마을 광장</b> <span class="village-stage">' + (d ? '마을 중심' : '자리를 찾는 중') + '</span></div>';
+  if(d){
+    const names = { workshop: '공방', appraiser: '감정소', museum: '박물관', house: '집' };
+    const roads = villageRoads().map(r => names[r.to] || r.to);
+    html += '<div class="rate">공방에서 ' + Math.hypot(d.x - base.x, d.y - base.y).toFixed(1) + '칸 떨어진 곳 (' + d.x.toFixed(1) + ', ' + d.y.toFixed(1) + ')</div>' +
+      '<div class="rate" data-village-roads>도로: 광장 ↔ ' + (roads.length ? roads.join(' · ') : '없음') + '</div>';
+  } else html += '<div class="rate">빈 땅이 생기면 광장 자리를 정해요.</div>';
+  return html + '</div>';
 }
 
 // Task 116: unidentified relics held, and how much hand mining until the next one.

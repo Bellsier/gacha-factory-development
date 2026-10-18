@@ -939,7 +939,7 @@ function t110Arrived(win) {
   win.saveGame();
   const sv = JSON.parse(storage.getItem('gachaFactorySave'));
   check('Task113: the village is saved in run.village with saveVersion 1', sv.saveVersion === 1 && sv.run.village &&
-    Object.keys(sv.run.village).sort().join() === 'appraised,codex,digProgress,donated,owned,sites,stage,unidentified');
+    Object.keys(sv.run.village).sort().join() === 'appraised,codex,digProgress,district,donated,owned,sites,stage,unidentified'); // Task 118: + district
   check('Task113: village.js loads after player.js and before ui.js (index.html, tests and the simulator agree)',
     win.document.querySelectorAll('script[src="js/village.js"]').length === 1 &&
     Array.from(win.document.querySelectorAll('script[src]')).map((e) => e.getAttribute('src')).join().includes('js/player.js,js/village.js,js/ui.js'));
@@ -995,7 +995,8 @@ function t114Rules(win) {
   check('Task114: acting on it goes through the village rules (no gold yet: nothing happens, the reason is given)', res.ok === false && /골드/.test(res.text) && s.village.stage.appraiser === 0);
   win.tdOpenTab('village');
   check('Task114: the 마을 panel opens from the dock in the top-down screen', win.document.querySelector('.tab-btn.active').dataset.tab === 'village' && win.document.getElementById('tab-village').classList.contains('active'));
-  check('Task114: the panel lists the workshop and both facilities with their state', win.document.querySelectorAll('#villagePanel .village-card').length === 3 &&
+  // (Task 118 added the plaza's card)
+  check('Task114: the panel lists the workshop and both facilities with their state', ['workshop', 'appraiser', 'museum'].every((k) => win.document.querySelectorAll('#villagePanel .village-card[data-village="' + k + '"]').length === 1) &&
     win.document.querySelector('[data-village-stage="museum"]').textContent === '폐허');
   // drawn: in the draw list, behind/in front by their wall front
   const items = win.tdDrawList(null).filter((it) => it.kind === 'village');
@@ -1052,7 +1053,7 @@ function t114Rules(win) {
 (function test_T114_classic() {
   const win = tdDomAt('https://example.test/?view=classic', makeMemoryStorage());
   check('Task114: the classic screen keeps working and has the village panel too', !win.document.body.classList.contains('view-topdown') &&
-    !!win.document.querySelector('.tab-btn[data-tab="village"]') && win.document.querySelectorAll('#villagePanel .village-card').length === 3);
+    !!win.document.querySelector('.tab-btn[data-tab="village"]') && ['workshop', 'appraiser', 'museum'].every((k) => !!win.document.querySelector('#villagePanel .village-card[data-village="' + k + '"]')));
 })();
 
 // -----------------------------------------------------------------------------

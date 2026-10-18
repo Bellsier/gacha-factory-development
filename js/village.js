@@ -365,11 +365,12 @@ function villageDonateBlocker(key){
 // Donates one relic of `key`. Returns true when it went on display.
 function villageDonate(key){
   if(villageDonateBlocker(key)) return false;
-  const v = villageState();
+  const v = villageState(), before = villageMuseumCollected();
   v.owned[key] -= 1;
   if(v.owned[key] <= 0) delete v.owned[key];
   v.donated.push(key);
   log('박물관 기증: ' + villageRelicByKey(key).name + ' (전시 ' + v.donated.length + '/' + VILLAGE_RELICS.length + ')');
+  villageAnnounceRewards(before); // Task 122
   return true;
 }
 
@@ -794,6 +795,10 @@ VILLAGE.DECOR = [
   { key: 'bench', name: '나무 벤치', desc: '잠깐 앉아 쉬기 좋은 벤치.', box: { minX: -0.2, maxX: 0.2, minY: -0.08, maxY: 0.03 } },
   { key: 'lantern', name: '돌 등롱', desc: '밤이면 은은하게 빛나는 돌 등.', light: true, box: { minX: -0.09, maxX: 0.09, minY: -0.08, maxY: 0.03 } },
   { key: 'shrub', name: '둥근 덤불', desc: '둥글게 다듬은 작은 덤불.', box: { minX: -0.13, maxX: 0.13, minY: -0.09, maxY: 0.03 } },
+  // Task 122: opened by the museum's rewards
+  { key: 'oreStatue', name: '광석 조각상', desc: '광석을 깎아 만든 작은 광부 조각상.', reward: true, box: { minX: -0.13, maxX: 0.13, minY: -0.09, maxY: 0.03 } },
+  { key: 'crystalFountain', name: '수정 분수', desc: '수정이 박힌 작은 분수. 밤에는 은은히 빛난다.', reward: true, light: true, box: { minX: -0.2, maxX: 0.2, minY: -0.1, maxY: 0.03 } },
+  { key: 'goldenPick', name: '황금 곡괭이 기념비', desc: '수집을 마친 기념으로 세운 황금 곡괭이.', reward: true, light: true, box: { minX: -0.12, maxX: 0.12, minY: -0.09, maxY: 0.03 } },
 ];
 
 function villageDecorDef(key){ return VILLAGE.DECOR.find(d => d.key === key) || null; }
@@ -982,11 +987,49 @@ function villageSpecimenBlocker(key){
 // Donates one sample of `key`: takes exactly its amount from the store, once. Returns true when it went on display.
 function villageDonateSpecimen(key){
   if(villageSpecimenBlocker(key)) return false;
-  const d = villageSpecimenDef(key);
+  const d = villageSpecimenDef(key), before = villageMuseumCollected();
   state.resources[key] -= d.qty;
   villageSpecimenList().push({ key, at: Date.now() });
   log('박물관 기증: ' + villageSpecimenName(key) + ' 표본 ' + d.qty + '개 (' + VILLAGE_SPECIMEN_GROUPS[d.group] + ' 전시 ' + villageSpecimenList().length + '/' + VILLAGE_SPECIMENS.length + ')');
+  villageAnnounceRewards(before); // Task 122
   return true;
+}
+
+// ---------------------------------------------------------------------------
+// Task 122: the museum's rewards. As the collection grows (relics on display
+// plus mineral and gem samples, 18 in all) small rewards open up: new garden
+// decorations, a decorated exhibition hall and a small research bonus (a few
+// percent off the gold of research; products are paid in full). No gold.
+// Rewards are not saved: they follow from what is on display, which can only
+// grow, so each comes exactly once and can never be taken twice. A log line
+// marks the donation that reaches one.
+// ---------------------------------------------------------------------------
+const VILLAGE_MUSEUM_REWARDS = [
+  { need: 3, type: 'decor', decor: 'oreStatue', name: '장식 해금: 광석 조각상' },
+  { need: 6, type: 'research', percent: 3, name: '연구 보너스: 연구 골드 비용 3% 절감' },
+  { need: 9, type: 'hall', level: 1, name: '전시실 꾸미기: 깃발과 꽃 화분' },
+  { need: 12, type: 'decor', decor: 'crystalFountain', name: '장식 해금: 수정 분수' },
+  { need: 15, type: 'research', percent: 5, name: '연구 보너스: 연구 골드 비용 5% 절감' },
+  { need: 18, type: 'hall', level: 2, decor: 'goldenPick', name: '전시실 완성: 금빛 장식 · 황금 곡괭이 기념비 해금' },
+];
+
+function villageMuseumCollected(){
+  const v = state && state.village;
+  if(!v) return 0;
+  return (Array.isArray(v.donated) ? v.donated.length : 0) + (Array.isArray(v.specimens) ? v.specimens.length : 0);
+}
+function villageMuseumTotal(){ return VILLAGE_RELICS.length + VILLAGE_SPECIMENS.length; }
+function villageRewardsEarned(){ const n = villageMuseumCollected(); return VILLAGE_MUSEUM_REWARDS.filter(r => n >= r.need); }
+function villageNextReward(){ const n = villageMuseumCollected(); return VILLAGE_MUSEUM_REWARDS.find(r => n < r.need) || null; }
+function villageRewardDecorUnlocked(key){ return villageRewardsEarned().some(r => r.decor === key); }
+function villageHallLevel(){ return villageRewardsEarned().reduce((m, r) => r.type === 'hall' ? Math.max(m, r.level) : m, 0); }
+// The research bonus: percent off the gold of research (the largest earned, not added up).
+function villageResearchDiscountPercent(){ return villageRewardsEarned().reduce((m, r) => r.type === 'research' ? Math.max(m, r.percent) : m, 0); }
+
+// Logs the rewards a donation has just reached (`before`: the collection count before it).
+function villageAnnounceRewards(before){
+  const now = villageMuseumCollected();
+  VILLAGE_MUSEUM_REWARDS.filter(r => r.need > before && r.need <= now).forEach(r => log('박물관 보상 (수집 ' + r.need + '점): ' + r.name));
 }
 
 // What walking up to a facility's door offers:

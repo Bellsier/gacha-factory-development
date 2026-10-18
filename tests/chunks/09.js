@@ -469,6 +469,111 @@ function t121OpenMuseum(win) {
   check('Task121: the display list counts relics and minerals', /광물·보석 1\/6/.test(doc.querySelector('[data-village-collection]').textContent.replace(/\s/g, ' ')));
 })();
 
+// -----------------------------------------------------------------------------
+// Task 122: the museum's rewards
+// -----------------------------------------------------------------------------
+// Donates `relics` relics and `minerals` specimens (in list order) through the game's own functions.
+function t122Donate(win, relics, minerals) {
+  const s = win.state, v = s.village;
+  win.VILLAGE_RELIC_KEYS.slice(v.donated.length, relics).forEach((k) => { v.owned[k] = (v.owned[k] || 0) + 1; if (!v.codex.includes(k)) v.codex.push(k); win.villageDonate(k); });
+  ['iron', 'coal', 'mana', 'crystal', 'rareMetal', 'cosmicShard'].slice(v.specimens.length, minerals).forEach((k) => { s.resources[k] = (s.resources[k] || 0) + 50; win.villageDonateSpecimen(k); });
+}
+function t122RewardLogs(win) {
+  return Array.from(win.document.querySelectorAll('#log > *')).filter((e) => /박물관 보상/.test(e.textContent)).length;
+}
+
+(function test_T122_rewards() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state, v = s.village;
+  v.stage.appraiser = 2; v.stage.museum = 2;
+  s.gold = 5000;
+  const p = s.world.player; p.x = s.world.base.x; p.y = s.world.base.y + 0.3;
+  check('Task122: with nothing on display there are no rewards', win.villageMuseumCollected() === 0 && win.villageRewardsEarned().length === 0 && win.villageResearchDiscountPercent() === 0 && win.villageHallLevel() === 0);
+  check('Task122: the reward decorations are locked at first', !win.villageDecorUnlocked('oreStatue') && win.villageDecorPlace('oreStatue', 0) === false && /해금/.test(win.villageDecorPlaceProblem('oreStatue', 0)));
+  const def = win.RESEARCH.find((r) => r.key === 'workshopBuild');
+  check('Task122: research costs its full gold before the bonus', win.researchGoldCost(def) === def.cost.gold);
+  // 3: a decoration
+  t122Donate(win, 2, 1);
+  check('Task122: at 3 in the collection (relics and minerals together) the ore statue opens and can be set in the garden', win.villageMuseumCollected() === 3 && win.villageDecorUnlocked('oreStatue') && win.villageDecorPlace('oreStatue', 0) === true);
+  // 6: the research bonus, 3% of the gold only
+  t122Donate(win, 4, 2);
+  check('Task122: at 6 the research bonus takes 3% off the gold of research', win.villageResearchDiscountPercent() === 3 && win.researchGoldCost(def) === Math.ceil(def.cost.gold * 0.97 - 1e-9));
+  s.products.steel = 5; const gold0 = s.gold;
+  check('Task122: research then pays exactly the lowered gold and every product in full', win.doResearch('workshopBuild') && s.gold === gold0 - win.researchGoldCost(def) && s.products.steel === 0);
+  check('Task122: the bonus is only for research (other payments with the same cost display are not lowered)', win.researchGoldCost({ cost: { gold: 1000 } }) === 1000);
+  // 9: the decorated hall
+  t122Donate(win, 6, 3);
+  const hallItem = () => win.tdDrawList(null).find((it) => it.kind === 'village' && it.id === 'museum');
+  check('Task122: at 9 the exhibition hall is decorated (the building and the 전시실 show it)', win.villageHallLevel() === 1 && hallItem().hall === 1 &&
+    win.tdVillageSprite('museum', 2, 3, [], 1).rects.length > win.tdVillageSprite('museum', 2, 3, [], 0).rects.length);
+  // 12, 15, 18
+  t122Donate(win, 9, 3); t122Donate(win, 9, 3);
+  check('Task122: at 12 the crystal fountain opens', win.villageMuseumCollected() === 12 && win.villageDecorUnlocked('crystalFountain') && !win.villageDecorUnlocked('goldenPick'));
+  t122Donate(win, 10, 5);
+  check('Task122: at 15 the research bonus becomes 5% (the larger one, not added up)', win.villageResearchDiscountPercent() === 5);
+  const goldBefore = s.gold;
+  t122Donate(win, 12, 6);
+  check('Task122: the whole collection (18) completes the hall and opens the golden pickaxe monument', win.villageMuseumCollected() === 18 && win.villageHallLevel() === 2 &&
+    win.villageDecorUnlocked('goldenPick') && win.villageNextReward() === null);
+  check('Task122: no reward gives gold (donations never add gold)', s.gold === goldBefore);
+  check('Task122: each reward was announced once in the log', t122RewardLogs(win) === 6);
+  // nothing twice: rewards follow from the collection, which only grows
+  check('Task122: nothing can be donated twice, so no reward comes twice', win.villageDonate(win.VILLAGE_RELIC_KEYS[0]) === false && win.villageDonateSpecimen('iron') === false &&
+    win.villageRewardsEarned().length === 6 && t122RewardLogs(win) === 6);
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task122: rewards are not saved (no new save fields; they follow from what is on display)',
+    Object.keys(sv.run.village).sort().join() === 'appraised,codex,decor,digProgress,district,donated,owned,sites,specimens,stage,unidentified' && !/reward|discount|hall/i.test(JSON.stringify(sv.run.village)));
+  const w2 = newDom(storage).window;
+  check('Task122: after loading, the same rewards hold and none is announced again', w2.villageRewardsEarned().length === 6 && w2.villageResearchDiscountPercent() === 5 && t122RewardLogs(w2) === 0);
+  // the panel lists them
+  win.tdOpenTab('village'); win.renderVillage();
+  const doc = win.document;
+  check('Task122: the museum card lists the rewards with the earned ones ticked', doc.querySelectorAll('[data-village-reward]').length === 6 && doc.querySelectorAll('.village-reward.is-earned').length === 6 &&
+    doc.querySelector('[data-village-hall]').dataset.villageHall === '2');
+  check('Task122: research cards show the lowered gold with the museum bonus', (() => { win.renderResearch(); const el = doc.querySelector('[data-research-cost="autoCraftDevice"]'); return !!el && /박물관 보너스 -5%/.test(el.textContent) && el.textContent.includes(win.fmt(Math.ceil(800 * 0.95))); })());
+})();
+
+(function test_T122_rewardDecor() {
+  const win = newDom(makeMemoryStorage()).window;
+  const s = win.state, v = s.village;
+  v.stage.appraiser = 2; v.stage.museum = 2;
+  const p = s.world.player; p.x = s.world.base.x; p.y = s.world.base.y + 0.3;
+  t122Donate(win, 12, 6);
+  const cells = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const kinds = ['crystalFountain', 'goldenPick', 'oreStatue'];
+  cells.forEach((c, i) => win.villageDecorPlace(kinds[i % 3], c));
+  const r = t114Reach(win);
+  check('Task122: a garden full of the reward decorations (the fountain is the widest) still cuts nothing off', v.decor.length === 12 && r.doorsOk && r.minesOk && r.pockets === 0 && t118RoadsStandable(win));
+  check('Task122: the reward decorations have pictures and the fountain and monument glow', kinds.every((k) => win.tdDecorSprite(k).rects.length > 8) && win.tdGardenLights(0).length === 8);
+})();
+
+(function test_T122_olderVillageSave() {
+  // a save written by the build before Task 118 (PR #35): it has the village (sites, stages, relics)
+  // but no plaza, garden or specimens. It loads with all of that kept and the new parts added.
+  const st = makeMemoryStorage();
+  const w0 = newDom(st).window, v0 = w0.state.village;
+  v0.stage.appraiser = 2; v0.stage.museum = 1; v0.unidentified = 3; v0.digProgress = 5; v0.appraised = 2;
+  v0.owned = { bell: 1 }; v0.codex = ['bell', 'tile']; v0.donated = ['tile'];
+  w0.state.gold = 4321; w0.state.resources.iron = 77;
+  w0.saveGame();
+  const raw = JSON.parse(st.getItem('gachaFactorySave'));
+  delete raw.run.village.district; delete raw.run.village.decor; delete raw.run.village.specimens;
+  const sites = JSON.stringify(raw.run.village.sites);
+  const st2 = makeMemoryStorage(); st2.setItem('gachaFactorySave', JSON.stringify(raw));
+  const w = newDom(st2).window, v = w.state.village;
+  check('Task122: an older village save keeps its sites, stages, relics, codex and display', JSON.stringify(v.sites) === sites && v.stage.appraiser === 2 && v.stage.museum === 1 &&
+    v.unidentified === 3 && v.digProgress === 5 && v.appraised === 2 && v.owned.bell === 1 && v.codex.join() === 'bell,tile' && v.donated.join() === 'tile');
+  check('Task122: ...gets a plaza with its house and roads, an empty garden and no specimens', !!v.district && t118Rules(w) === '' && v.decor.length === 0 && v.specimens.length === 0 &&
+    w.villageRoads().length === 4);
+  check('Task122: ...and its gold and resources are untouched', w.state.gold === 4321 && w.state.resources.iron === 77);
+  check('Task122: its earned rewards follow from what it had on display (1 relic: none yet)', w.villageMuseumCollected() === 1 && w.villageRewardsEarned().length === 0);
+  w.saveGame();
+  check('Task122: saving it again writes saveVersion 1 with the new village fields', JSON.parse(st2.getItem('gachaFactorySave')).saveVersion === 1 &&
+    ['district', 'decor', 'specimens'].every((k) => k in JSON.parse(st2.getItem('gachaFactorySave')).run.village));
+})();
+
 // SUMMARY
 // =============================================================================
 

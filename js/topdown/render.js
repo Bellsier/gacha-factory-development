@@ -32,6 +32,7 @@ function tdDrawList(player){
       if(!site) return;
       list.push({ kind: 'village', id: k, stage: Math.min(2, state.village.stage[k] || 0), exhibits: Math.ceil((state.village.donated || []).length / 2),
         specimens: k === 'museum' ? (state.village.specimens || []).map(sp => sp.key) : [], // Task 121
+        hall: k === 'museum' && typeof villageHallLevel === 'function' ? villageHallLevel() : 0, // Task 122
         x: site.x, y: site.y, sortY: site.y + VILLAGE.FACILITIES[k].box.maxY });
     });
   }
@@ -116,11 +117,11 @@ function tdDecorImage(key){
 }
 
 // Task 114: baked village facility images, cached by facility, stage and lit niches.
-function tdVillageImage(key, stage, exhibits, specimens){
+function tdVillageImage(key, stage, exhibits, specimens, hall){
   TD.villageImages = TD.villageImages || {};
   const open = key === 'museum' && stage >= 2;
-  const id = key + '|' + stage + '|' + (open ? exhibits : 0) + '|' + (open ? (specimens || []).join(',') : ''); // Task 121: the specimen stands too
-  if(!(id in TD.villageImages)) TD.villageImages[id] = tdSpriteImage(tdVillageSprite(key, stage, exhibits, specimens));
+  const id = key + '|' + stage + '|' + (open ? exhibits : 0) + '|' + (open ? (specimens || []).join(',') + '|' + (hall || 0) : ''); // Task 121/122: specimens, hall
+  if(!(id in TD.villageImages)) TD.villageImages[id] = tdSpriteImage(tdVillageSprite(key, stage, exhibits, specimens, hall));
   return TD.villageImages[id];
 }
 
@@ -285,7 +286,7 @@ function tdRender(now){
       if(swaying && TD.quality < 2) tdDrawSway(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2, tdSway(now, it.x, it.y, it.kind === 'decor' ? 'tuft' : it.prop));
       else tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
     }
-    else if(it.kind === 'village') tdDrawSprite(g, tdVillageImage(it.id, it.stage, it.exhibits, it.specimens), sp.x, sp.y, zoom, 3);
+    else if(it.kind === 'village') tdDrawSprite(g, tdVillageImage(it.id, it.stage, it.exhibits, it.specimens, it.hall), sp.x, sp.y, zoom, 3);
     else if(it.kind === 'plazaProp') tdDrawSprite(g, sheet.prop[it.prop], sp.x, sp.y, zoom, 2);
     else if(it.kind === 'house') tdDrawSprite(g, sheet.house, sp.x, sp.y, zoom, 3);
     else if(it.kind === 'gardenDecor') tdDrawSprite(g, tdDecorImage(it.key), sp.x, it.carried ? sp.y - 20 * zoom : sp.y, zoom, 2);

@@ -374,7 +374,8 @@ function renderWorkshops(){
 function researchCostText(def){
   const cost = def.cost || {};
   const parts = [];
-  if(cost.gold) parts.push(fmt(cost.gold) + 'G (보유 ' + fmt(state.gold) + 'G)');
+  const gold = researchGoldCost(def), pct = gold < (cost.gold || 0) ? villageResearchDiscountPercent() : 0; // Task 122: the museum's bonus
+  if(cost.gold) parts.push(fmt(gold) + 'G' + (pct ? ' (박물관 보너스 -' + pct + '%)' : '') + ' (보유 ' + fmt(state.gold) + 'G)');
   Object.keys(cost.products || {}).forEach(k => {
     const recipe = recipeByKey(k);
     parts.push((recipe ? recipe.name : k) + ' ' + cost.products[k] + '개 (보유 ' + fmt(state.products[k] || 0) + '개)');
@@ -1027,13 +1028,14 @@ function villageOpenSection(k){
       can.forEach(key => { const r = villageRelicByKey(key); html += '<div class="village-relic" data-village-donatable="' + key + '"><b>' + r.name + '</b> <span class="rarity">' + VILLAGE_RARITY_NAMES[r.rarity] + '</span><br><button data-village-donate="' + key + '">기증</button></div>'; });
       html += '</div>';
     }
-    html += '<div class="rate" style="margin-top:8px;">전시실</div><div class="village-codex">';
+    const hall = villageHallLevel(); // Task 122: the decorated hall
+    html += '<div class="rate" style="margin-top:8px;">전시실' + (hall >= 2 ? ' · 완성' : hall >= 1 ? ' · 꾸민 전시실' : '') + '</div><div class="village-codex' + (hall ? ' is-hall-' + hall : '') + '" data-village-hall="' + hall + '">';
     VILLAGE_RELICS.forEach(r => {
       const on = v.donated.includes(r.key);
       html += '<div class="village-relic' + (on ? '' : ' is-unknown') + '" data-village-exhibit="' + r.key + '">' +
         (on ? '<b>' + r.name + '</b> <span class="rarity">' + VILLAGE_RARITY_NAMES[r.rarity] + '</span><br>' + r.desc : '<b>빈 진열장</b>') + '</div>';
     });
-    return html + '</div>' + villageSpecimenSection();
+    return html + '</div>' + villageSpecimenSection() + villageRewardSection();
   }
   return '<div class="rate">운영 중</div>';
 }
@@ -1051,6 +1053,18 @@ function villageSpecimenSection(){
           '<button data-village-donate-specimen="' + d.key + '">기증 (' + d.qty + '개)</button>') + '</div>';
   });
   return html + '</div>';
+}
+
+// Task 122: the museum's rewards by collection size (earned ones ticked; no gold).
+function villageRewardSection(){
+  const n = villageMuseumCollected(), next = villageNextReward();
+  let html = '<div class="rate" style="margin-top:8px;" data-village-rewards>수집 보상 · 수집 <b>' + n + '</b>/' + villageMuseumTotal() +
+    (next ? ' · 다음 보상까지 ' + (next.need - n) + '점' : ' · 모든 보상을 받았어요') + '</div><div class="village-rewards">';
+  VILLAGE_MUSEUM_REWARDS.forEach(r => {
+    const got = n >= r.need;
+    html += '<div class="village-reward' + (got ? ' is-earned' : '') + '" data-village-reward="' + r.need + '">' + (got ? '✓ ' : '') + '<b>' + r.need + '점</b> ' + r.name + '</div>';
+  });
+  return html + '</div><div class="rate">박물관 보상은 골드를 주지 않아요. 연구 보너스는 연구의 골드 비용에만 적용돼요.</div>';
 }
 
 function bindVillageOpenSections(wrap){

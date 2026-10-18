@@ -110,10 +110,10 @@ function tdVillageInteract(target){
     return { ok: true, text: (r.isNew ? '도감 등록! ' : '') + r.relic.name };
   }
   if(target.action === 'donate' && typeof villageDonateAll === 'function'){
-    const n = villageDonateAll();
+    const rewards = villageRewardsEarned().length, n = villageDonateAll();
     if(!n) return { ok: false, text: '' };
     tdRefreshAfterVillageChange();
-    return { ok: true, text: '유물 ' + n + '점 기증 · 전시' };
+    return { ok: true, text: '유물 ' + n + '점 기증 · 전시' + (villageRewardsEarned().length > rewards ? ' · 박물관 보상!' : '') }; // Task 122
   }
   return { ok: true, text: '', open: 'village' };
 }

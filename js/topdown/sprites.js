@@ -156,7 +156,8 @@ function tdPropSprite(kind){
 //   The appraiser (감정소) is 44 x 40, the museum (박물관) 60 x 48; the door is at the bottom centre.
 //   `exhibits` (museum only) lights that many of its six display niches (one per two relics on show).
 //   Task 121: `specimens` (museum only, raw resource keys) stand as small crystals along its front.
-function tdVillageSprite(key, stage, exhibits, specimens){
+//   Task 122: `hall` (museum only) 1 hangs banners and sets flower pots by the door, 2 adds gold trim and lamps.
+function tdVillageSprite(key, stage, exhibits, specimens, hall){
   const museum = key === 'museum';
   const W = museum ? 60 : 44, H = museum ? 48 : 40, P = tdPainter(W, H);
   const cx = W / 2, groundY = H - 3;
@@ -207,6 +208,16 @@ function tdVillageSprite(key, stage, exhibits, specimens){
     if(k < lit) P(nx + 1, ny + 2, 1, 2, ['#c98a4a', '#9ab8c8', '#d8c070', '#b07ac8', '#7fd7ec', '#e6e1d8'][k]);
   }
   P(Math.round(cx) - 7, groundY - 31, 14, 4, '#e2b23c'); P(Math.round(cx) - 6, groundY - 30, 12, 2, '#5a3b28'); // the name board
+  // Task 122: the decorated hall
+  if((hall || 0) >= 1){
+    [fx + 2, fx + fw - 4].forEach(x => { P(x - 1, groundY - 21, 4, 9, '#b0524a'); P(x - 1, groundY - 21, 4, 1, '#e2b23c'); P(x, groundY - 13, 2, 2, '#b0524a'); });
+    [Math.round(cx) - 8, Math.round(cx) + 6].forEach(x => { P(x, groundY - 4, 3, 3, '#b8704f'); P(x, groundY - 6, 3, 2, '#4f8246'); P(x + 1, groundY - 7, 1, 1, '#e06f8a'); });
+  }
+  if((hall || 0) >= 2){
+    for(let k = 0; k < 10; k++){ const o = Math.floor(k * 25 / 9); P(Math.round(cx) - o, groundY - 34 + k, 1, 1, '#e2b23c'); P(Math.round(cx) + o - 1, groundY - 34 + k, 1, 1, '#e2b23c'); }
+    P(fx - 1, groundY - 24, fw + 2, 1, '#f2d68c');
+    [fx + 6, fx + fw - 8].forEach(x => { P(x, groundY - 27, 3, 3, '#3a2a1e'); P(x + 1, groundY - 26, 1, 1, '#ffd27a'); });
+  }
   // Task 121: donated mineral and gem samples on little stands between the columns
   (specimens || []).slice(0, 6).forEach((k, i) => {
     const sx = [fx + 5, fx + 8, fx + 14, fx + fw - 17, fx + fw - 9, fx + fw - 6][i], c = TD_RES_COLORS[k] || ['#ccc', '#fff'];
@@ -342,6 +353,23 @@ function tdDecorSprite(key){
     case 'shrub':
       P = tdPainter(22, 20); P(3, 17, 16, 3, 'rgba(0,0,0,0.25)');
       P.disc(11, 10, 8, '#3f6e44'); P.disc(10, 9, 6, '#4f8246'); P.disc(8, 7, 3, '#6a9e5f'); P(14, 6, 2, 2, '#e06f8a'); P(6, 12, 2, 2, '#f0d060');
+      break;
+    // Task 122: the museum's reward decorations
+    case 'oreStatue':
+      P = tdPainter(18, 28); P(2, 26, 14, 2, 'rgba(0,0,0,0.25)'); P(2, 21, 14, 6, '#8f8a84'); P(2, 21, 14, 1, '#a9a39a');
+      P(6, 9, 6, 12, '#b8704f'); P(5, 4, 8, 6, '#c98a62'); P(4, 3, 10, 3, '#e2b23c'); P(7, 4, 4, 1, '#fff3b0'); // a little miner in ore, a gold helmet
+      P(12, 8, 2, 9, '#6a4630'); P(11, 7, 5, 2, '#9a958e'); P(7, 12, 1, 2, '#e09a72'); P(10, 15, 1, 2, '#e09a72');
+      break;
+    case 'crystalFountain':
+      P = tdPainter(30, 26); P(2, 23, 26, 3, 'rgba(0,0,0,0.25)');
+      P(2, 15, 26, 9, '#8f8a84'); P(2, 15, 26, 2, '#a9a39a'); P(4, 17, 22, 5, '#4f9ec4'); P(5, 18, 8, 1, '#bff3ff'); // the basin and its water
+      P(12, 6, 6, 11, '#9a958e'); P(13, 2, 4, 6, '#7fd7ec'); P(14, 0, 2, 3, '#e8fbff'); P(10, 4, 2, 4, '#5fc0d8'); P(18, 5, 2, 3, '#5fc0d8'); // the crystal
+      P(8, 12, 1, 4, '#bff3ff'); P(21, 11, 1, 5, '#bff3ff');
+      break;
+    case 'goldenPick':
+      P = tdPainter(18, 30); P(2, 28, 14, 2, 'rgba(0,0,0,0.25)'); P(2, 22, 14, 7, '#77706a'); P(2, 22, 14, 1, '#958d85'); P(5, 24, 8, 2, '#e2b23c');
+      P(8, 6, 2, 16, '#b58a26'); P(8, 6, 1, 16, '#f2d68c'); // the haft
+      P(2, 3, 14, 3, '#e2b23c'); P(1, 4, 2, 3, '#b58a26'); P(15, 4, 2, 3, '#b58a26'); P(3, 3, 11, 1, '#fff3b0'); // the gold head
       break;
     default: P = tdPainter(8, 8); P(2, 2, 4, 4, '#888');
   }

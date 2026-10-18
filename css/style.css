@@ -482,3 +482,9 @@
 .village-garden-cell.is-moving{outline:2px solid #ffd27a;}
 .village-garden-cell button{padding:2px 6px; font-size:0.72rem; margin:2px 1px 0;}
 .village-relic.is-donated{border-color:rgba(226,178,60,0.7); background:rgba(226,178,60,0.1);} /* Task 121 */
+/* Task 122: the museum's rewards and the decorated hall */
+.village-rewards{display:flex; flex-direction:column; gap:3px; margin:4px 0;}
+.village-reward{font-size:0.78rem; padding:3px 6px; border-radius:5px; border:1px solid var(--line); opacity:0.7;}
+.village-reward.is-earned{opacity:1; border-color:rgba(226,178,60,0.7); background:rgba(226,178,60,0.12);}
+.village-codex.is-hall-1, .village-codex.is-hall-2{padding:6px; border-radius:8px; border:2px solid rgba(176,82,74,0.6); background:rgba(176,82,74,0.08);}
+.village-codex.is-hall-2{border-color:rgba(226,178,60,0.8); background:rgba(226,178,60,0.08);}

@@ -397,6 +397,78 @@ function t120Face(win, cell) {
   check('Task120: 회수 takes it back', s.village.decor.length === 0 && doc.querySelectorAll('.village-garden-cell.is-used').length === 0);
 })();
 
+// -----------------------------------------------------------------------------
+// Task 121: minerals and gems for the museum
+// -----------------------------------------------------------------------------
+function t121OpenMuseum(win) {
+  const v = win.state.village;
+  v.stage.appraiser = 2; v.stage.museum = 2;
+}
+
+(function test_T121_specimens() {
+  const storage = makeMemoryStorage();
+  const win = newDom(storage).window;
+  const s = win.state;
+  const SP = ['iron', 'coal', 'mana', 'crystal', 'rareMetal', 'cosmicShard'];
+  check('Task121: a new game has no specimens (run.village.specimens)', Array.isArray(s.village.specimens) && s.village.specimens.length === 0);
+  s.resources.iron = 100;
+  check('Task121: nothing can be donated before the museum is open', win.villageDonateSpecimen('iron') === false && s.resources.iron === 100 && /박물관/.test(win.villageSpecimenBlocker('iron')));
+  t121OpenMuseum(win);
+  s.resources.iron = 29;
+  check('Task121: with less than the sample in the store nothing is taken, and the reason says how much', win.villageDonateSpecimen('iron') === false && s.resources.iron === 29 && /30개 필요/.test(win.villageSpecimenBlocker('iron')));
+  s.resources.iron = 45.5;
+  const gold = s.gold, prod = JSON.stringify(s.products), t0 = Date.now();
+  check('Task121: donating takes exactly the sample (30 iron ore) from the store, once', win.villageDonateSpecimen('iron') === true && s.resources.iron === 15.5);
+  check('Task121: the first donation is recorded with when it happened', s.village.specimens.length === 1 && s.village.specimens[0].key === 'iron' && s.village.specimens[0].at >= t0 && s.village.specimens[0].at <= Date.now());
+  check('Task121: no gold, no products, nothing given back for it', s.gold === gold && JSON.stringify(s.products) === prod);
+  s.resources.iron = 100;
+  check('Task121: the same kind cannot be donated again (nothing taken)', win.villageDonateSpecimen('iron') === false && s.resources.iron === 100 && /이미/.test(win.villageSpecimenBlocker('iron')) && s.village.specimens.length === 1);
+  check('Task121: 고대 유물 (the crafting resource) and 플라즈마 are not museum specimens', win.villageDonateSpecimen('relic') === false && win.villageDonateSpecimen('plasma') === false &&
+    win.villageDonateSpecimen('steel') === false);
+  // every kind: three minerals, three gems
+  SP.forEach((k) => { s.resources[k] = 1000; });
+  SP.slice(1).forEach((k) => win.villageDonateSpecimen(k));
+  check('Task121: all six kinds (iron ore, coal, rare metal; mana stone, crystal, cosmic shard) go on display, each paid once',
+    s.village.specimens.map((x) => x.key).join() === SP.join() && s.resources.coal === 970 && s.resources.mana === 985 && s.resources.crystal === 985 && s.resources.rareMetal === 992 && s.resources.cosmicShard === 996);
+  // the museum keeps them: a long run of ticks and selling never brings them back
+  const before = JSON.stringify(s.village.specimens);
+  advanceTicks(win, 50);
+  check('Task121: donated specimens stay in the museum (nothing returns them to the store)', JSON.stringify(s.village.specimens) === before);
+  // saved and loaded
+  win.saveGame();
+  const sv = JSON.parse(storage.getItem('gachaFactorySave'));
+  check('Task121: specimens are saved in run.village.specimens with their times (saveVersion 1)', sv.saveVersion === 1 && JSON.stringify(sv.run.village.specimens) === before);
+  const w2 = newDom(storage).window;
+  check('Task121: ...and load back the same; a loaded game still refuses a second donation', JSON.stringify(w2.state.village.specimens) === before && w2.villageDonateSpecimen('coal') === false);
+  check('Task121: invalid saved specimens are dropped (unknown kind, a second of a kind); a missing time becomes 0',
+    JSON.stringify(win.sanitizeVillageSpecimens([{ key: 'iron', at: 5 }, { key: 'gold', at: 1 }, { key: 'iron', at: 9 }, { key: 'coal' }, 'mana', { key: 'relic', at: 1 }])) === JSON.stringify([{ key: 'iron', at: 5 }, { key: 'coal', at: 0 }]) &&
+    JSON.stringify(win.sanitizeVillageSpecimens({})) === '[]');
+  // the museum shows them
+  const item = win.tdDrawList(null).find((it) => it.kind === 'village' && it.id === 'museum');
+  check('Task121: the museum building shows the samples on its front', item.specimens.join() === SP.join() && win.tdVillageSprite('museum', 2, 0, SP).rects.length > win.tdVillageSprite('museum', 2, 0, []).rects.length);
+  const m = s.village.sites.museum;
+  check('Task121: the museum door tells how many relics and minerals are on show', /광물·보석 6\/6/.test(win.tdInteractTarget(m.x, m.y + 0.2).label));
+})();
+
+(function test_T121_panel() {
+  const win = tdDomAt('https://example.test/?view=classic', makeMemoryStorage());
+  const s = win.state, doc = win.document;
+  t121OpenMuseum(win);
+  s.resources.mana = 10;
+  win.renderVillage();
+  check('Task121: the museum card lists every mineral and gem with what it takes', doc.querySelectorAll('[data-village-specimen]').length === 6 &&
+    /필요 15/.test(doc.querySelector('[data-village-specimen="mana"]').textContent));
+  win.refreshVillageButtons();
+  const btn = () => doc.querySelector('[data-village-donate-specimen="mana"]');
+  check('Task121: the donate button waits until the store has enough', btn().disabled === true);
+  s.resources.mana = 20; win.refreshVillageButtons();
+  check('Task121: ...then it can be pressed', btn().disabled === false);
+  btn().click();
+  check('Task121: pressing it donates the sample and marks the kind as donated (with its date)', s.resources.mana === 5 && !btn() &&
+    !!doc.querySelector('[data-village-specimen="mana"] [data-village-specimen-done]') && /기증 완료/.test(doc.querySelector('[data-village-specimen="mana"]').textContent));
+  check('Task121: the display list counts relics and minerals', /광물·보석 1\/6/.test(doc.querySelector('[data-village-collection]').textContent.replace(/\s/g, ' ')));
+})();
+
 // SUMMARY
 // =============================================================================
 

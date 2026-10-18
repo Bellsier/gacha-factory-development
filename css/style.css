@@ -481,3 +481,4 @@
 .village-garden-cell.is-used{border-style:solid; background:rgba(90,140,80,0.25);}
 .village-garden-cell.is-moving{outline:2px solid #ffd27a;}
 .village-garden-cell button{padding:2px 6px; font-size:0.72rem; margin:2px 1px 0;}
+.village-relic.is-donated{border-color:rgba(226,178,60,0.7); background:rgba(226,178,60,0.1);} /* Task 121 */

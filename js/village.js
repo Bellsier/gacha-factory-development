@@ -942,6 +942,53 @@ function villageGardenTarget(){
   return Object.assign(t, { action: 'decorPlace', label: '정원 · ' + name + ' 놓기' });
 }
 
+// ---------------------------------------------------------------------------
+// Task 121: minerals and gems for the museum. Besides appraised relics, the
+// open museum takes one sample of each mineral and gem the mines yield: a
+// fixed amount of that raw resource from the shared store, paid once. The
+// sample is the museum's for good — it never goes back to the store, and the
+// same kind cannot be donated again. Each kind's first (and only) donation is
+// recorded with when it happened (state.village.specimens, additive field,
+// saveVersion 1). No gold, no resources back.
+// 고대 유물 (the crafting resource) is left out: relics have their own way
+// to the museum. 플라즈마 is not a mineral.
+// ---------------------------------------------------------------------------
+const VILLAGE_SPECIMENS = [
+  { key: 'iron', group: 'mineral', qty: 30, desc: '붉은 녹빛이 도는 철광석 표본.' },
+  { key: 'coal', group: 'mineral', qty: 30, desc: '결이 고운 석탄 덩어리.' },
+  { key: 'mana', group: 'gem', qty: 15, desc: '안쪽에서 보랏빛이 일렁이는 마정석.' },
+  { key: 'crystal', group: 'gem', qty: 15, desc: '빛을 받으면 푸르게 갈라지는 결정.' },
+  { key: 'rareMetal', group: 'mineral', qty: 8, desc: '은빛으로 반짝이는 희귀 금속 덩이.' },
+  { key: 'cosmicShard', group: 'gem', qty: 4, desc: '별빛을 머금은 듯한 우주 파편.' },
+];
+const VILLAGE_SPECIMEN_KEYS = VILLAGE_SPECIMENS.map(s => s.key);
+const VILLAGE_SPECIMEN_GROUPS = { mineral: '광물', gem: '보석' };
+
+function villageSpecimenDef(key){ return VILLAGE_SPECIMENS.find(s => s.key === key) || null; }
+function villageSpecimenName(key){ const r = resourceByKey(key); return r ? r.name : key; }
+function villageSpecimenList(){ const v = villageState(); return Array.isArray(v.specimens) ? v.specimens : (v.specimens = []); }
+function villageSpecimenDonated(key){ return villageSpecimenList().some(s => s.key === key); }
+
+// Why `key` cannot be donated now, or null when it can.
+function villageSpecimenBlocker(key){
+  if(!villageIsOpen('museum')) return '박물관이 아직 복구되지 않았어요';
+  const d = villageSpecimenDef(key);
+  if(!d) return '기증할 수 없는 자원이에요';
+  if(villageSpecimenDonated(key)) return '이미 기증해 전시 중이에요';
+  if(!((state.resources[key] || 0) >= d.qty)) return villageSpecimenName(key) + '이(가) ' + d.qty + '개 필요해요';
+  return null;
+}
+
+// Donates one sample of `key`: takes exactly its amount from the store, once. Returns true when it went on display.
+function villageDonateSpecimen(key){
+  if(villageSpecimenBlocker(key)) return false;
+  const d = villageSpecimenDef(key);
+  state.resources[key] -= d.qty;
+  villageSpecimenList().push({ key, at: Date.now() });
+  log('박물관 기증: ' + villageSpecimenName(key) + ' 표본 ' + d.qty + '개 (' + VILLAGE_SPECIMEN_GROUPS[d.group] + ' 전시 ' + villageSpecimenList().length + '/' + VILLAGE_SPECIMENS.length + ')');
+  return true;
+}
+
 // What walking up to a facility's door offers:
 //   { action: 'restore' | 'locked' | 'open', label }
 function villageTargetFor(key){
@@ -957,7 +1004,9 @@ function villageTargetFor(key){
   }
   if(key === 'museum'){
     const n = villageDonatable().length, d = villageState().donated.length;
-    return n > 0 ? { action: 'donate', label: name + ' · 유물 기증 (' + n + '점)' } : { action: 'open', label: name + ' · 전시 ' + d + '/' + VILLAGE_RELICS.length };
+    // Task 121: minerals and gems are donated from the panel (they take resources from the store)
+    return n > 0 ? { action: 'donate', label: name + ' · 유물 기증 (' + n + '점)' }
+      : { action: 'open', label: name + ' · 전시 ' + d + '/' + VILLAGE_RELICS.length + ' · 광물·보석 ' + villageSpecimenList().length + '/' + VILLAGE_SPECIMENS.length };
   }
   return { action: 'open', label: name };
 }

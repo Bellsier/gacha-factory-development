@@ -155,7 +155,8 @@ function tdPropSprite(kind){
 //   stage 0 ruin (broken walls, rubble, weeds), 1 cleared (foundation and scaffolding), 2 open.
 //   The appraiser (감정소) is 44 x 40, the museum (박물관) 60 x 48; the door is at the bottom centre.
 //   `exhibits` (museum only) lights that many of its six display niches (one per two relics on show).
-function tdVillageSprite(key, stage, exhibits){
+//   Task 121: `specimens` (museum only, raw resource keys) stand as small crystals along its front.
+function tdVillageSprite(key, stage, exhibits, specimens){
   const museum = key === 'museum';
   const W = museum ? 60 : 44, H = museum ? 48 : 40, P = tdPainter(W, H);
   const cx = W / 2, groundY = H - 3;
@@ -206,6 +207,11 @@ function tdVillageSprite(key, stage, exhibits){
     if(k < lit) P(nx + 1, ny + 2, 1, 2, ['#c98a4a', '#9ab8c8', '#d8c070', '#b07ac8', '#7fd7ec', '#e6e1d8'][k]);
   }
   P(Math.round(cx) - 7, groundY - 31, 14, 4, '#e2b23c'); P(Math.round(cx) - 6, groundY - 30, 12, 2, '#5a3b28'); // the name board
+  // Task 121: donated mineral and gem samples on little stands between the columns
+  (specimens || []).slice(0, 6).forEach((k, i) => {
+    const sx = [fx + 5, fx + 8, fx + 14, fx + fw - 17, fx + fw - 9, fx + fw - 6][i], c = TD_RES_COLORS[k] || ['#ccc', '#fff'];
+    P(sx - 1, groundY - 4, 4, 1, stoneDark); P(sx, groundY - 7, 2, 3, c[0]); P(sx, groundY - 7, 1, 1, c[1]);
+  });
   return P.done(false);
 }
 

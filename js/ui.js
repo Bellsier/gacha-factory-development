@@ -1033,16 +1033,33 @@ function villageOpenSection(k){
       html += '<div class="village-relic' + (on ? '' : ' is-unknown') + '" data-village-exhibit="' + r.key + '">' +
         (on ? '<b>' + r.name + '</b> <span class="rarity">' + VILLAGE_RARITY_NAMES[r.rarity] + '</span><br>' + r.desc : '<b>빈 진열장</b>') + '</div>';
     });
-    return html + '</div>';
+    return html + '</div>' + villageSpecimenSection();
   }
   return '<div class="rate">운영 중</div>';
 }
+// Task 121: one sample of each mineral and gem, donated from the shared store (kept by the museum for good).
+function villageSpecimenSection(){
+  const list = villageSpecimenList(), v = villageState();
+  let html = '<div class="rate" style="margin-top:8px;" data-village-collection>전시 목록: 유물 ' + v.donated.length + '/' + VILLAGE_RELICS.length +
+    ' · 광물·보석 <b data-village-specimens>' + list.length + '</b>/' + VILLAGE_SPECIMENS.length + '</div>' +
+    '<div class="rate">광물과 보석은 종류마다 한 번, 정해진 양을 창고에서 기증해요. 기증한 표본은 박물관에 남고 돌려받지 않아요.</div><div class="village-codex">';
+  VILLAGE_SPECIMENS.forEach(d => {
+    const done = list.find(x => x.key === d.key);
+    html += '<div class="village-relic' + (done ? ' is-donated' : '') + '" data-village-specimen="' + d.key + '"><b>' + villageSpecimenName(d.key) + '</b> <span class="rarity">' + VILLAGE_SPECIMEN_GROUPS[d.group] + '</span><br>' + d.desc + '<br>' +
+      (done ? '<span class="rarity" data-village-specimen-done>기증 완료' + (done.at ? ' · ' + new Date(done.at).toLocaleDateString('ko-KR') : '') + '</span>'
+        : '<span class="rarity">창고 <span data-village-specimen-have="' + d.key + '">' + fmt(state.resources[d.key] || 0) + '</span> / 필요 ' + d.qty + '</span><br>' +
+          '<button data-village-donate-specimen="' + d.key + '">기증 (' + d.qty + '개)</button>') + '</div>';
+  });
+  return html + '</div>';
+}
+
 function bindVillageOpenSections(wrap){
   const ap = wrap.querySelector('[data-village-appraise]');
   if(ap) ap.onclick = () => { if(villageAppraise()){ renderVillage(); updateNumbers(); } };
   const all = wrap.querySelector('[data-village-donate-all]');
   if(all) all.onclick = () => { if(villageDonateAll()){ renderVillage(); updateNumbers(); } };
   wrap.querySelectorAll('[data-village-donate]').forEach(btn => { btn.onclick = () => { if(villageDonate(btn.dataset.villageDonate)){ renderVillage(); updateNumbers(); } }; });
+  wrap.querySelectorAll('[data-village-donate-specimen]').forEach(btn => { btn.onclick = () => { if(villageDonateSpecimen(btn.dataset.villageDonateSpecimen)){ renderVillage(); renderSharedStorage(); updateNumbers(); } }; }); // Task 121
 }
 
 // Per tick: which village buttons can be pressed now, and why not.
@@ -1054,6 +1071,9 @@ function refreshVillageButtons(){
   const un = wrap.querySelector('[data-village-unidentified]'), pr = wrap.querySelector('[data-village-progress]'), vs = villageState();
   if(un && un.textContent !== String(vs.unidentified)) un.textContent = String(vs.unidentified);
   if(pr && pr.textContent !== String(VILLAGE.RELIC.EVERY - vs.digProgress)) pr.textContent = String(VILLAGE.RELIC.EVERY - vs.digProgress);
+  // Task 121: a specimen can be donated once the store holds enough
+  wrap.querySelectorAll('[data-village-donate-specimen]').forEach(btn => { btn.disabled = !!villageSpecimenBlocker(btn.dataset.villageDonateSpecimen); });
+  wrap.querySelectorAll('[data-village-specimen-have]').forEach(el => { const t = fmt(state.resources[el.dataset.villageSpecimenHave] || 0); if(el.textContent !== t) el.textContent = t; });
   wrap.querySelectorAll('[data-village-restore]').forEach(btn => {
     const why = villageRestoreBlocker(btn.dataset.villageRestore);
     btn.disabled = !!why;

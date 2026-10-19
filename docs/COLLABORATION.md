@@ -11,7 +11,7 @@
 | `prototype-main` | 원본 `main`의 `d31da01` 그대로. 커밋 168개 이력 보존 | 보존용. 커밋·push·삭제 금지 |
 | `claude/graphics-<주제>` | Claude의 그래픽 작업 | `develop`에서 분기, `develop`으로 Draft PR |
 | `codex/worldgen-<주제>` | Codex의 월드 생성 작업 | `develop`에서 분기, `develop`으로 Draft PR |
-| `test/*`, `docs/*` | 점검·문서 | 게임 코드 변경 없음 |
+| `chore/*`, `test/*`, `docs/*` | 개발 환경 정리·점검·문서 | 게임 코드 변경 없음. `develop`으로 Draft PR |
 
 - 주제마다 브랜치를 하나씩 만들고, 작게 나눠 PR을 올립니다(예: `claude/graphics-house-1p5x`, `codex/worldgen-seeded-chunks`).
 - 서로의 브랜치에는 push하지 않습니다.
@@ -72,11 +72,23 @@
 - `tests/chunks/00.js`의 `MODULE_FILES`
 - `docs/WORLD_EXPANSION_2048.md`
 
-**테스트 파일:** `tests/chunks/*.js`는 이름 순서로 이어 붙여 실행하고, 마지막 결과 출력(`// SUMMARY`)이 `09.js` 끝에 있습니다.
-- 지금은 새 테스트를 `09.js`의 `// SUMMARY` 바로 위에 넣습니다. 그래서 두 브랜치가 같은 자리를 고쳐 충돌하기 쉽습니다.
-- **제안(승인 후 진행):** SUMMARY를 `99.js`로 옮기고, Claude는 `10.js`, Codex는 `20.js`에 테스트를 넣습니다.
+## 5. 테스트 파일
 
-## 5. 공통 규칙
+`npm test`(`tests/regression.test.js`)는 `tests/chunks/`의 두 자리 숫자 파일(`00.js` ~ `99.js`)을 **이름 순서로 이어 붙여 한 번에** 실행합니다. 앞 파일의 헬퍼(`check`, `tdDomAt`, `t103*` 등)를 뒤 파일에서 그대로 씁니다.
+
+| 파일 | 주인 | 내용 |
+| --- | --- | --- |
+| `00.js` ~ `09.js` | 공동 (기존) | 기존 2,287개 테스트. 기존 테스트를 고칠 때만 손대고, 새 테스트는 넣지 않습니다 |
+| `10.js` | Claude | 그래픽 브랜치의 새 테스트 |
+| `20.js` | Codex | 월드 생성 브랜치의 새 테스트 |
+| `99.js` | 공동 | 결과 출력(`// SUMMARY`)만. 테스트를 넣지 않고 항상 마지막 파일로 둡니다 |
+
+- 새 테스트는 자기 파일의 끝에 이어서 넣습니다. 두 브랜치가 같은 파일을 고치지 않으므로 병합 충돌이 나지 않습니다.
+- 파일이 너무 커지면 같은 구간 안에서 나눕니다(Claude `11.js`~`19.js`, Codex `21.js`~`29.js`).
+- `99.js` 뒤에 둔 파일의 테스트는 결과 출력 뒤에 실행되어 집계되지 않습니다. 그래서 `99.js`보다 큰 번호는 쓸 수 없습니다(파일 이름이 두 자리 숫자여야 실행됩니다).
+- 테스트를 건너뛰거나, 끄거나, 기대값을 약하게 바꾸지 않습니다.
+
+## 6. 공통 규칙
 
 - PR은 `develop`을 향한 **Draft PR**로 올립니다. 병합은 사용자 승인 후에만 합니다.
 - GitHub Pages 설정과 `preview/pages`는 승인 없이 바꾸지 않습니다. 외부 서비스도 승인 없이 연결하지 않습니다.
@@ -91,8 +103,15 @@
 - 커밋 메시지와 PR에 모델 이름을 적지 않습니다.
 - 원본 저장소(`gacha-factory-prototype`)에는 push, PR, 설정 변경을 하지 않습니다.
 
-## 6. CI
+## 7. CI
 
-- 복사된 워크플로(`.github/workflows/node.js.yml`, `quality.yml`)는 `main` 브랜치에 대한 push·PR에서만 돕니다.
-- 이 저장소에는 `main`이 없으므로 **지금은 CI가 돌지 않습니다.** 위의 로컬 검사가 기준입니다.
-- **제안(승인 후 진행):** 워크플로가 `develop`을 대상으로 돌게 바꿉니다.
+워크플로 두 개가 `develop`에 대한 push와 `develop`을 향한 PR에서 실행됩니다. 원본과 맞추기 위해 `main`에 대한 실행 조건도 그대로 남겨 두었습니다.
+
+| 워크플로 | 하는 일 | 실행 시점 |
+| --- | --- | --- |
+| `Node.js CI` (`node.js.yml`) | `npm install`, `npm test` (전체 회귀 테스트) | `develop`·`main`에 대한 push와 PR |
+| `Code quality and browser smoke` (`quality.yml`) | Biome 검사(3개 파일), Chromium 브라우저 smoke 테스트 | `develop`·`main`에 대한 push와 PR, 수동 실행 |
+
+- `claude/graphics-*`, `codex/worldgen-*` 브랜치에 push만 해서는 CI가 돌지 않습니다. `develop`을 향한 Draft PR을 열면 그 PR의 커밋마다 돕니다.
+- CI가 빨간색이면 병합 승인을 요청하지 않습니다. 원인을 고쳐서 다시 push합니다.
+- CI와 별개로 push 전 로컬 검사(6장)는 계속 합니다.

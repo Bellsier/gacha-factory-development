@@ -23,6 +23,8 @@ test('outer coordinates, discoveries, secured mines and mined resources round tr
  w.worldEnsureRect({minX:16,maxX:24,minY:0,maxY:8});
  const m=s.world.mines.find(m=>m.id.startsWith('gen:'));assert.ok(m);
  assert.equal(w.discoverMine(m.id),true);assert.equal(w.secureMine(m.id),true);
+ w.worldRuntime(s.world).data.clear();w.worldEnsureRect({minX:m.x-1,maxX:m.x+1,minY:m.y-1,maxY:m.y+1});
+ assert.equal(w.mineById(m.id),m);assert.equal(m.developmentState,'secured');assert.equal(w.isMineDiscovered(m),true);
  const before=s.resources[m.resource];assert.equal(w.mineMine(m.id),true);assert.ok(s.resources[m.resource]>before);
  s.world.torches.push({x:16,y:0});s.world.workshops.push({id:'outer-hut',x:18,y:0,level:1,recipeKey:null,auto:false,progress:null});
  w.saveGame();const raw=a.data.get(key),id=m.id,amount=s.resources[m.resource];

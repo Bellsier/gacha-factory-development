@@ -32,3 +32,10 @@ for(const style of ['', 'v2'])test('four adjacent chunk canvases exactly match o
  }
  assert.equal(Buffer.compare(Buffer.from(whole.data),joined),0);h.close();
 });
+test('movement into an unseen chunk loads its mine collision before rendering',()=>{
+ const h=open(),w=h.w,c=w.getState().world;let candidate;
+ for(let y=2;y<4&&!candidate;y++)for(let x=2;x<4&&!candidate;x++)candidate=w.generateWorldChunk(c,x,y).mines[0];
+ assert.ok(candidate);assert.equal(w.mineById(candidate.id),null);
+ const p=w.worldStepFoot(candidate.x-.6,candidate.y,1,0,.6);
+ assert.ok(p.x<candidate.x-.2,'must stop before the unseen mine');assert.ok(w.mineById(candidate.id));h.close();
+});

@@ -147,6 +147,7 @@ function worldSceneryLegacy(){
 // Obstacle boxes in world coordinates, optionally only those near (x, y). Near a point the chunk
 // index answers (worldindex.js, same boxes in the same order); the whole world is the full scan.
 function worldObstacles(nearX, nearY, radius){
+  if(radius !== undefined && Number.isFinite(nearX) && Number.isFinite(nearY) && typeof worldEnsureRect === 'function') worldEnsureRect({minX:nearX-radius-1,maxX:nearX+radius+1,minY:nearY-radius-1,maxY:nearY+radius+1});
   if(radius !== undefined && typeof worldObstaclesNear === 'function') return worldObstaclesNear(nearX, nearY, radius);
   return worldObstaclesScan(nearX, nearY, radius);
 }
@@ -191,7 +192,6 @@ function playerFootOverlaps(o, x, y){
 
 // Could the player stand here? Terrain (Task 66/68) and the obstacles.
 function playerCanStand(x, y){
-  if(typeof worldEnsureRect === 'function') worldEnsureRect({minX:x-1,maxX:x+1,minY:y-1,maxY:y+1});
   return isWorldPointWalkable(x, y) && !worldObstacles(x, y, 1).some(o => playerFootOverlaps(o, x, y));
 }
 

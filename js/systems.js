@@ -443,6 +443,7 @@ function discoverMine(mineId){
   if(!Array.isArray(hidden) || !hidden.includes(mineId)) return false;
   const mine = mineById(mineId);
   state.world.hiddenMineIds = hidden.filter(id => id !== mineId);
+  if(typeof recordGeneratedMineEdit === 'function') recordGeneratedMineEdit(mineId);
   if(mine){
     const res = resourceByKey(mine.resource);
     log('새 광맥 발견: ' + (res ? res.name : mine.resource) + ' (' + mine.x + ', ' + mine.y + ')');

@@ -25,6 +25,7 @@ function clearPlayerHeld(){
 }
 
 function clampPlayerPosition(x, y){
+  if(typeof currentWorldContext === 'function' && currentWorldContext()){ const b=worldBounds(); return {x:clampPlayerAxis(x,b.minX,b.maxX),y:clampPlayerAxis(y,b.minY,b.maxY)}; }
   return {
     x: clampPlayerAxis(x, BALANCE.world.BOUNDS_MIN_X, BALANCE.world.BOUNDS_MAX_X),
     y: clampPlayerAxis(y, BALANCE.world.BOUNDS_MIN_Y, BALANCE.world.BOUNDS_MAX_Y),
@@ -127,6 +128,10 @@ function worldSceneryBase(){
 // The scenery of this game: the fixed pieces minus those on a mine, with a
 // grid of the solid ones for quick lookups. Cached until the mines change.
 function worldScenery(){
+  if(typeof currentWorldContext === 'function' && currentWorldContext()) return worldGeneratedScenery();
+  return worldSceneryLegacy();
+}
+function worldSceneryLegacy(){
   const mines = state.world.mines;
   const c = worldSceneryCache, last = mines[mines.length - 1];
   const key = mines.length + '|' + (mines[0] ? mines[0].x + ',' + mines[0].y : '') + '|' + (last ? last.x + ',' + last.y : '');
@@ -163,7 +168,7 @@ function worldObstaclesScan(nearX, nearY, radius){
     out.push(o);
   });
   // Task 111: solid scenery beyond the mountain (only reachable, and drawn, with the tunnel open)
-  if(terrainTunnelOpen()){
+  if(terrainTunnelOpen() || typeof currentWorldContext === 'function' && currentWorldContext()){
     const sc = worldScenery();
     let cands = sc.solid;
     if(radius !== undefined){
@@ -186,6 +191,7 @@ function playerFootOverlaps(o, x, y){
 
 // Could the player stand here? Terrain (Task 66/68) and the obstacles.
 function playerCanStand(x, y){
+  if(typeof worldEnsureRect === 'function') worldEnsureRect({minX:x-1,maxX:x+1,minY:y-1,maxY:y+1});
   return isWorldPointWalkable(x, y) && !worldObstacles(x, y, 1).some(o => playerFootOverlaps(o, x, y));
 }
 

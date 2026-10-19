@@ -19,6 +19,7 @@ const TD = {
 // `view` (a world rectangle, optional): only veins and scenery props inside it are listed (by the chunk
 // index) — the renderer passes the screen plus a margin wider than its own culling, so what is drawn is the same.
 function tdDrawList(player, view){
+  if(view && typeof worldEnsureRect === 'function') worldEnsureRect(view);
   const list = [];
   const base = state.world.base;
   // Task 107: buildings sort by the front edge of their footprint, so the player
@@ -61,12 +62,13 @@ function tdDrawList(player, view){
     list.push({ kind: 'ore', id: m.id, resource: m.resource, look, x: m.x, y: m.y, sortY: m.y });
   });
   tdOpenLandTufts().forEach(t => list.push({ kind: 'decor', prop: 'grass', x: t.x, y: t.y, sortY: t.y - 0.2 }));
-  if(terrainTunnelOpen()){
+  if(terrainTunnelOpen() || typeof currentWorldContext === 'function' && currentWorldContext()){
     // Task 111: the same pieces that block (worldScenery leaves out those on a mine or walling something in)
     (view ? worldSceneryInRect(view) : worldScenery().props).forEach(pr => {
       list.push({ kind: 'prop', prop: pr.kind, x: pr.x, y: pr.y, sortY: pr.kind === 'clearing' ? pr.y - 5 : pr.y });
     });
-  } else {
+  }
+  if(!terrainTunnelOpen()){
     const t = terrainTunnel();
     list.push({ kind: 'gate', x: t.gateX, y: t.y + t.halfWidth, sortY: t.y + t.halfWidth - 0.01 });
   }
@@ -168,7 +170,8 @@ function tdDrawSway(g, img, sx, sy, zoom, anchorY, k){
 function tdEnsureGround(){
   const base = state.world.base;
   const village = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: the plaza and roads are ground too
-  const key = (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
+  const context=typeof currentWorldContext === 'function' ? currentWorldContext():null;
+  const key = (context ? context.seed+':'+context.generatorVersion+':256|' : '') + (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
   if(TD.groundKey === key && TD.groundMap) return;
   const map = tdBuildTileMap(terrainTunnelOpen(), base, village);
   // the picture is painted chunk by chunk as it comes into view (tdChunkCanvas); a new state drops the old chunks

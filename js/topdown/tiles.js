@@ -24,6 +24,11 @@ function tdSegDist(px, py, ax, ay, bx, by){
 // Tile type at a world point (the tile's centre).
 // Task 118: `village` (villageGroundLayout(), optional) adds the plaza, the garden and the roads on open ground.
 function tdTileAt(x, y, tunnelOpen, base, village){
+  const context=typeof currentWorldContext === 'function' ? currentWorldContext():null;
+  if(context && worldOutsideLegacy(x,y)){
+    const tx=Math.floor(x*4),ty=Math.floor(y*4),cx=Math.floor(tx/32),cy=Math.floor(ty/32),chunk=worldChunk(context,cx,cy);
+    return chunk ? chunk.tiles[(ty-cy*32)*32+tx-cx*32] : TD_TILE.EDGE;
+  }
   if(!terrainInBounds(x, y)) return TD_TILE.EDGE;
   const region = terrainRegionAt(x, y);
   if(region === 'mountain') return TD_TILE.ROCK;
@@ -123,6 +128,10 @@ const TD_WALKABLE_TYPES = [TD_TILE.GRASS, TD_TILE.BEYOND, TD_TILE.TUNNEL, TD_TIL
 function tdPaintTileMap(map, area){
   const T = TOPDOWN.TILE, A = area || { i0: 0, j0: 0, i1: map.cols, j1: map.rows };
   const W = (A.i1 - A.i0) * T, H = (A.j1 - A.j0) * T, ox = A.i0 * T, oy = A.j0 * T, MW = map.cols * T, MH = map.rows * T;
+  // Anchor texture coordinates to the original (-12,-12) origin even when
+  // the map grows. Graphic routines/assets themselves remain unchanged.
+  const hi = Math.round((map.originX + 12) * TOPDOWN.TILES_PER_UNIT), hj = Math.round((map.originY + 12) * TOPDOWN.TILES_PER_UNIT);
+  const hx = hi * T, hy = hj * T;
   const data = new Uint8ClampedArray(W * H * 4);
   const put = (gx, gy, c, a) => {
     const x = gx - ox, y = gy - oy;
@@ -144,14 +153,14 @@ function tdPaintTileMap(map, area){
         type === TD_TILE.PLAZA ? TD_COLORS.plaza : type === TD_TILE.GARDEN ? TD_COLORS.garden : TD_COLORS.edge;
       for(let y = 0; y < T; y += 2){
         for(let x = 0; x < T; x += 2){
-          const h = tdHash(x0 + x, y0 + y, 7);
+          const h = tdHash(x0 + x + hx, y0 + y + hy, 7);
           const c = h < 0.8 ? pal[0] : pick(pal, (h - 0.8) * 5);
           put(x0 + x, y0 + y, c); put(x0 + x + 1, y0 + y, c); put(x0 + x, y0 + y + 1, c); put(x0 + x + 1, y0 + y + 1, c);
         }
       }
-      const h1 = tdHash(i, j, 1), h2 = tdHash(i, j, 2), h3 = tdHash(i, j, 3);
+      const h1 = tdHash(i + hi, j + hj, 1), h2 = tdHash(i + hi, j + hj, 2), h3 = tdHash(i + hi, j + hj, 3);
       if(v2 && (type === TD_TILE.GRASS || type === TD_TILE.ROAD || type === TD_TILE.PLAZA)){
-        tdPaintGrassV2(put, x0, y0, i, j); // the style experiment's grass (roads and the plaza are grass underneath)
+        tdPaintGrassV2((x,y,c,a)=>put(x-hx,y-hy,c,a), x0+hx, y0+hy, i+hi, j+hj); // the style experiment's grass (roads and the plaza are grass underneath)
       } else if(type === TD_TILE.GRASS){
         if(h1 < 0.22){ const tx = x0 + 3 + Math.floor(h2 * 9), ty = y0 + 4 + Math.floor(h3 * 8); put(tx, ty, TD_COLORS.tuft); put(tx + 2, ty, TD_COLORS.tuft); put(tx + 1, ty - 1, TD_COLORS.tuft); put(tx + 1, ty, TD_COLORS.tuft); }
         if(h1 > 0.955){ const fx = x0 + 4 + Math.floor(h2 * 8), fy = y0 + 4 + Math.floor(h3 * 8), fc = pick(TD_COLORS.flower, h3); put(fx, fy, fc); put(fx + 1, fy, fc); put(fx, fy + 1, fc); put(fx + 1, fy + 1, [244, 226, 120]); }
@@ -170,14 +179,14 @@ function tdPaintTileMap(map, area){
         if(h1 < 0.35){ const cx = x0 + 2 + Math.floor(h2 * 10), cy = y0 + 2 + Math.floor(h3 * 10); for(let k = 0; k < 4; k++) put(cx + k, cy + (k > 1 ? 1 : 0), TD_COLORS.crack); }
         if(h1 > 0.7){ const rx = x0 + 3 + Math.floor(h3 * 8), ry = y0 + 3 + Math.floor(h2 * 8); put(rx, ry, TD_COLORS.rim); put(rx + 1, ry, TD_COLORS.rim); }
       } else if(type === TD_TILE.TUNNEL){
-        if(j % 2 === 0) for(let x = 0; x < T; x++) put(x0 + x, y0 + 8, TD_COLORS.plank, 0.35);
+        if((j + hj) % 2 === 0) for(let x = 0; x < T; x++) put(x0 + x, y0 + 8, TD_COLORS.plank, 0.35);
       } else if(type === TD_TILE.PATH){
         if(h1 < 0.4){ const px = x0 + 2 + Math.floor(h2 * 12), py = y0 + 2 + Math.floor(h3 * 12); put(px, py, TD_COLORS.pebble); }
         // ragged edge where the dirt meets grass, so the yard and the road are not hard squares
         [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([di, dj]) => {
           if(tdTileType(map, i + di, j + dj) !== TD_TILE.GRASS) return;
           for(let k = 0; k < T; k += 2){
-            const depth = 1 + Math.floor(tdHash(x0 + k, y0 + k, 11 + di * 3 + dj) * 5);
+            const depth = 1 + Math.floor(tdHash(x0 + k + hx, y0 + k + hy, 11 + di * 3 + dj) * 5);
             for(let d = 0; d < depth; d += 2){
               const ex = di === 1 ? x0 + T - 2 - d : di === -1 ? x0 + d : x0 + k, ey = dj === 1 ? y0 + T - 2 - d : dj === -1 ? y0 + d : y0 + k;
               const g = TD_COLORS.grass[0]; put(ex, ey, g); put(ex + 1, ey, g); put(ex, ey + 1, g); put(ex + 1, ey + 1, g);
@@ -216,13 +225,13 @@ function tdPaintTileMap(map, area){
         if(tdTileType(map, i - 1, j) === TD_TILE.ROCK) for(let y = 0; y < T; y++) for(let x = 0; x < 4; x++) put(x0 + x, y0 + y, [0, 0, 0], 0.22 - x * 0.05);
         if(tdTileType(map, i + 1, j) === TD_TILE.ROCK) for(let y = 0; y < T; y++) for(let x = 0; x < 3; x++) put(x0 + T - 1 - x, y0 + y, [0, 0, 0], 0.16 - x * 0.05);
         if(tdTileType(map, i, j - 1) === TD_TILE.ROCK) for(let x = 0; x < T; x++) for(let y = 0; y < 4; y++) put(x0 + x, y0 + y, [0, 0, 0], 0.24 - y * 0.06);
-        if(type === TD_TILE.TUNNEL && (tdTileType(map, i, j - 1) === TD_TILE.ROCK || tdTileType(map, i, j + 1) === TD_TILE.ROCK) && i % 3 === 0){
+        if(type === TD_TILE.TUNNEL && (tdTileType(map, i, j - 1) === TD_TILE.ROCK || tdTileType(map, i, j + 1) === TD_TILE.ROCK) && (i + hi) % 3 === 0){
           for(let y = 0; y < T; y++){ put(x0 + 6, y0 + y, TD_COLORS.beam); put(x0 + 7, y0 + y, TD_COLORS.beam); }
         }
       }
     }
   }
-  if(map.village) tdPaintVillageGround(map, put, MW, MH, { x0: ox, y0: oy, x1: Math.min(MW, ox + W) - 1, y1: Math.min(MH, oy + H) - 1 });
+  if(map.village) tdPaintVillageGround({village:map.village, originX:-12, originY:-12}, (x,y,c,a)=>put(x-hx,y-hy,c,a), MW+hx, MH+hy, { x0:ox+hx, y0:oy+hy, x1:Math.min(MW,ox+W)-1+hx, y1:Math.min(MH,oy+H)-1+hy });
   if(!map.tunnelOpen){
     for(let j = A.j0; j < A.j1; j++) for(let i = A.i0; i < A.i1; i++){
       if(tdTileType(map, i, j) !== TD_TILE.BEYOND) continue;

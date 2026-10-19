@@ -23,3 +23,12 @@ test('protected village pixels stay identical after changing map origin',()=>{
  function paint(h){const m=h.w.tdBuildTileMap(false,h.w.getState().world.base,h.w.villageGroundLayout());const i=Math.round(-m.originX*4),j=Math.round(-m.originY*4);return h.w.tdPaintTileMap(m,{i0:i,i1:i+8,j0:j,j1:j+8}).data;}
  assert.equal(Buffer.compare(Buffer.from(paint(a)),Buffer.from(paint(b))),0);a.close();b.close();
 });
+test('four adjacent chunk canvases exactly match one regional paint',()=>{
+ const h=open(),w=h.w,m=w.tdBuildTileMap(false,w.getState().world.base,w.villageGroundLayout());
+ const area={i0:192,i1:256,j0:128,j1:192},whole=w.tdPaintTileMap(m,area),joined=Buffer.alloc(whole.data.length);
+ for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
+  const p=w.tdPaintTileMap(m,{i0:192+dx*32,i1:224+dx*32,j0:128+dy*32,j1:160+dy*32});
+  for(let row=0;row<p.height;row++)Buffer.from(p.data.buffer,row*p.width*4,p.width*4).copy(joined,((dy*p.height+row)*whole.width+dx*p.width)*4);
+ }
+ assert.equal(Buffer.compare(Buffer.from(whole.data),joined),0);h.close();
+});

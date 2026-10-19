@@ -19,7 +19,7 @@ function freshBasePosition(){
 function freshWorldState(){
   const base = { ...freshBasePosition(), level: 1 };
   const mines = generateInitialWorldMines(base);
-  return {
+  const world = {
     base,
     mines,
     workshops: [],
@@ -36,6 +36,8 @@ function freshWorldState(){
     // Task 112: torches the player has set down in the world ({ x, y } each)
     torches: [],
   };
+  if(typeof worldTestInitialize === 'function') worldTestInitialize(world);
+  return world;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +213,7 @@ function isPlainObject(v){ return v !== null && typeof v === 'object' && !Array.
 
 function storageAvailable(){
   try{
+    if(typeof worldTestMode === 'function' && worldTestMode()){ localStorage.getItem(SAVE_KEY); return true; }
     const k = '__save_test__';
     localStorage.setItem(k, '1');
     localStorage.removeItem(k);
@@ -583,10 +586,11 @@ function saveGame(){
 //   {ok:false, reason:'corrupted'}   — save exists but isn't valid JSON/shape
 //   {ok:false, reason:'future'}      — save is from a newer saveVersion than this build understands
 function loadGame(){
-  let raw;
+  let raw, hadTrialSave = false;
   try{
     if(!storageAvailable()) return { ok:false, reason:'unavailable' };
     raw = localStorage.getItem(SAVE_KEY);
+    hadTrialSave = !!raw && typeof worldTestMode === 'function' && worldTestMode();
     if(!raw && typeof worldTestMode === 'function' && worldTestMode()) raw = localStorage.getItem('gachaFactorySave');
   }catch(e){
     return { ok:false, reason:'unavailable' };
@@ -607,6 +611,7 @@ function loadGame(){
   payload = migrateSave(payload);
   try{
     if(typeof worldContext === 'function') worldLoadingContext = worldContext(payload.run && payload.run.world);
+    if(hadTrialSave && !worldLoadingContext) throw new Error('Missing test world metadata');
     const run = sanitizeRunState(payload.run);
     if(worldLoadingContext) Object.assign(run.world, worldLoadingContext);
     if(worldLoadingContext && payload.run.world.testReturnPosition) run.world.testReturnPosition = payload.run.world.testReturnPosition;

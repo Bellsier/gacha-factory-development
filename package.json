@@ -4,7 +4,10 @@
   "private": true,
   "description": "채굴 공방 — 2D 힐링 경영 프로토타입. index.html이 게임이며 tests/regression.test.js가 회귀 테스트 진입점입니다.",
   "scripts": {
-    "test": "node tests/regression.test.js"
+    "test": "node tests/regression.test.js",
+    "test:stage3": "node --test tests/worldgen-stage3.test.cjs tests/worldgen-stage3-save.test.cjs tests/worldgen-stage3-integration.test.cjs",
+    "test:stage3:browser": "node tests/worldgen-stage3-browser.cjs",
+    "bench:stage3": "node tools/measure-worldgen-stage3.cjs"
   },
   "devDependencies": {
     "jsdom": "^30.0.1"

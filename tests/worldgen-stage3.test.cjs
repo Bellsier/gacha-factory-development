@@ -29,3 +29,6 @@ test('invalid contexts and coordinates rejected; seed changes terrain',()=>{
  assert.throws(()=>g.generateWorldChunk({seed:0,generatorVersion:1},0.5,0));
  assert.notEqual(JSON.stringify(g.generateWorldChunk({seed:0,generatorVersion:1},2,2)),JSON.stringify(g.generateWorldChunk({seed:1,generatorVersion:1},2,2)));
 });
+test('generator v1 integer hash golden vectors',()=>{
+ assert.equal(g.chunkHash(0,0,0,1),726357435);assert.equal(g.chunkHash(4294967295,-32,31,6),3200509438);
+});

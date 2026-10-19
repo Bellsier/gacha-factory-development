@@ -42,3 +42,33 @@ test('invalid return position and generated ID collisions preserve the trial sav
  const p=JSON.parse(raw);Object.assign(p.run.world,patch);const bad=JSON.stringify(p),b=open(true,{[key]:bad});assert.equal(b.w.isBlocked(),true);b.w.saveGame();assert.equal(b.data.get(key),bad);b.close();
  }
 });
+test('worker placement retains the generated mine reference after reload',()=>{
+ const a=open(),w=a.w,s=w.getState();w.worldEnsureRect({minX:16,maxX:24,minY:0,maxY:8});
+ const m=s.world.mines.find(m=>m.id.startsWith('gen:'));assert.ok(m);
+ for(const other of s.world.mines)other.developmentState='unsecured';
+ w.discoverMine(m.id);w.secureMine(m.id);
+ const worker={...require('./fixtures/save_v1_midgame.json').run.characters[0],resource:m.resource};s.characters=[worker];
+ const before=w.tdWorkerPlacements().find(p=>p.id===worker.id);assert.equal(before.mineId,m.id);
+ w.saveGame();const raw=a.data.get(key);a.close();
+ const b=open(true,{[key]:raw}),after=b.w.tdWorkerPlacements().find(p=>p.id===worker.id);
+ assert.equal(after.mineId,before.mineId);assert.equal(after.x,before.x);assert.equal(after.y,before.y);b.close();
+});
+test('midgame fixture keeps run and permanent progress in the trial copy',()=>{
+ const raw=JSON.stringify(require('./fixtures/save_v1_midgame.json'));
+ const a=open(false,{'gachaFactorySave':raw}),b=open(true,{'gachaFactorySave':raw});
+ const before=JSON.parse(JSON.stringify(a.w.getState())),after=JSON.parse(JSON.stringify(b.w.serializeRunForSave(b.w.getState())));
+ for(const k of ['seed','size','generatorVersion','chunkEditsVersion','chunkEdits'])delete after.world[k];
+ assert.deepEqual(after,before);b.w.saveGame();assert.equal(b.data.get('gachaFactorySave'),raw);a.close();b.close();
+});
+test('a fresh run after prestige remains an isolated 256 world',()=>{
+ const h=open();assert.equal(h.w.freshRunState().world.size,256);h.close();
+});
+test('existing trial storage without generator metadata is rejected instead of re-seeded',()=>{
+ const legacy=open(false);legacy.w.saveGame();const raw=legacy.data.get('gachaFactorySave');legacy.close();
+ const trial=open(true,{[key]:raw});assert.equal(trial.w.isBlocked(),true);trial.w.saveGame();assert.equal(trial.data.get(key),raw);trial.close();
+});
+test('quota failure keeps the last trial save and legacy bytes',()=>{
+ const h=open();h.w.saveGame();const before=h.data.get(key);h.data.set('gachaFactorySave','legacy-bytes');
+ h.w.localStorage.setItem=()=>{throw new Error('QuotaExceededError');};
+ assert.equal(h.w.saveGame(),false);assert.equal(h.data.get(key),before);assert.equal(h.data.get('gachaFactorySave'),'legacy-bytes');h.close();
+});

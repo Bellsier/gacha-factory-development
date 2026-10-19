@@ -198,7 +198,8 @@ function saveKeyFor(loc){
   }catch(e){ /* no usable location: the default key */ }
   return SAVE_KEY_DEFAULT;
 }
-const SAVE_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null);
+const SAVE_BASE_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null);
+const SAVE_KEY = typeof worldTestMode === 'function' && worldTestMode() ? WORLDGEN_TEST_KEY : SAVE_BASE_KEY;
 const CURRENT_SAVE_VERSION = 1;
 let saveBlocked = false;    // true once a future-version save is detected, so we never overwrite it
 let saveFailLogged = false; // avoid spamming the log every 10s while storage stays unavailable
@@ -278,6 +279,8 @@ function sanitizeCharacters(raw){
 }
 
 function isValidWorldCoord(v, axis){
+  const context = typeof currentWorldContext === 'function' ? currentWorldContext() : null;
+  if(context) return Number.isInteger(v) && v >= -31 && v <= 31;
   const b = BALANCE.world;
   const min = axis === 'y' ? b.BOUNDS_MIN_Y : b.BOUNDS_MIN_X;
   const max = axis === 'y' ? b.BOUNDS_MAX_Y : b.BOUNDS_MAX_X;
@@ -351,8 +354,9 @@ function clampPlayerAxis(v, min, max){
 function sanitizePlayer(raw, base, tunnelOpen){
   const fresh = freshPlayerState(base);
   if(!isPlainObject(raw)) return fresh;
-  let x = isFiniteNumber(raw.x) ? clampPlayerAxis(raw.x, BALANCE.world.BOUNDS_MIN_X, BALANCE.world.BOUNDS_MAX_X) : fresh.x;
-  let y = isFiniteNumber(raw.y) ? clampPlayerAxis(raw.y, BALANCE.world.BOUNDS_MIN_Y, BALANCE.world.BOUNDS_MAX_Y) : fresh.y;
+  const bounds = typeof worldBounds === 'function' ? worldBounds() : {minX:-10,maxX:10,minY:-10,maxY:10};
+  let x = isFiniteNumber(raw.x) ? clampPlayerAxis(raw.x, bounds.minX, bounds.maxX) : fresh.x;
+  let y = isFiniteNumber(raw.y) ? clampPlayerAxis(raw.y, bounds.minY, bounds.maxY) : fresh.y;
   // Task 66: a saved position inside the mountain / beyond it (only possible
   // in saves from before the mountain existed) is moved onto the base.
   if(!isWorldPointWalkable(x, y, tunnelOpen === true)){ x = fresh.x; y = fresh.y; }
@@ -398,7 +402,7 @@ function sanitizeWorldState(raw){
 // positions are kept exactly as saved.
 function sanitizeTorches(raw){
   if(!Array.isArray(raw)) return [];
-  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && terrainInBounds(t.x, t.y))
+  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && (terrainInBounds(t.x, t.y) || typeof currentWorldContext === 'function' && currentWorldContext() && Math.abs(t.x)<31.75 && Math.abs(t.y)<31.75))
     .slice(0, typeof TORCH !== 'undefined' ? TORCH.MAX : 12).map(t => ({ x: t.x, y: t.y }));
 }
 
@@ -561,7 +565,7 @@ function saveGame(){
       saveVersion: CURRENT_SAVE_VERSION,
       savedAt: Date.now(),
       permanent: { totalPrestige: permanent.totalPrestige, runCount: permanent.runCount, tickets: permanent.tickets, firstGachaGranted: permanent.firstGachaGranted, companies: permanent.companies },
-      run: state,
+      run: typeof serializeRunForSave === 'function' ? serializeRunForSave(state) : state,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     saveFailLogged = false;
@@ -583,6 +587,7 @@ function loadGame(){
   try{
     if(!storageAvailable()) return { ok:false, reason:'unavailable' };
     raw = localStorage.getItem(SAVE_KEY);
+    if(!raw && typeof worldTestMode === 'function' && worldTestMode()) raw = localStorage.getItem('gachaFactorySave');
   }catch(e){
     return { ok:false, reason:'unavailable' };
   }
@@ -600,10 +605,15 @@ function loadGame(){
     return { ok:false, reason:'future' }; // never touch the raw storage in this case
   }
   payload = migrateSave(payload);
-  return {
-    ok:true,
-    permanent: sanitizePermanent(payload.permanent),
-    run: sanitizeRunState(payload.run),
-  };
+  try{
+    if(typeof worldContext === 'function') worldLoadingContext = worldContext(payload.run && payload.run.world);
+    const run = sanitizeRunState(payload.run);
+    if(worldLoadingContext) Object.assign(run.world, worldLoadingContext);
+    if(worldLoadingContext && payload.run.world.testReturnPosition) run.world.testReturnPosition = payload.run.world.testReturnPosition;
+    return {ok:true, permanent:sanitizePermanent(payload.permanent), run};
+  }catch(error){
+    if(typeof worldTestMode === 'function' && worldTestMode()) { saveBlocked=true; return {ok:false,reason:'worldgen',detail:error.message}; }
+    throw error;
+  }finally{ if(typeof worldContext === 'function') worldLoadingContext=null; }
 }
 

@@ -32,3 +32,10 @@ test('invalid contexts and coordinates rejected; seed changes terrain',()=>{
 test('generator v1 integer hash golden vectors',()=>{
  assert.equal(g.chunkHash(0,0,0,1),726357435);assert.equal(g.chunkHash(4294967295,-32,31,6),3200509438);
 });
+test('v1 complete generated worlds match frozen SHA256 digests',()=>{
+ const {createHash}=require('node:crypto'),vectors=require('./fixtures/worldgen-v1-digests.json');
+ for(const [seed,digest] of Object.entries(vectors)){
+  const chunks=[];for(let y=-4;y<4;y++)for(let x=-4;x<4;x++)chunks.push(g.generateWorldChunk({seed:Number(seed),generatorVersion:1},x,y));
+  assert.equal(createHash('sha256').update(JSON.stringify(chunks)).digest('hex'),digest);
+ }
+});

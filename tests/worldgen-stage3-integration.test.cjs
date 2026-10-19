@@ -18,13 +18,13 @@ test('legacy boundary ring is solid with no overlapping generated props or mines
  for(let y=-28;y<28;y+=.125)assert.equal(w.playerCanStand(20,y),true);
  assert.equal(w.playerCanStand(32,0),false);a.close();
 });
-test('protected village pixels stay identical after changing map origin',()=>{
- const a=open(false);a.w.saveGame();const b=open(true,{'gachaFactorySave':a.data.get('gachaFactorySave')});
+for(const style of ['', 'v2'])test('protected village pixels stay identical after changing map origin '+style,()=>{
+ const a=open(false,{},style);a.w.saveGame();const b=open(true,{'gachaFactorySave':a.data.get('gachaFactorySave')},style);
  function paint(h){const m=h.w.tdBuildTileMap(false,h.w.getState().world.base,h.w.villageGroundLayout());const i=Math.round(-m.originX*4),j=Math.round(-m.originY*4);return h.w.tdPaintTileMap(m,{i0:i,i1:i+8,j0:j,j1:j+8}).data;}
  assert.equal(Buffer.compare(Buffer.from(paint(a)),Buffer.from(paint(b))),0);a.close();b.close();
 });
-test('four adjacent chunk canvases exactly match one regional paint',()=>{
- const h=open(),w=h.w,m=w.tdBuildTileMap(false,w.getState().world.base,w.villageGroundLayout());
+for(const style of ['', 'v2'])test('four adjacent chunk canvases exactly match one regional paint '+style,()=>{
+ const h=open(true,{},style),w=h.w,m=w.tdBuildTileMap(false,w.getState().world.base,w.villageGroundLayout());
  const area={i0:192,i1:256,j0:128,j1:192},whole=w.tdPaintTileMap(m,area),joined=Buffer.alloc(whole.data.length);
  for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){
   const p=w.tdPaintTileMap(m,{i0:192+dx*32,i1:224+dx*32,j0:128+dy*32,j1:160+dy*32});

@@ -36,7 +36,9 @@ function chunkClearTile(context, tx, ty){
   if(tx>=56 && tx<=72 && ty>=-8 && ty<=16) return true;
   // A vein has a clear approach and a two-tile corridor to its chunk's grid.
   const gx=Math.floor(tx/8), gy=Math.floor(ty/8);
-  for(let y=gy-2;y<=gy+2;y++)for(let x=gx-2;x<=gx+2;x++){
+  // Only this 8-tile column can be within two tiles of its centre.
+  const x=gx;
+  for(let y=gy-2;y<=gy+2;y++){
     const m=chunkMineCandidate(context,x,y); if(!m)continue;
     const ax=x*8+4, ay=y*8+4, line=Math.floor(ay/32)*32+16;
     if(Math.abs(tx-ax)<=2 && Math.abs(ty-ay)<=2) return true;

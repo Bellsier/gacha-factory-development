@@ -185,7 +185,20 @@ function sanitizeVillageState(raw){
 // per-field defensive validation. Never touches game balance/rules — only
 // persists and restores the state that already exists above.
 // ---------------------------------------------------------------------------
-const SAVE_KEY = 'gachaFactorySave';
+// The development repository's Pages preview (<owner>.github.io/gacha-factory-development/)
+// shares its origin, and so its localStorage, with the original game's preview on the
+// same github.io domain. It saves under its own key and never reads, writes or removes the
+// original one. Everywhere else (local files, a local server, the tests, the original
+// preview) the key stays 'gachaFactorySave'. The saved payload is the same either way.
+const SAVE_KEY_DEFAULT = 'gachaFactorySave';
+const SAVE_KEY_DEV_PREVIEW = 'gachaFactorySave.dev';
+function saveKeyFor(loc){
+  try{
+    if(loc && /\.github\.io$/i.test(String(loc.hostname)) && /^\/gacha-factory-development(\/|$)/i.test(String(loc.pathname))) return SAVE_KEY_DEV_PREVIEW;
+  }catch(e){ /* no usable location: the default key */ }
+  return SAVE_KEY_DEFAULT;
+}
+const SAVE_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null);
 const CURRENT_SAVE_VERSION = 1;
 let saveBlocked = false;    // true once a future-version save is detected, so we never overwrite it
 let saveFailLogged = false; // avoid spamming the log every 10s while storage stays unavailable

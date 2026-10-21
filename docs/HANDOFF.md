@@ -41,7 +41,7 @@ npm install      # jsdom (devDependency) 하나
 npm test         # node tests/regression.test.js
 ```
 
-- `tests/regression.test.js`가 `tests/chunks/00.js`부터 번호 순으로 **이어 붙여 한 번에** 실행한다. 청크끼리 헬퍼를 공유한다(예: 04.js의 `t103*`를 05.js·09.js가 쓴다). 결과 요약은 **09.js 끝**에서 찍는다(Task 118에서 08.js에서 옮김).
+- `tests/regression.test.js`가 `tests/chunks/00.js`부터 번호 순으로 **이어 붙여 한 번에** 실행한다. 청크끼리 헬퍼를 공유한다(예: 04.js의 `t103*`를 05.js·09.js가 쓴다). 결과 요약은 **마지막 파일 `99.js`**에서 찍는다(Task 118에서 08.js → 09.js 끝으로, 개발 저장소에서 09.js 끝 → 99.js로 옮김). 새 테스트는 Claude가 `10.js`, Codex가 `20.js`에 넣는다(`docs/COLLABORATION.md` 5장).
 - 실제 `index.html`과 `js/*.js`를 jsdom 창에 불러와 실제 함수와 DOM을 조작한다(게임을 다시 구현하지 않는다).
 - 결과: main `ed6f607`(PR #34 병합 직후) 1993/1993, main `d31da01`(PR #35 병합 직후) 2095/2095, Task 118~122 브랜치 **2220/2220 통과**. 전체 실행은 이 클라우드 환경에서 약 6~9분 걸린다(다른 작업과 겹치면 더 걸린다). 이후 Task의 테스트 수는 각 PR에 적는다.
 - 청크별 내용: 00 하네스(모듈 목록 `MODULE_FILES`, 상수 노출 `__expose`), 01~03 기본 시스템, 04 Task 103 안전장치(고정 저장 파일), 05 Task 104~117(탑다운, 시작 마을), 06~08 Task 1~100의 회귀, 09 Task 118~122(마을 구역).

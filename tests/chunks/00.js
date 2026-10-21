@@ -82,8 +82,10 @@ const allDoms = [];
 function newDom(storage, opts) {
   const options = opts || {};
   let hadSave = true;
-  try { hadSave = storage.getItem('gachaFactorySave') !== null; } catch (e) { hadSave = true; }
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://example.test/' });
+  // opts.url: the page address (default https://example.test/); opts.saveKey: the key the game
+  // uses at that address, for the no-save check before the boot (default gachaFactorySave)
+  try { hadSave = storage.getItem(options.saveKey || 'gachaFactorySave') !== null; } catch (e) { hadSave = true; }
+  const dom = new JSDOM(html, { runScripts: 'outside-only', url: options.url || 'https://example.test/' });
   const win = dom.window;
   Object.defineProperty(win, 'localStorage', { value: storage, configurable: true });
   win.confirm = () => true;

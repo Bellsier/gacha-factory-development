@@ -5,9 +5,9 @@ name: Node.js CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
 
 jobs:
   build:
@@ -28,4 +28,9 @@ jobs:
         
     - run: npm install
     - run: npm run build --if-present
+    # The suite runs many test game windows (jsdom) in one process; its live
+    # heap peaks at about 3.2 GB, above Node's default limit (about 2 GB) on
+    # the smaller runners private repositories get.
     - run: npm test
+      env:
+        NODE_OPTIONS: --max-old-space-size=5120

@@ -591,7 +591,7 @@ function loadGame(){
     if(!storageAvailable()) return { ok:false, reason:'unavailable' };
     raw = localStorage.getItem(SAVE_KEY);
     hadTrialSave = !!raw && typeof worldTestMode === 'function' && worldTestMode();
-    if(!raw && typeof worldTestMode === 'function' && worldTestMode()) raw = localStorage.getItem('gachaFactorySave');
+    if(!raw && typeof worldTestMode === 'function' && worldTestMode()) raw = localStorage.getItem(SAVE_BASE_KEY);
   }catch(e){
     return { ok:false, reason:'unavailable' };
   }

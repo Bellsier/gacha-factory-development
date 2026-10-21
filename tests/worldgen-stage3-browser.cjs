@@ -16,6 +16,18 @@ const generate=new Function(fs.readFileSync(path.join(__dirname,'../js/chunkgen.
   await page.waitForFunction(()=>typeof TD!=='undefined'&&TD.groundMap?.cols===256);
   await page.evaluate(()=>{clearInterval(tickTimer);clearInterval(autoSaveTimer);clearInterval(ticketTimer);});
   await page.screenshot({path:path.join(out,name+'-village.png')});
+  await page.evaluate(()=>{state.world.player.x=9.75;state.world.player.y=0;clearPlayerHeld();});
+  if(mobile){
+   const cdp=await ctx.newCDPSession(page),box=await page.locator('#tdStick').boundingBox();
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2+30,y:box.y+box.height/2}]});
+   await page.evaluate(()=>{for(let i=0;i<120;i++)tickPlayer();});
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  }else{await page.keyboard.down('ArrowRight');await page.evaluate(()=>{for(let i=0;i<120;i++)tickPlayer();});await page.keyboard.up('ArrowRight');}
+  assert.ok(await page.evaluate(()=>state.world.player.x>16),'keyboard/touch crosses village connector');
+  await page.evaluate(()=>{state.world.player.x=12;state.world.player.y=0;});
+  await page.waitForTimeout(300);await page.screenshot({path:path.join(out,name+'-connector.png')});
+  await page.evaluate(()=>{state.world.player.x=9.75;state.world.player.y=0;});
+
   await page.locator('#worldgen-teleport').click();
   await page.waitForFunction(()=>state.world.player.x===16);
   await page.screenshot({path:path.join(out,name+'-generated.png')});
@@ -50,6 +62,8 @@ const generate=new Function(fs.readFileSync(path.join(__dirname,'../js/chunkgen.
   await page.waitForTimeout(250);await page.screenshot({path:path.join(out,name+'-seam.png')});
   await page.evaluate(()=>saveGame());await page.goto(app.url+'/?worldgen=256');await page.waitForFunction(()=>typeof TD!=='undefined'&&TD.groundMap?.cols===256);
   await page.screenshot({path:path.join(out,name+'-seam-clean.png')});
+  await page.evaluate(()=>{state.world.player.x=-20;state.world.player.y=-20;clearInterval(tickTimer);});
+  await page.waitForTimeout(500);await page.screenshot({path:path.join(out,name+'-northwest.png')});
   const hash=await page.evaluate(()=>chunkHash(0,0,0,1));assert.equal(hash,726357435);
   for(const seed of [0,123456789,4294967295]){
    const chunks=[];for(let y=-4;y<4;y++)for(let x=-4;x<4;x++)chunks.push(generate({seed,generatorVersion:1},x,y));

@@ -1,5 +1,5 @@
 // Test-world runtime. Data cache is independent of TD's disposable canvases.
-const WORLDGEN_TEST_KEY = 'gachaFactorySave.worldgen256.v1';
+const WORLDGEN_TEST_KEY = typeof location !== 'undefined' && /\.github\.io$/i.test(location.hostname) && /^\/gacha-factory-development(\/|$)/i.test(location.pathname) ? 'gachaFactorySave.dev.worldgen256.v1' : 'gachaFactorySave.worldgen256.v1';
 const WORLDGEN_MODE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('worldgen') === '256';
 let worldLoadingContext = null;
 let worldChunkRuntime = null;
@@ -12,7 +12,7 @@ function worldContext(raw){
   chunkValidate(raw,0,0);
   if(raw.testReturnPosition !== undefined){
     const p=raw.testReturnPosition;
-    if(!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || Math.abs(p.x)>10 || Math.abs(p.y)>10)throw new Error('Invalid return position');
+    if(!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || ((Math.abs(p.x)>10 || Math.abs(p.y)>10) && !worldConnector(p.x,p.y)))throw new Error('Invalid return position');
   }
   // A saved generated entity belongs in edits, never the legacy mine array.
   if(Array.isArray(raw.mines) && raw.mines.some(m=>m && typeof m.id==='string' && m.id.startsWith('gen:v1:mine:')))throw new Error('Generated mine ID collision');
@@ -68,6 +68,8 @@ function serializeRunForSave(run){
   worldContext(world);
   return {...run,world};
 }
+// Trial-only connector occupies the old outer border, never the playable village.
+function worldConnector(x,y){ return x>=10 && x<14.25 && y>=-.5 && y<.5; }
 function worldOutsideLegacy(x,y){ return x < -12 || x >= 12 || y < -12 || y >= 12; }
 function worldGeneratedWalkable(context,x,y){
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;
@@ -114,8 +116,8 @@ function recordGeneratedMineEdit(id){
 }
 function worldGeneratedScenery(){
   const c=currentWorldContext(),rt=worldRuntime(c);
-  const legacy=terrainTunnelOpen()?worldSceneryLegacy():{props:[],solid:[],grid:{}};
-  const key=rt.revision+'|'+terrainTunnelOpen()+'|'+c.mines.length;
+  const legacy=terrainTunnelOpen()?worldSceneryLegacy():(rt.emptyScenery||(rt.emptyScenery={props:[],solid:[],grid:{}}));
+  const key=rt.revision+'|'+terrainTunnelOpen()+'|'+c.mines.length+'|'+c.workshops.map(w=>w.id+':'+w.x+':'+w.y).join(';');
   if(rt.scenery?.key===key && rt.scenery.legacy===legacy)return rt.scenery;
   const props=legacy.props.concat(rt.props.filter(p=>!c.workshops.some(w=>Math.hypot(w.x-p.x,w.y-p.y)<0.8)));
   const grid={};for(const p of props)if(p.box){const k=Math.floor(p.x)+','+Math.floor(p.y);(grid[k]||(grid[k]=[])).push(p);}

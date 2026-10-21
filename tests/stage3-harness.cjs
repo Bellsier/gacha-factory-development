@@ -1,9 +1,9 @@
 const fs=require('node:fs'),path=require('node:path');
 const {JSDOM}=require('jsdom');
 const root=path.join(__dirname,'..');
-function open(mode=true,entries={},style=''){
+function open(mode=true,entries={},style='',url=null){
  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
- const dom=new JSDOM(html,{url:'https://example.test/'+(mode?'?worldgen=256'+(style?'&style='+style:''):(style?'?style='+style:'')),runScripts:'outside-only'}),w=dom.window;
+ const dom=new JSDOM(html,{url:url||'https://example.test/'+(mode?'?worldgen=256'+(style?'&style='+style:''):(style?'?style='+style:'')),runScripts:'outside-only'}),w=dom.window;
  const data=new Map(Object.entries(entries));
  Object.defineProperty(w,'localStorage',{value:{getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,String(v)),removeItem:k=>data.delete(k)}});
  w.setInterval=()=>0;w.clearInterval=()=>{};w.requestAnimationFrame=()=>0;w.alert=()=>{};w.confirm=()=>true;

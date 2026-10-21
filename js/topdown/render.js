@@ -240,7 +240,7 @@ function tdChunkWork(cx, cy, rows, now){
   const stop = rows === Infinity ? area.j1 : Math.min(area.j1, job.next + rows);
   while(job.next < stop){
     const j1 = Math.min(stop, job.next + TD_CHUNK.SLICE_ROWS), t0 = performance.now();
-    const img = tdPaintTileMap(map, { i0: area.i0, i1: area.i1, j0: job.next, j1 });
+    const img = worldPaintTileMap(map, { i0: area.i0, i1: area.i1, j0: job.next, j1 });
     job.data.set(img.data, (job.next - area.j0) * T * job.W * 4);
     const ms = performance.now() - t0; job.ms += ms; st.slices++; st.maxSliceMs = Math.max(st.maxSliceMs, ms);
     job.next = j1;

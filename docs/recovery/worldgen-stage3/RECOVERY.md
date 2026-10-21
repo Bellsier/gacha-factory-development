@@ -9,18 +9,18 @@
 - 미추적 화면 및 로그: `/workspace/work/recovery-backup/stage3-evidence.tar.gz`.
 - SHA256: bundle `88f47148407f171af2383006393649d945ff786c004df8c58697e6781c8bc551`; evidence `a03452e28e2b3772be18fe5b05e2bdecc36de397cf75668fdd06f8309695d422`.
 - 새 기준: `Bellsier/gacha-factory-development` develop `f95d9accbd146046e8cc46dd6e168769e2c619b8`.
-- Git CLI는 proxy:8080 연결에 실패. 공식 GitHub API로 기준 파일과 tree를 읽었다. 로컬에는 별도 스냅샷 저장소를 만들었으며 원격 커밋은 실제 develop을 부모로, 실제 tree를 바탕으로 만든다. 로컬 스냅샷 root와 제외했던 과거 스크린샷 삭제를 업로드하지 않는다.
+- 처음에는 Git CLI의 proxy:8080 연결이 실패해 공식 GitHub API로 기준 파일을 읽고 별도 스냅샷에서 작업했다. 환경 재시작 후 Git 연결이 회복되어 실제 새 저장소를 `/workspace/work/publish`에 복제하고, 실제 develop 위에 7개 원본 기능 커밋과 복구 수정 커밋을 순서대로 cherry-pick했다. 원본 작성자·작성일·메시지·순서는 보존되고 부모가 달라 커밋 SHA는 변경됐다. 스냅샷 root는 원격 이력에 포함하지 않았다. 기존 과거 스크린샷도 그대로 보존된다.
 - 원본 저장소와 기존 작업 공간/브랜치는 수정·삭제하지 않는다.
 
-| 원본 커밋 | 로컬 이식 커밋 | 내용 |
+| 원본 커밋 | 새 develop 위 이식 커밋 | 내용 |
 |---|---|---|
-| 3377469 | 2a755f9 | 결정적 생성기 |
-| 36aa672 | f6df55d | 시험 저장 격리 및 광맥 변경 기록 |
-| 960c205 | 5fc5e97 | 기존 월드와 생성 지형 합성 |
-| 48c91f6 | 1864a28 | 저장·일꾼·브라우저·성능 테스트 |
-| 7ea2502 | ad5af89 | v1 결과 유지 생성 최적화 |
-| d63fc9d | 1828d56 | 렌더링 전 미방문 청크 충돌 |
-| f809f57 | 3fab218 | 캐시 제거 후 진행 상태 보존 테스트 |
+| 3377469 | f0baadd | 결정적 생성기 |
+| 36aa672 | 1839a27 | 시험 저장 격리 및 광맥 변경 기록 |
+| 960c205 | 0c770e8 | 기존 월드와 생성 지형 합성 |
+| 48c91f6 | 6640f2f | 저장·일꾼·브라우저·성능 테스트 |
+| 7ea2502 | 8c5ad9b | v1 결과 유지 생성 최적화 |
+| d63fc9d | 2a5e891 | 렌더링 전 미방문 청크 충돌 |
+| f809f57 | e95f27c | 캐시 제거 후 진행 상태 보존 테스트 |
 
 ## 호환성 및 책임 분리
 
@@ -93,3 +93,5 @@ npm run bench:stage3
 - [모바일 경계 연결](../../screenshots/worldgen-stage3/mobile-connector.png)
 - [PC 서북쪽 생성 지형](../../screenshots/worldgen-stage3/pc-northwest.png)
 - [모바일 서북쪽 생성 지형](../../screenshots/worldgen-stage3/mobile-northwest.png)
+
+복구 수정 커밋: `9167e0d`. 실제 develop에 이식한 뒤 실행 소스·테스트·도구 53개 파일을 검증 당시 파일과 비교했다. 차이는 기존 develop 파일 끝의 빈 줄뿐이며 실행 코드 차이는 없다. 보호 파일과 99.js는 실제 develop과 동일하다.

@@ -1,5 +1,5 @@
 // Test-world runtime. Data cache is independent of TD's disposable canvases.
-const WORLDGEN_TEST_KEY = typeof location !== 'undefined' && /\.github\.io$/i.test(location.hostname) && /^\/gacha-factory-development(\/|$)/i.test(location.pathname) ? 'gachaFactorySave.dev.worldgen256.v1' : 'gachaFactorySave.worldgen256.v1';
+const WORLDGEN_TEST_KEY = saveKeyFor(typeof location!=='undefined'?location:null)+'.worldgen256.v1';
 const WORLDGEN_MODE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('worldgen') === '256';
 let worldLoadingContext = null;
 let worldChunkRuntime = null;
@@ -15,7 +15,7 @@ function worldContext(raw){
     if(!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || ((Math.abs(p.x)>10 || Math.abs(p.y)>10) && !worldConnector(p.x,p.y)))throw new Error('Invalid return position');
   }
   // A saved generated entity belongs in edits, never the legacy mine array.
-  if(Array.isArray(raw.mines) && raw.mines.some(m=>m && typeof m.id==='string' && m.id.startsWith('gen:v1:mine:')))throw new Error('Generated mine ID collision');
+  if(Array.isArray(raw.mines) && raw.mines.some(m=>m && typeof m.id==='string' && /^gen:v[12]:mine:/.test(m.id)))throw new Error('Generated mine ID collision');
   const edits=raw.chunkEdits;
   if(!edits || typeof edits!=='object' || Array.isArray(edits) || Object.keys(edits).length>64)throw new Error('Invalid chunk edits');
   for(const [key,entry] of Object.entries(edits)){
@@ -23,13 +23,13 @@ function worldContext(raw){
     if(pair.length!==2 || !pair.every(v=>Number.isInteger(v)&&v>=-4&&v<=3) || key!==cx+','+cy)throw new Error('Invalid chunk key');
     if(!entry || Object.keys(entry).some(k=>k!=='mines') || !entry.mines || Array.isArray(entry.mines) || typeof entry.mines!=='object' || Object.keys(entry.mines).length>16)throw new Error('Invalid edits');
     for(const [id,e] of Object.entries(entry.mines)){
-      const m=/^gen:v1:mine:(-?\d+):(-?\d+)$/.exec(id);
+      const m=new RegExp('^gen:v'+raw.generatorVersion+':mine:(-?\\d+):(-?\\d+)$').exec(id);
       const candidate=m&&chunkMineCandidate(raw,Number(m[1]),Number(m[2]));
       if(!candidate || candidate.id!==id || Math.floor(candidate.x/8)!==cx || Math.floor(candidate.y/8)!==cy)throw new Error('Invalid mine id');
       if(!e || Object.keys(e).some(k=>!['discovered','developmentState'].includes(k)) || typeof e.discovered!=='boolean' || !['unsecured','secured'].includes(e.developmentState) || e.developmentState==='secured'&&!e.discovered)throw new Error('Invalid mine edit');
     }
   }
-  return {seed:raw.seed,size:256,generatorVersion:1,chunkEditsVersion:1,chunkEdits:JSON.parse(JSON.stringify(edits))};
+  return {seed:raw.seed,size:256,generatorVersion:raw.generatorVersion,chunkEditsVersion:1,chunkEdits:JSON.parse(JSON.stringify(edits))};
 }
 function currentWorldContext(){
   if(!WORLDGEN_MODE)return null;
@@ -43,7 +43,7 @@ function worldTestInitialize(world){
   if(!WORLDGEN_MODE)return;
   if(world.size!==256){
     const seed=crypto.getRandomValues(new Uint32Array(1))[0];
-    Object.assign(world,{seed,size:256,generatorVersion:1,chunkEditsVersion:1,chunkEdits:{}});
+    Object.assign(world,{seed,size:256,generatorVersion:2,chunkEditsVersion:1,chunkEdits:{}});
   }
 }
 function worldRuntime(world=state.world){
@@ -110,6 +110,7 @@ function worldRestoreEdits(){
 function recordGeneratedMineEdit(id){
   const c=currentWorldContext();if(!c)return;
   const m=worldRuntime(c).mines.get(id);if(!m)return;
+  const rt=worldRuntime(c);rt.workerRevision=(rt.workerRevision||0)+1;
   const key=Math.floor(m.x/8)+','+Math.floor(m.y/8);
   if(!c.chunkEdits[key])c.chunkEdits[key]={mines:{}};
   c.chunkEdits[key].mines[id]={discovered:!c.hiddenMineIds.includes(id),developmentState:m.developmentState};
@@ -132,12 +133,13 @@ function worldTestTeleport(){
   }else{
     c.testReturnPosition={x:p.x,y:p.y};worldEnsureRect({minX:14,maxX:18,minY:-2,maxY:2});Object.assign(p,{x:16,y:0,pose:'idle'});
   }
-  clearPlayerHeld();return true;
+  clearPlayerHeld();worldTestControlUpdate();return true;
 }
 function worldTestControls(){
   if(!WORLDGEN_MODE)return;
-  const panel=document.createElement('div');panel.id='worldgen-test-controls';
-  panel.style.cssText='position:fixed;top:4px;left:4px;z-index:10000;padding:6px;background:#172b24;color:#fff;font:12px sans-serif;border-radius:6px';
+  const panel=document.createElement('details');panel.id='worldgen-test-controls';
+  panel.style.cssText='position:fixed;bottom:76px;left:50%;transform:translateX(-50%);z-index:10000;padding:4px;background:#172b24;color:#fff;font:12px sans-serif;border-radius:6px;max-width:90vw';
+  const summary=document.createElement('summary');summary.textContent='시험 설정';summary.style.cursor='pointer';panel.append(summary);
   const label=document.createElement('span');label.textContent='256×256 시험 월드 · 별도 저장 ';panel.append(label);
   const button=document.createElement('button');button.id='worldgen-teleport';button.textContent='외곽 / 마을 왕복';button.disabled=saveBlocked;
   button.addEventListener('click',()=>worldTestTeleport());panel.append(button);
@@ -148,7 +150,7 @@ function worldTestControls(){
     const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='worldgen256-save.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });panel.append(backup);
   if(saveBlocked){const reason=document.createElement('span');reason.textContent=' 불러오기 실패: 저장 중지';panel.append(reason);}
-  document.body.append(panel);
+  document.body.append(panel);worldTestControlUpdate();
 }
 
 // Generated veins never alter village road/tuft geometry. Cache by list identity.
@@ -160,4 +162,16 @@ function worldVillageMines(){
   rt.villageMines=c.mines.filter(m=>!rt.mines.has(m.id));
  }
  return rt.villageMines;
+}
+
+function worldTestControlUpdate(){
+ if(!WORLDGEN_MODE)return;
+ const button=document.getElementById('worldgen-teleport'),c=currentWorldContext();if(!button||!c)return;
+ const noReturn=worldOutsideLegacy(c.player.x,c.player.y)&&!c.testReturnPosition;
+ button.disabled=saveBlocked||noReturn;button.title=noReturn?'저장된 복귀 위치가 없습니다. 연결 통로로 돌아오세요.':'';
+}
+function worldRememberReturn(x,y,nx,ny){
+ const c=currentWorldContext();if(!c)return;
+ if(x<=10&&worldConnector(nx,ny)&&!c.testReturnPosition)c.testReturnPosition={x,y};
+ worldTestControlUpdate();
 }

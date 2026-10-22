@@ -178,15 +178,11 @@ function tdEnsureGround(){
   TD.groundKey = key; TD.groundMap = map; TD.chunks = new Map();
   // minimap base: one pixel per tile, mountain / ground / beyond colours
   const mc = document.createElement('canvas');
-  mc.width = map.cols; mc.height = map.rows;
+  mc.width = Math.min(256,map.cols); mc.height = Math.min(256,map.rows);
   const mg = mc.getContext('2d');
-  if(!mg) return; // no canvas (tests): the map and the chunk cache are ready, the minimap is not drawn
-  const mid = mg.createImageData(map.cols, map.rows);
-  const col = { [TD_TILE.GRASS]: [86, 128, 76], [TD_TILE.BEYOND]: [60, 98, 64], [TD_TILE.ROCK]: [120, 114, 106], [TD_TILE.TUNNEL]: [150, 120, 80], [TD_TILE.EDGE]: [34, 58, 40], [TD_TILE.PATH]: [160, 132, 92],
-    [TD_TILE.ROAD]: [176, 162, 138], [TD_TILE.PLAZA]: [206, 194, 170], [TD_TILE.GARDEN]: [112, 168, 92] };
-  for(let k = 0; k < map.types.length; k++){ const c3 = col[map.types[k]]; mid.data.set([c3[0], c3[1], c3[2], 255], k * 4); }
-  mg.putImageData(mid, 0, 0);
-  TD.miniBase = mc;
+  TD.miniBase=mc;TD.miniPainted=new Set();
+  if(mg){mg.fillStyle='#223a28';mg.fillRect(0,0,mc.width,mc.height);}
+
 }
 
 // ---------------------------------------------------------------------------
@@ -470,6 +466,7 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
 
 // Minimap (blueprint 3.5): ground, the workshop, DISCOVERED mines only, the player and the view.
 function tdRenderMinimap(cam){
+  tdUpdateMinimapChunks(1);
   const c = TD.mini;
   if(!c || !TD.miniBase) return;
   const g = c.getContext('2d');
@@ -552,4 +549,23 @@ function tdRenderHome(now){
   vg.addColorStop(0, 'rgba(20,12,6,0)'); vg.addColorStop(1, 'rgba(20,12,6,0.4)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);
   return cam;
+}
+
+// Paint at most a few already-known chunks; unknown land stays dark.
+// The overview backing store stays bounded, even if the world grows later.
+function tdUpdateMinimapChunks(budget=1){
+ const map=TD.groundMap,canvas=TD.miniBase;if(!map||!canvas)return;
+ const g=canvas.getContext('2d');if(!g)return;
+ const colors=['#56804c','#3c6240','#78726a','#967850','#223a28','#a0845c','#b0a28a','#cec2aa','#70a85c'];
+ const sx=canvas.width/map.cols,sy=canvas.height/map.rows;
+ for(const [key,types] of map.chunkTypes){
+  if(TD.miniPainted.has(key))continue;
+  const cy=((key%65536)+65536+32768)%65536-32768,cx=(key-cy)/65536;
+  const i0=cx*32-map.originX*4,j0=cy*32-map.originY*4;
+  for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+   const i=i0+x,j=j0+y;if(i<0||j<0||i>=map.cols||j>=map.rows)continue;
+   g.fillStyle=colors[types[y*32+x]];g.fillRect(Math.floor(i*sx),Math.floor(j*sy),Math.max(1,Math.ceil(sx)),Math.max(1,Math.ceil(sy)));
+  }
+  TD.miniPainted.add(key);if(--budget<=0)break;
+ }
 }

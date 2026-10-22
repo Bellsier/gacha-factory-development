@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
 const {start}=require('../tests/stage3-browser-utils.cjs');
 const fixture=require('../tests/fixtures/save_v1_midgame.json');
-const out=path.resolve(__dirname,'../docs/screenshots/worldgen-stage3');
+const out=path.resolve(process.env.WORLDGEN_OUTPUT||path.join(__dirname,'../work/worldgen-review'));
 const summary=values=>{const a=values.slice().sort((a,b)=>a-b);return {n:a.length,p50:a[Math.floor(a.length*.5)],p95:a[Math.min(a.length-1,Math.floor(a.length*.95))],p99:a[Math.min(a.length-1,Math.floor(a.length*.99))],max:a.at(-1)};};
 (async()=>{
  const app=await start(),results=[];fs.mkdirSync(out,{recursive:true});

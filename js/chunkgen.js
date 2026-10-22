@@ -10,7 +10,7 @@ function chunkHash(seed, tx, ty, channel){
   return chunkMix(h ^ channel);
 }
 function chunkValidate(context, x, y){
-  if(!context || context.generatorVersion !== 1 || !Number.isInteger(context.seed) || context.seed < 0 || context.seed > 0xffffffff) throw new Error('Unsupported generator context');
+  if(!context || ![1,2].includes(context.generatorVersion) || !Number.isInteger(context.seed) || context.seed < 0 || context.seed > 0xffffffff) throw new Error('Unsupported generator context');
   if(!Number.isInteger(x) || !Number.isInteger(y) || Math.abs(x) > 1048575 || Math.abs(y) > 1048575) throw new Error('Invalid generation coordinate');
 }
 function chunkMod(n, d){ return ((n % d) + d) % d; }
@@ -27,7 +27,7 @@ function chunkMineCandidate(context, gx, gy){
   const tx = gx * 8 + 4, ty = gy * 8 + 4;
   if(Math.max(Math.abs(tx),Math.abs(ty)) < 60 || Math.abs(tx) > 120 || Math.abs(ty) > 120) return null;
   if(Math.hypot(tx - 64,ty) < 12 || chunkHash(context.seed,gx,gy,2) >= 0x40000000) return null;
-  return { id:'gen:v1:mine:'+gx+':'+gy, x:tx/4, y:ty/4, resource:chunkHash(context.seed,gx,gy,3) < 0x80000000 ? 'iron':'coal', grade:1, miningPower:1, developmentState:'unsecured' };
+  return { id:'gen:v'+context.generatorVersion+':mine:'+gx+':'+gy, x:tx/4, y:ty/4, resource:chunkHash(context.seed,gx,gy,3) < 0x80000000 ? 'iron':'coal', grade:1, miningPower:1, developmentState:'unsecured' };
 }
 function chunkClearTile(context, tx, ty){
   const mx=chunkMod(tx,32), my=chunkMod(ty,32);
@@ -40,7 +40,11 @@ function chunkClearTile(context, tx, ty){
   const x=gx;
   for(let y=gy-2;y<=gy+2;y++){
     const m=chunkMineCandidate(context,x,y); if(!m)continue;
-    const ax=x*8+4, ay=y*8+4, line=Math.floor(ay/32)*32+16;
+    const ax=x*8+4, ay=y*8+4;
+    let line=Math.floor(ay/32)*32+16;
+    // v2: a vein alongside the protected forest connects outward, never into
+    // the impassable inner ring. v1 paths remain byte-for-byte unchanged.
+    if(context.generatorVersion===2 && Math.abs(ax)<56 && Math.abs(line)<56)line=ay>0?80:-80;
     if(Math.abs(tx-ax)<=2 && Math.abs(ty-ay)<=2) return true;
     if(tx>=ax-1 && tx<=ax && ty>=Math.min(ay,line)-1 && ty<=Math.max(ay,line)) return true;
   }
@@ -72,7 +76,7 @@ function generateWorldChunk(context, cx, cy){
     }
     if(!keep)continue;
     const kind=['grass','rock','sparseTree'][chunkHash(context.seed,gx,gy,5)%3];
-    props.push({id:'gen:v1:prop:'+gx+':'+gy,kind,x:(tx+0.5)/4,y:(ty+0.5)/4,zone:'deepForest',size:0.8+(chunkHash(context.seed,gx,gy,6)>>>16)/65535*0.2,name:null});
+    props.push({id:'gen:v'+context.generatorVersion+':prop:'+gx+':'+gy,kind,x:(tx+0.5)/4,y:(ty+0.5)/4,zone:'deepForest',size:0.8+(chunkHash(context.seed,gx,gy,6)>>>16)/65535*0.2,name:null});
   }
   return {cx,cy,tiles,mines,props};
 }

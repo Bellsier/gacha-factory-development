@@ -4,7 +4,7 @@ const {createHash}=require('node:crypto');
 const generate=new Function(fs.readFileSync(path.join(__dirname,'../js/chunkgen.js'),'utf8')+';return generateWorldChunk;')();
 (async()=>{
  const app=await start(),results=[];
- const out=path.resolve(__dirname,'../docs/screenshots/worldgen-stage3');fs.mkdirSync(out,{recursive:true});
+ const out=path.resolve(process.env.WORLDGEN_OUTPUT||path.join(__dirname,'../work/worldgen-review'));fs.mkdirSync(out,{recursive:true});
  try{
  for(const [name,viewport,dpr,mobile] of [['pc',{width:1280,height:800},1,false],['mobile',{width:390,height:844},3,true]]){
   const ctx=await app.browser.newContext({viewport,deviceScaleFactor:dpr,isMobile:mobile,hasTouch:mobile});const page=await ctx.newPage(),errors=[];
@@ -14,21 +14,23 @@ const generate=new Function(fs.readFileSync(path.join(__dirname,'../js/chunkgen.
   const legacy=await page.evaluate(()=>{saveGame();saveBlocked=true;return localStorage.getItem('gachaFactorySave');});
   await page.goto(app.url+'/?worldgen=256&chunks=debug');
   await page.waitForFunction(()=>typeof TD!=='undefined'&&TD.groundMap?.cols===256);
-  await page.evaluate(()=>{clearInterval(tickTimer);clearInterval(autoSaveTimer);clearInterval(ticketTimer);});
+  await page.evaluate(()=>{clearInterval(autoSaveTimer);clearInterval(ticketTimer);});
   await page.screenshot({path:path.join(out,name+'-village.png')});
   await page.evaluate(()=>{state.world.player.x=9.75;state.world.player.y=0;clearPlayerHeld();});
   if(mobile){
    const cdp=await ctx.newCDPSession(page),box=await page.locator('#tdStick').boundingBox();
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2+30,y:box.y+box.height/2}]});
-   await page.evaluate(()=>{for(let i=0;i<120;i++)tickPlayer();});
+   await page.waitForFunction(()=>state.world.player.x>16,{},{timeout:15000});
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  }else{await page.keyboard.down('ArrowRight');await page.evaluate(()=>{for(let i=0;i<120;i++)tickPlayer();});await page.keyboard.up('ArrowRight');}
+  }else{await page.keyboard.down('ArrowRight');await page.waitForFunction(()=>state.world.player.x>16,{},{timeout:15000});await page.keyboard.up('ArrowRight');}
   assert.ok(await page.evaluate(()=>state.world.player.x>16),'keyboard/touch crosses village connector');
   await page.evaluate(()=>{state.world.player.x=12;state.world.player.y=0;});
   await page.waitForTimeout(300);await page.screenshot({path:path.join(out,name+'-connector.png')});
   await page.evaluate(()=>{state.world.player.x=9.75;state.world.player.y=0;});
 
+  await page.locator('#worldgen-test-controls summary').click();
   await page.locator('#worldgen-teleport').click();
+  await page.locator('#worldgen-test-controls summary').click();
   await page.waitForFunction(()=>state.world.player.x===16);
   await page.screenshot({path:path.join(out,name+'-generated.png')});
   // Real keyboard events, same game input path used on Chromebook.
@@ -36,9 +38,9 @@ const generate=new Function(fs.readFileSync(path.join(__dirname,'../js/chunkgen.
   if(mobile){
    const cdp=await ctx.newCDPSession(page),box=await page.locator('#tdStick').boundingBox();
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:box.x+box.width/2+30,y:box.y+box.height/2}]});
-   await page.evaluate(()=>{for(let i=0;i<8;i++)tickPlayer();});
+   await page.waitForTimeout(350);
    await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-  }else{await page.keyboard.down('ArrowRight');await page.evaluate(()=>{for(let i=0;i<8;i++)tickPlayer();});await page.keyboard.up('ArrowRight');}
+  }else{await page.keyboard.down('ArrowRight');await page.waitForTimeout(350);await page.keyboard.up('ArrowRight');}
   assert.ok(await page.evaluate(x=>state.world.player.x>x,x));
   const mining=await page.evaluate(()=>{
    worldEnsureRect({minX:16,maxX:28,minY:0,maxY:8});

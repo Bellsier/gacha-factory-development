@@ -211,6 +211,7 @@ function tickPlayer(){
   const step = BALANCE.world.PLAYER_SPEED / TICKS_PER_SECOND;
   const startX = player.x, startY = player.y;
   const moved = worldStepFoot(startX, startY, dx, dy, step);
+  if(typeof worldRememberReturn==='function')worldRememberReturn(startX,startY,moved.x,moved.y);
   player.x = moved.x;
   player.y = moved.y;
   if(Math.abs(dx) >= Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';

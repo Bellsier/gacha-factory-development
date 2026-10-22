@@ -29,7 +29,7 @@ test('100 seeds: order-independent chunks, stable ownership and absolute tile sa
 test('invalid contexts and coordinates rejected; seed changes terrain',()=>{
  assert.equal(typeof g.generateWorldChunk,'function');
  for(const seed of [-1,NaN,Infinity,1.5,4294967296])assert.throws(()=>g.generateWorldChunk({seed,generatorVersion:1},0,0));
- assert.throws(()=>g.generateWorldChunk({seed:0,generatorVersion:2},0,0));
+ assert.throws(()=>g.generateWorldChunk({seed:0,generatorVersion:3},0,0));
  assert.throws(()=>g.generateWorldChunk({seed:0,generatorVersion:1},0.5,0));
  assert.notEqual(JSON.stringify(g.generateWorldChunk({seed:0,generatorVersion:1},2,2)),JSON.stringify(g.generateWorldChunk({seed:1,generatorVersion:1},2,2)));
 });
@@ -59,10 +59,10 @@ test('test mode copies legacy state and only writes isolated key',()=>{
  b.w.saveGame();assert.equal(b.data.get('gachaFactorySave'),raw);assert.ok(b.data.has(key));b.close();
 });
 test('fresh test seed persists, invalid versions block writes',()=>{
- const a=open();assert.equal(a.w.getState().world.generatorVersion,1);a.w.saveGame();
+ const a=open();assert.equal(a.w.getState().world.generatorVersion,2);a.w.saveGame();
  const raw=a.data.get(key),seed=a.w.getState().world.seed;a.close();
  const b=open(true,{[key]:raw});assert.equal(b.w.getState().world.seed,seed);b.close();
- for(const patch of [{generatorVersion:2},{seed:-1},{size:2048},{chunkEditsVersion:2},{chunkEdits:{'99,0':{mines:{}}}}]){
+ for(const patch of [{generatorVersion:3},{seed:-1},{size:2048},{chunkEditsVersion:2},{chunkEdits:{'99,0':{mines:{}}}}]){
  const payload=JSON.parse(raw);Object.assign(payload.run.world,patch);const bad=JSON.stringify(payload);
  const c=open(true,{[key]:bad});assert.equal(c.w.isBlocked(),true);assert.equal(c.w.saveGame(),false);assert.equal(c.data.get(key),bad);c.close();
  }
@@ -271,4 +271,51 @@ for(const direction of ['east','south','north']){
  check('Review H2: '+direction+' worker reaches generated vein with snaps=0',true);
  }catch(e){check('Review H2: '+direction+' worker reaches generated vein with snaps=0',false,e.stack);}finally{h.close();}
 }
+}
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');
+try{const h=open();try{const w=h.w;w.tdEnsureGround();const td=w.getTD(),m=td.groundMap;
+ const plain={cols:m.cols,rows:m.rows,originX:m.originX,originY:m.originY,tunnelOpen:m.tunnelOpen,village:m.village,chunkTypes:m.chunkTypes,chunk:m.chunk,typeAt:m.typeAt};
+ Object.defineProperty(plain,'types',{get(){throw Error('whole tile array read');}});td.groundMap=plain;
+ w.HTMLCanvasElement.prototype.getContext=()=>({fillRect(){},putImageData(){},createImageData:(a,b)=>({data:new Uint8ClampedArray(a*b*4)}),drawImage(){}});
+ assert.equal(typeof w.tdUpdateMinimapChunks,'function');td.miniBase=w.document.createElement('canvas');td.miniBase.width=td.miniBase.height=256;td.miniPainted=new Set();
+ const before=w.worldRuntime().data.size;w.tdUpdateMinimapChunks(1);assert.equal(w.worldRuntime().data.size,before);assert.ok(td.miniPainted.size<=1);
+ check('Review M3: minimap consumes cached chunks without whole-world allocation',true);
+ }finally{h.close();}}catch(e){check('Review M3: minimap consumes cached chunks without whole-world allocation',false,e.stack);}
+}
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');const h=open();
+try{const w=h.w,c=w.getState().world;w.worldEnsureRect({minX:16,maxX:24,minY:0,maxY:8});const m=c.mines.find(m=>m.id.startsWith('gen:'));assert.ok(m);
+ c.hiddenMineIds.includes=()=>{throw Error('linear hidden lookup');};assert.equal(w.isMineDiscovered(m),false);
+ let calls=0;const near=w.worldMinesNear;w.worldMinesNear=(...a)=>{calls++;return near(...a);};w.tickExploration();assert.ok(calls>0);
+ check('Review M4: discovery uses a hidden set and spatial query',true);
+}catch(e){check('Review M4: discovery uses a hidden set and spatial query',false,e.stack);}finally{h.close();}
+}
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');
+const payload=JSON.parse(JSON.stringify(require('./fixtures/save_v1_midgame.json')));Object.assign(payload.run.world,{seed:7,size:256,generatorVersion:2,chunkEditsVersion:1,chunkEdits:{}});
+const h=open(true,{'gachaFactorySave.worldgen256.v1':JSON.stringify(payload)});
+try{const w=h.w;assert.equal(w.isBlocked(),false);w.worldEnsureRect({minX:-12,maxX:-8,minY:14,maxY:18});const m=w.mineById('gen:v2:mine:-5:7');assert.ok(m);
+ const job=w.worldNavStart({x:16,y:0},{x:m.x+.42,y:m.y+.08});for(let i=0;i<1000&&!job.done;i++)w.worldNavAdvance(job,256);assert.ok(job.path,'seed7 vein has an accessible route');
+ w.discoverMine(m.id);w.secureMine(m.id);assert.ok(w.saveGame());const b=open(true,Object.fromEntries(h.data));try{assert.equal(b.w.getState().world.generatorVersion,2);assert.equal(b.w.mineById(m.id).developmentState,'secured');}finally{b.close();}
+ check('Review M5: v2 seed7 isolated v1 vein becomes reachable and retains edits',true);
+}catch(e){check('Review M5: v2 seed7 isolated v1 vein becomes reachable and retains edits',false,e.stack);}finally{h.close();}
+}
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');
+for(const version of [1,2]){const p=JSON.parse(JSON.stringify(require('./fixtures/save_v1_midgame.json')));Object.assign(p.run.world,{seed:7,size:256,generatorVersion:version,chunkEditsVersion:1,chunkEdits:{}});
+ const h=open(true,{'gachaFactorySave.worldgen256.v1':JSON.stringify(p)});
+ try{assert.equal(h.w.getState().world.generatorVersion,version);assert.ok(h.w.saveGame());const b=open(true,Object.fromEntries(h.data));try{assert.equal(b.w.getState().world.generatorVersion,version);assert.equal(b.w.getState().gold,h.w.getState().gold);}finally{b.close();}check('Review compatibility: generator v'+version+' saves never silently migrate',true);}catch(e){check('Review compatibility: generator v'+version+' saves never silently migrate',false,e.stack);}finally{h.close();}
+}
+}
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');const h=open();
+try{const w=h.w,td=w.getTD(),p={x:20,y:4,mineId:'test',dir:'left'},s={x:20,y:4,goalKey:'20,4',route:[],delay:0,mode:'walk',dir:'right'};
+ w.worldWorkerStep(s,p,100);assert.equal(s.mode,'work');assert.equal(s.dir,'left');
+ check('Review navigation: arrival faces the assigned vein',true);
+}catch(e){check('Review navigation: arrival faces the assigned vein',false,e.stack);}finally{h.close();}
+const b=open();try{const w=b.w,td=w.getTD();td.navBudget=256;td.navDeadline=0;w.worldNavStart=()=>{throw Error('expired frame started another search');};
+ for(let i=0;i<20;i++)w.worldWorkerStep({x:0,y:0,route:[],delay:0},{x:20,y:4,dir:'left'},100);
+ check('Review navigation: all workers share the elapsed-time budget',true);
+}catch(e){check('Review navigation: all workers share the elapsed-time budget',false,e.stack);}finally{b.close();}
 }

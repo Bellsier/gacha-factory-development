@@ -136,7 +136,7 @@ function tdOpenLandTufts(){
   const sites = ['appraiser', 'museum'].map(k => vs[k]).filter(Boolean); // Task 114: none on a village site
   const vg = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: nor on the plaza, roads or lots
   const vparts = vg ? villageDistrict() : null;
-  const key = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
+  const key = w.base.x + ',' + w.base.y + '|' + (typeof worldVillageMines === 'function' ? worldVillageMines().length : w.mines.length) + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
   if(TD.tuftKey === key && TD.tufts) return TD.tufts;
   const out = [], b = BALANCE.world;
   for(let y = b.BOUNDS_MIN_Y + 0.25; y <= b.BOUNDS_MAX_Y; y += 0.5){

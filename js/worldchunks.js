@@ -150,3 +150,14 @@ function worldTestControls(){
   if(saveBlocked){const reason=document.createElement('span');reason.textContent=' 불러오기 실패: 저장 중지';panel.append(reason);}
   document.body.append(panel);
 }
+
+// Generated veins never alter village road/tuft geometry. Cache by list identity.
+function worldVillageMines(){
+ const c=currentWorldContext();if(!c)return state.world.mines;
+ const rt=worldRuntime(c);
+ if(rt.villageSource!==c.mines || rt.villageLength!==c.mines.length){
+  rt.villageSource=c.mines;rt.villageLength=c.mines.length;
+  rt.villageMines=c.mines.filter(m=>!rt.mines.has(m.id));
+ }
+ return rt.villageMines;
+}

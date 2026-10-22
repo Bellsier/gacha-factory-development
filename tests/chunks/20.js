@@ -243,3 +243,32 @@ test('teleport from entrance preserves valid return save',()=>{
  const h=open();try{const w=h.w;Object.assign(w.getState().world.player,{x:10.5,y:0});assert.ok(w.worldTestTeleport());assert.ok(w.saveGame());assert.ok(w.worldTestTeleport());assert.equal(w.getState().world.player.x,10.5);}finally{h.close();}
 });
 }
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');
+const test=(name,fn)=>{try{fn();check('Review H1: '+name,true);}catch(e){check('Review H1: '+name,false,e.stack);}};
+test('generated vein materialization keeps village ground and cached chunks',()=>{
+ const h=open();try{const w=h.w,c=w.getState().world;w.tdEnsureGround();const td=w.getTD(),map=td.groundMap,chunks=td.chunks,key=w.villageRoadKey(),roads=w.villageRoads(),tufts=w.tdOpenLandTufts();
+ w.worldEnsureRect({minX:24,maxX:31,minY:24,maxY:31});w.tdEnsureGround();
+ assert.equal(w.villageRoadKey(),key);assert.equal(w.villageRoads(),roads);assert.equal(td.groundMap,map);assert.equal(td.chunks,chunks);assert.equal(w.tdOpenLandTufts(),tufts);
+ }finally{h.close();}
+});
+}
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');
+for(const direction of ['east','south','north']){
+ const payload=JSON.parse(JSON.stringify(require('./fixtures/save_v1_midgame.json')));
+ Object.assign(payload.run.world,{seed:7,size:256,generatorVersion:1,chunkEditsVersion:1,chunkEdits:{}});
+ const h=open(true,{'gachaFactorySave.worldgen256.v1':JSON.stringify(payload)});
+ try{const w=h.w,c=w.getState().world;
+ w.worldEnsureRect({minX:-32,maxX:31,minY:-32,maxY:31});
+ const m=c.mines.find(m=>m.id.startsWith('gen:')&&(direction==='east'?m.x>=19&&Math.abs(m.y)<8:direction==='south'?m.y>=19&&Math.abs(m.x)<8:m.y<=-19&&Math.abs(m.x)<8));assert.ok(m);
+ for(const mine of c.mines)mine.developmentState='unsecured';w.discoverMine(m.id);m.developmentState='secured';
+ w.getState().characters=[{...payload.run.characters[0],resource:m.resource}];c.player={x:2,y:2,facing:'down',pose:'idle'};w.tdWorkerSimReset();
+ let prev=null,maxStep=0;
+ for(let i=0;i<2400;i++){w.tdWorkerSimStep(100,i*100);const s=w.tdWorkerStates()[0];if(prev)maxStep=Math.max(maxStep,Math.hypot(s.x-prev.x,s.y-prev.y));prev=s;if(s.mode==='work')break;}
+ const s=w.getTD().workerSim.byId[w.getState().characters[0].id];
+ assert.equal(s.snaps,0);assert.ok(maxStep<=.181,'no discontinuous relocation');assert.equal(s.mode,'work');
+ check('Review H2: '+direction+' worker reaches generated vein with snaps=0',true);
+ }catch(e){check('Review H2: '+direction+' worker reaches generated vein with snaps=0',false,e.stack);}finally{h.close();}
+}
+}

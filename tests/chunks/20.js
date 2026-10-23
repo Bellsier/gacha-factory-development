@@ -319,3 +319,14 @@ const b=open();try{const w=b.w,td=w.getTD();td.navBudget=256;td.navDeadline=0;w.
  check('Review navigation: all workers share the elapsed-time budget',true);
 }catch(e){check('Review navigation: all workers share the elapsed-time budget',false,e.stack);}finally{b.close();}
 }
+{
+const {open}=require('./stage3-harness.cjs'),assert=require('node:assert/strict');
+const h=open(false,{'gachaFactorySave':JSON.stringify(require('./fixtures/save_v1_workshop_blocked_ring.json'))});
+try{const w=h.w,s=w.getState(),base=s.world.base,spot=w.workshopBuildSpot();
+ assert.deepEqual(JSON.parse(JSON.stringify(spot)),{x:4,y:-2});
+ assert.equal(Math.max(Math.abs(spot.x-base.x),Math.abs(spot.y-base.y)),2);
+ assert.ok(w.isCellOpenForMines(spot.x,spot.y));assert.equal(w.villageSiteNear(spot.x,spot.y,1.6),false);
+ s.research.workshopBuild=true;s.gold=1000;const built=w.buildWorkshop();assert.ok(built);assert.equal(built.x,spot.x);assert.equal(built.y,spot.y);
+ check('Review CI: a blocked adjacent ring preserves facilities and builds on the next free ring',true);
+}catch(e){check('Review CI: a blocked adjacent ring preserves facilities and builds on the next free ring',false,e.stack);}finally{h.close();}
+}

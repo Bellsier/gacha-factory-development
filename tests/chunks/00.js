@@ -88,6 +88,8 @@ function newDom(storage, opts) {
   const dom = new JSDOM(html, { runScripts: 'outside-only', url: options.url || 'https://example.test/' });
   const win = dom.window;
   Object.defineProperty(win, 'localStorage', { value: storage, configurable: true });
+  // A specific scenario may supply a deterministic layout without changing the game.
+  if(typeof options.random === 'function') win.Math.random = options.random;
   win.confirm = () => true;
   win.alert = () => {};
   const expose = `

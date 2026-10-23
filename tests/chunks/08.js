@@ -2883,7 +2883,10 @@ const T93_T0 = 1700000000000;
 })();
 
 (function test_T71_workshopBuild() {
-  const win = newDom(makeMemoryStorage()).window;
+  // Keep a free adjacent lot: random village sites can legitimately fill ring 1.
+  let layoutSeed = 1;
+  const random = () => { layoutSeed = (Math.imul(layoutSeed, 1664525) + 1013904223) >>> 0; return layoutSeed / 4294967296; };
+  const win = newDom(makeMemoryStorage(), { random }).window;
   const doc = win.document;
   check('Task71: building is locked at first', win.isWorkshopBuildUnlocked() === false && win.canBuildWorkshop() === false && win.buildWorkshop() === null);
   check('Task71: the build area points to the research', /제작소 건설/.test(doc.getElementById('workshopBuild').textContent) && !doc.querySelector('[data-build-workshop]'));

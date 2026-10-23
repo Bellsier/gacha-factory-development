@@ -1,7 +1,9 @@
+docs/recovery/worldgen-stage3-review/FILES.txt
 docs/recovery/worldgen-stage3-review/PERFORMANCE.md
 docs/recovery/worldgen-stage3-review/REVIEW_FIXES.md
 docs/recovery/worldgen-stage3-review/browser-results.json
 docs/recovery/worldgen-stage3-review/browser.log
+docs/recovery/worldgen-stage3-review/ci-first-failure.log
 docs/recovery/worldgen-stage3-review/h1-green.log
 docs/recovery/worldgen-stage3-review/h1-red.log
 docs/recovery/worldgen-stage3-review/h2-green.log
@@ -16,6 +18,7 @@ docs/recovery/worldgen-stage3-review/movement-raw.json
 docs/recovery/worldgen-stage3-review/movement-retry-raw.json
 docs/recovery/worldgen-stage3-review/nav-review-green.log
 docs/recovery/worldgen-stage3-review/nav-review-red.log
+docs/recovery/worldgen-stage3-review/regression-final.log
 docs/recovery/worldgen-stage3-review/regression.log
 docs/recovery/worldgen-stage3-review/screenshots/mobile-connector.png
 docs/recovery/worldgen-stage3-review/screenshots/mobile-northwest.png
@@ -26,6 +29,10 @@ docs/recovery/worldgen-stage3-review/screenshots/pc-northwest.png
 docs/recovery/worldgen-stage3-review/screenshots/pc-reloaded-mine.png
 docs/recovery/worldgen-stage3-review/screenshots/pc-village.png
 docs/recovery/worldgen-stage3-review/smoke.log
+docs/recovery/worldgen-stage3-review/task71-blocked-test.log
+docs/recovery/worldgen-stage3-review/task71-fixed.log
+docs/recovery/worldgen-stage3-review/task71-repro-after.log
+docs/recovery/worldgen-stage3-review/task71-repro-before.log
 docs/recovery/worldgen-stage3-review/workers-raw.json
 index.html
 js/chunkgen.js
@@ -39,7 +46,9 @@ js/village.js
 js/worldchunks.js
 js/worldnavigation.js
 tests/chunks/00.js
+tests/chunks/08.js
 tests/chunks/20.js
+tests/fixtures/save_v1_workshop_blocked_ring.json
 tests/stage3-browser-utils.cjs
 tests/worldgen-stage3-browser.cjs
 tools/measure-pr5-review.cjs

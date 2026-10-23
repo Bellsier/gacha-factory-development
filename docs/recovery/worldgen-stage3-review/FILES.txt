@@ -14,12 +14,12 @@ docs/recovery/worldgen-stage3-review/m4-green.log
 docs/recovery/worldgen-stage3-review/m4-red.log
 docs/recovery/worldgen-stage3-review/m5-green.log
 docs/recovery/worldgen-stage3-review/m5-red.log
-docs/recovery/worldgen-stage3-review/movement-raw.json
-docs/recovery/worldgen-stage3-review/movement-retry-raw.json
+docs/recovery/worldgen-stage3-review/movement-raw.json.gz
+docs/recovery/worldgen-stage3-review/movement-retry-raw.json.gz
 docs/recovery/worldgen-stage3-review/nav-review-green.log
 docs/recovery/worldgen-stage3-review/nav-review-red.log
-docs/recovery/worldgen-stage3-review/regression-final.log
-docs/recovery/worldgen-stage3-review/regression.log
+docs/recovery/worldgen-stage3-review/regression-final.log.gz
+docs/recovery/worldgen-stage3-review/regression.log.gz
 docs/recovery/worldgen-stage3-review/screenshots/mobile-connector.png
 docs/recovery/worldgen-stage3-review/screenshots/mobile-northwest.png
 docs/recovery/worldgen-stage3-review/screenshots/mobile-reloaded-mine.png
@@ -33,7 +33,7 @@ docs/recovery/worldgen-stage3-review/task71-blocked-test.log
 docs/recovery/worldgen-stage3-review/task71-fixed.log
 docs/recovery/worldgen-stage3-review/task71-repro-after.log
 docs/recovery/worldgen-stage3-review/task71-repro-before.log
-docs/recovery/worldgen-stage3-review/workers-raw.json
+docs/recovery/worldgen-stage3-review/workers-raw.json.gz
 index.html
 js/chunkgen.js
 js/player.js

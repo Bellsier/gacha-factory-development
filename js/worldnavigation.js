@@ -4,6 +4,18 @@ function worldNavFree(x,y){ return playerCanStand(x,y); }
 function worldNavClear(a,b){
  const n=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/.08));
  for(let i=1;i<=n;i++)if(!worldNavFree(a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n))return false;
+ // Connector ownership and standability change at different boundaries. Its
+ // south shoulder is only .06 wide: uniform .08 samples can skip it entirely.
+ // Split at the exact shared terrain boundaries and test both boundaries and
+ // interval interiors, regardless of segment length, direction or alignment.
+ const c=WORLD_CONNECTOR,cuts=[0,1];
+ for(const [axis,edges] of [['x',[c.minX,c.maxX]],['y',[c.minY,-c.standHalfY,c.standHalfY,c.maxY]]]){
+  const d=b[axis]-a[axis];if(!d)continue;
+  for(const edge of edges){const t=(edge-a[axis])/d;if(t>0&&t<1)cuts.push(t);}
+ }
+ cuts.sort((x,y)=>x-y);
+ const free=t=>worldNavFree(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);
+ for(let i=0;i<cuts.length;i++)if(!free(cuts[i])||(i&&!free((cuts[i-1]+cuts[i])/2)))return false;
  return true;
 }
 function worldNavAnchor(p){

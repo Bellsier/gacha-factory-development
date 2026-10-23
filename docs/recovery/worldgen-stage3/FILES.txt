@@ -2,7 +2,7 @@ docs/recovery/worldgen-stage3/FILES.txt
 docs/recovery/worldgen-stage3/RECOVERY.md
 docs/recovery/worldgen-stage3/browser-final.log
 docs/recovery/worldgen-stage3/performance-final.log
-docs/recovery/worldgen-stage3/regression-final.log
+docs/recovery/worldgen-stage3/regression-final.log.gz
 docs/recovery/worldgen-stage3/smoke-final.log
 docs/screenshots/worldgen-stage3/browser-results.json
 docs/screenshots/worldgen-stage3/mobile-connector.png

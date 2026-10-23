@@ -69,7 +69,10 @@ function serializeRunForSave(run){
   return {...run,world};
 }
 // Trial-only connector occupies the old outer border, never the playable village.
-function worldConnector(x,y){ return x>=10 && x<14.25 && y>=-.5 && y<.5; }
+const WORLD_CONNECTOR = {minX:10,maxX:14.25,minY:-.5,maxY:.5,standHalfY:.44};
+function worldConnector(x,y){
+ const c=WORLD_CONNECTOR;return x>=c.minX && x<c.maxX && y>=c.minY && y<c.maxY;
+}
 function worldOutsideLegacy(x,y){ return x < -12 || x >= 12 || y < -12 || y >= 12; }
 function worldGeneratedWalkable(context,x,y){
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;

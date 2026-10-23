@@ -195,7 +195,7 @@ function terrainInBounds(x, y){
 // replaced); when omitted the current game's state is used.
 function isWorldPointWalkable(x, y, tunnelOpen){
   const context = typeof currentWorldContext === 'function' ? currentWorldContext() : null;
-  if(context && worldConnector(x,y)) return Math.abs(y)<=.44;
+  if(context && worldConnector(x,y)) return Math.abs(y)<=WORLD_CONNECTOR.standHalfY;
   if(context && worldOutsideLegacy(x,y)) return worldGeneratedWalkable(context,x,y);
   if(!Number.isFinite(x) || !Number.isFinite(y)) return false;
   if(!terrainInBounds(x, y)) return false;

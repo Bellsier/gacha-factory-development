@@ -147,7 +147,7 @@ function tdWorkerImage(look, dir, frame){
   const key = [look.shirt, look.helmet, look.hair, look.skin, look.gold ? 1 : 0, dir, frame].join('|');
   if(!(key in TD.workerImages)){
     const walking = typeof frame === 'string' && frame[0] === 'w';
-    TD.workerImages[key] = tdSpriteImage(walking ? tdWorkerWalkSprite(dir, +frame.slice(1), look) : tdWorkerSprite(dir, frame, look));
+    TD.workerImages[key] = tdSpriteImage(tdStyleFinish(walking ? tdWorkerWalkSprite(dir, +frame.slice(1), look) : tdWorkerSprite(dir, frame, look), 'worker')); // graphics pass 2 (v2 only)
   }
   return TD.workerImages[key];
 }

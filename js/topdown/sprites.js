@@ -495,13 +495,15 @@ function tdBuildSpriteSheet(){
   const R = typeof tdResFactor === 'function' ? tdResFactor() : 1; // the resolution experiment (?res=1.5 / 2, with v2)
   const atRes = (img) => { if(img) img.artRes = R; return img; };
   ['down', 'up', 'left', 'right'].forEach(d => { sheet.player[d] = [0, 1, 2, 3].map(f => R > 1 ? atRes(tdSpriteImage(R === 1.5 ? tdPlayerSprite15(d, f) : tdPlayerSpriteRes(d, f, R))) : tdSpriteImage(v2 ? tdPlayerSpriteV2(d, f) : tdPlayerSprite(d, f))); });
-  Object.keys(TD_RES_COLORS).forEach(r => { sheet.ore[r] = { unsecured: tdSpriteImage(tdOreSprite(r, 'unsecured')), secured: tdSpriteImage(tdOreSprite(r, 'secured')) }; });
-  sheet.ore.undiscovered = tdSpriteImage(tdOreSprite(null, 'undiscovered'));
-  sheet.base = tdSpriteImage(tdBaseSprite());
+  // graphics pass 2: in v2 everything below gets the same finish as the player and the house (same sizes)
+  const fin = typeof tdStyleFinish === 'function' ? tdStyleFinish : (sp) => sp;
+  Object.keys(TD_RES_COLORS).forEach(r => { sheet.ore[r] = { unsecured: tdSpriteImage(fin(tdOreSprite(r, 'unsecured'), 'vein')), secured: tdSpriteImage(fin(tdOreSprite(r, 'secured'), 'vein')) }; });
+  sheet.ore.undiscovered = tdSpriteImage(fin(tdOreSprite(null, 'undiscovered'), 'vein'));
+  sheet.base = tdSpriteImage(fin(tdBaseSprite(), 'building'));
   sheet.house = R > 1 ? atRes(tdSpriteImage(tdHouseSpriteRes(R))) : tdSpriteImage(v2 ? tdHouseSpriteV2() : tdHouseSprite()); // Task 119
-  sheet.torch = [0, 1, 2].map(f => tdSpriteImage(tdTorchSprite(f)));
-  [1, 2, 3].forEach(t => { sheet.workshop[t] = tdSpriteImage(tdWorkshopSprite(t)); });
+  sheet.torch = [0, 1, 2].map(f => tdSpriteImage(fin(tdTorchSprite(f), 'thin')));
+  [1, 2, 3].forEach(t => { sheet.workshop[t] = tdSpriteImage(fin(tdWorkshopSprite(t), 'building')); });
   ['bigTree', 'sparseTree', 'grass', 'rock', 'clearing', 'exposedVein', 'undevelopedVein', 'rareVein', 'crystal', 'oldShaftEntrance', 'timberSupport', 'mineCart', 'diggingMarks', 'lamp', 'villageBoard']
-    .forEach(k => { sheet.prop[k] = tdSpriteImage(tdPropSprite(k)); });
+    .forEach(k => { sheet.prop[k] = tdSpriteImage(fin(tdPropSprite(k), typeof tdFinishPropKind === 'function' ? tdFinishPropKind(k) : null)); });
   return sheet;
 }

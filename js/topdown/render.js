@@ -114,7 +114,7 @@ function tdGardenLights(now){
 
 function tdDecorImage(key){
   TD.decorImages = TD.decorImages || {};
-  if(!(key in TD.decorImages)) TD.decorImages[key] = tdSpriteImage(tdDecorSprite(key));
+  if(!(key in TD.decorImages)) TD.decorImages[key] = tdSpriteImage(tdStyleFinish(tdDecorSprite(key), 'prop')); // graphics pass 2: the v2 finish (v2 only)
   return TD.decorImages[key];
 }
 
@@ -123,7 +123,7 @@ function tdVillageImage(key, stage, exhibits, specimens, hall){
   TD.villageImages = TD.villageImages || {};
   const open = key === 'museum' && stage >= 2;
   const id = key + '|' + stage + '|' + (open ? exhibits : 0) + '|' + (open ? (specimens || []).join(',') + '|' + (hall || 0) : ''); // Task 121/122: specimens, hall
-  if(!(id in TD.villageImages)) TD.villageImages[id] = tdSpriteImage(tdVillageSprite(key, stage, exhibits, specimens, hall));
+  if(!(id in TD.villageImages)) TD.villageImages[id] = tdSpriteImage(tdStyleFinish(tdVillageSprite(key, stage, exhibits, specimens, hall), 'building')); // graphics pass 2 (v2 only)
   return TD.villageImages[id];
 }
 
@@ -447,7 +447,7 @@ function tdRender(now){
   const darkness = typeof TD.forceDarkness === 'number' ? TD.forceDarkness : tdAmbientDarkness(Date.now());
   TD.darkness = darkness;
   const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now), tdHouseLights(now), tdGardenLights(now));
-  tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights), darkness, cam, w, h, zoom, TD.quality, now);
+  tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights, darkness), darkness, cam, w, h, zoom, TD.quality, now);
   const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.78);
   vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.32)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);

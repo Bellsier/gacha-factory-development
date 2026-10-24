@@ -319,11 +319,34 @@ function tdDrawSprite(g, img, sx, sy, zoom, anchorY){
   g.drawImage(img, Math.round(sx - w / 2), Math.round(sy - h + (anchorY || 0) * zoom), w, h);
 }
 
-function tdAddFloat(text, wx, wy, color, lift){
+const TD_FLOAT = { MS: 1200, MAX_PER_POINT: 3, LINE: 22 }; // UI pass 1: how long a float shows, how many stack at one point
+
+// `sum` (optional, UI pass 1): { amount, unit } — a float of the same unit still showing at this
+// point takes the amount in (+1 철광석 → +2 철광석) and starts over, instead of adding a line.
+function tdAddFloat(text, wx, wy, color, lift, sum){
   // Task 117: floats still rising from the same point stack above each other
-  const now = performance.now(), stack = TD.floats.filter(f => f.x === wx && f.y === wy && now - f.t0 < 1200).length;
+  const now = performance.now(), live = TD.floats.filter(f => f.x === wx && f.y === wy && now - f.t0 < TD_FLOAT.MS);
   const scene = typeof villageHomeInside === 'function' && villageHomeInside() ? 'home' : 'world'; // Task 119: drawn in the room or the world
-  TD.floats.push({ text, x: wx, y: wy, t0: now, color: color || '#fff3b0', lift: lift || 34, stack, scene });
+  const same = sum && live.find(f => f.sum && f.sum.unit === sum.unit && f.scene === scene);
+  if(same){
+    same.sum.amount += sum.amount;
+    same.text = '+' + fmt(same.sum.amount) + ' ' + sum.unit;
+    same.t0 = now;
+    return;
+  }
+  // UI pass 1: a fourth line at the same point pushes the oldest one out
+  if(live.length >= TD_FLOAT.MAX_PER_POINT){ const old = live[0]; TD.floats = TD.floats.filter(f => f !== old); live.shift(); live.forEach((f, i) => { f.stack = i; }); }
+  TD.floats.push({ text, x: wx, y: wy, t0: now, color: color || '#fff3b0', lift: lift || 34, stack: live.length, scene, sum: sum ? { amount: sum.amount, unit: sum.unit } : null });
+}
+
+// UI pass 1: where the player's picture is on screen (16 x 22 art pixels, drawn with anchor 1), so the
+// interaction bubble can keep clear of it. Renderer state only, never saved.
+function tdPlayerScreenRect(sp, zoom){
+  return { x: sp.x - 8 * zoom, y: sp.y - 21 * zoom, w: 16 * zoom, h: 22 * zoom };
+}
+function tdRectsOverlap(a, b, gap){
+  const m = gap || 0;
+  return a.x < b.x + b.w + m && b.x < a.x + a.w + m && a.y < b.y + b.h + m && b.y < a.y + a.h + m;
 }
 
 // How high (sprite pixels) the interaction bubble sits above a target's point: above its picture.
@@ -406,7 +429,7 @@ function tdRender(now){
       g.fillStyle = '#5a3b28'; g.fillRect(x0, top.y, 6 * zoom, sp.y - top.y);
       g.fillStyle = '#8a6440'; for(let yy = top.y + 4 * zoom; yy < sp.y; yy += 10 * zoom) g.fillRect(x0 - 2 * zoom, yy, 10 * zoom, 3 * zoom);
       g.fillStyle = '#e2b23c'; g.fillRect(x0 + zoom, (top.y + sp.y) / 2 - 2 * zoom, 4 * zoom, 4 * zoom);
-    } else if(it.kind === 'player') tdDrawSprite(g, sheet.player[it.dir] && sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1);
+    } else if(it.kind === 'player'){ tdDrawSprite(g, sheet.player[it.dir] && sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1); TD.playerRect = tdPlayerScreenRect(sp, zoom); }
     else if(it.kind === 'worker'){
       // Task 109: a worker swinging at its vein; ore chips fly on the strike. Task 110: or walking there.
       const wf = it.mode === 'walk' ? 'w' + it.walkFrame : tdWorkerFrame(it, now);
@@ -445,18 +468,33 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
     let lines = [label];
     if(g.measureText(label).width + 14 > w - 12 && label.includes(' · ')){ const cut = label.indexOf(' · '); lines = [label.slice(0, cut), label.slice(cut + 3)]; }
     const tw = Math.min(w - 12, Math.max(...lines.map(l => g.measureText(l).width)) + 14), bh = 22 * lines.length;
-    const bx = Math.round(Math.max(6, Math.min(w - tw - 6, sp.x - tw / 2))), by = Math.round(sp.y - tdBubbleLift(TD.target) * zoom) - (lines.length - 1) * 22;
+    const bx = Math.round(Math.max(6, Math.min(w - tw - 6, sp.x - tw / 2)));
+    let by = Math.round(sp.y - tdBubbleLift(TD.target) * zoom) - (lines.length - 1) * 22;
+    // UI pass 1: a bubble that would cover the player (a small target right below them) goes over the
+    // player's head instead, or under the feet when there is no room above
+    const pr = TD.playerRect;
+    if(pr && tdRectsOverlap({ x: bx, y: by, w: tw, h: bh }, pr, 4)){
+      by = Math.round(pr.y - bh - 8);
+      if(by < 6) by = Math.round(pr.y + pr.h + 8);
+    }
+    TD.bubbleRect = { x: bx, y: by, w: tw, h: bh };
     g.fillStyle = TD.target.action === 'locked' ? 'rgba(40,36,34,0.88)' : 'rgba(22,28,32,0.9)';
     g.fillRect(bx, by, tw, bh); g.fillStyle = TD.target.action === 'locked' ? '#8b98a1' : '#ffd27a';
     g.fillRect(bx, by + bh - 1, tw, 2);
     g.fillStyle = TD.target.action === 'locked' ? '#b8c0c6' : '#fff6dc'; g.textBaseline = 'middle';
     lines.forEach((l, i) => g.fillText(l, bx + 7, by + 11 + i * 22, tw - 14));
-  }
+  } else TD.bubbleRect = null;
   // floating texts (+1 철광석 ...)
-  TD.floats = TD.floats.filter(f => now - f.t0 < 1200);
+  TD.floats = TD.floats.filter(f => now - f.t0 < TD_FLOAT.MS);
+  const bubble = TD.bubbleRect, t = TD.target;
   TD.floats.filter(f => (f.scene || 'world') === scene).forEach(f => {
-    const k = (now - f.t0) / 1200, sp = topdownToScreen(f.x, f.y, cam, w, h, zoom);
-    const fy = sp.y - (f.lift || 34) * zoom - 26 - (f.stack || 0) * 22 - k * 34; // starts above the interaction bubble and rises
+    const k = (now - f.t0) / TD_FLOAT.MS, sp = topdownToScreen(f.x, f.y, cam, w, h, zoom);
+    // starts above the interaction bubble (UI pass 1: wherever the bubble was moved to) and rises;
+    // the lowest line is kept low enough that the highest one, fully risen, stays on screen
+    let base = sp.y - (f.lift || 34) * zoom - 26;
+    if(bubble && t && t.x === f.x && t.y === f.y) base = Math.min(base, bubble.y - 14);
+    base = Math.max(base, 14 + (TD_FLOAT.MAX_PER_POINT - 1) * TD_FLOAT.LINE + 34);
+    const fy = base - (f.stack || 0) * TD_FLOAT.LINE - k * 34;
     g.globalAlpha = 1 - k * k; g.font = 'bold ' + (13 + zoom) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = '#000'; g.fillText(f.text, sp.x + 1, fy + 1);
@@ -534,7 +572,7 @@ function tdRenderHome(now){
   const items = tdHomeDrawList({ dir: S.facing, frame: topdownWalkFrame(pos.walked, S.pose), x: pos.x, y: pos.y });
   items.forEach(it => {
     const sp = topdownToScreen(it.x, it.y, cam, w, h, zoom);
-    if(it.kind === 'player') tdDrawSprite(g, TD.sheet.player[it.dir] && TD.sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1);
+    if(it.kind === 'player'){ tdDrawSprite(g, TD.sheet.player[it.dir] && TD.sheet.player[it.dir][it.frame], sp.x, sp.y, zoom, 1); TD.playerRect = tdPlayerScreenRect(sp, zoom); }
     else tdDrawSprite(g, tdFurnitureImage(it.key), sp.x, sp.y, zoom, 0);
   });
   // warm light: the stove's glow and a soft dark edge

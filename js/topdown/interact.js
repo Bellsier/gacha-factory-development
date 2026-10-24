@@ -73,7 +73,8 @@ function tdInteract(target){
       if(typeof updateNumbers === 'function') updateNumbers();
       const relic = state.village && state.village.unidentified > relicsBefore; // Task 116
       if(relic && typeof renderVillage === 'function') renderVillage();
-      return { ok: true, text: '+' + fmt(amount) + ' ' + (res ? res.name : '') + (relic ? ' · 미감정 유물!' : '') };
+      // UI pass 1: a plain haul says how much of what, so presses in a row add up on one line
+      return { ok: true, text: '+' + fmt(amount) + ' ' + (res ? res.name : '') + (relic ? ' · 미감정 유물!' : ''), sum: relic || !res ? null : { amount, unit: res.name } };
     }
     return { ok: false, text: target.label };
   }

@@ -4,7 +4,7 @@ function updateNextHint(){
   const ironHas = hasWorkerOn('iron');
   const coalHas = hasWorkerOn('coal');
   if(!permanent.firstGachaGranted){
-    el.textContent = `채굴 탭에서 광석을 캔 뒤, 개발 탭에서 강철을 만들어 파세요. 골드 50이 되면 첫 가챠권을 받습니다. (현재 ${fmt(state.gold)}/${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G)`;
+    el.textContent = firstGoalHint();
   } else if(state.characters.length < BALANCE.worker.MIN_REQUIRED){
     el.textContent = permanent.tickets >= 1
       ? '인부 탭에서 가챠권으로 일꾼을 뽑으세요. 자동 제작은 연구 탭의 장치로 열어요.'
@@ -19,6 +19,27 @@ function updateNextHint(){
   } else {
     el.textContent = lateGameHint();
   }
+}
+
+// UI pass 1: the first goal. In the world-first view it names the steps taken there — walk
+// to a vein and press E (the action button on a phone), then the workshop — one step at a
+// time, short enough to stay within two lines on a phone. The classic page keeps its tab wording.
+function firstGoalHint(){
+  const progress = fmt(state.gold) + '/' + BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD + 'G';
+  const body = document.body;
+  if(!body || !body.classList.contains('view-topdown')){
+    return `채굴 탭에서 광석을 캔 뒤, 개발 탭에서 강철을 만들어 파세요. 골드 50이 되면 첫 가챠권을 받습니다. (현재 ${progress})`;
+  }
+  const touch = body.classList.contains('td-touch');
+  const steel = RECIPES.find(r => r.key === 'steel');
+  const canMakeSteel = !!steel && Object.keys(steel.need).every(k => (state.resources[k] || 0) >= steel.need[k]);
+  let step;
+  if((state.products.steel || 0) > 0 || canMakeSteel){
+    step = touch ? '공방 앞에서 열기 버튼을 눌러 강철을 만들어 파세요.' : '공방 앞에서 E를 눌러 강철을 만들어 파세요.';
+  } else {
+    step = touch ? '광맥 앞에서 행동 버튼으로 철광석과 석탄을 캐세요.' : '광맥 앞에서 E를 눌러 철광석과 석탄을 캐세요.';
+  }
+  return step + ' 첫 가챠권까지 ' + progress;
 }
 
 // Task 90: what to do next once delivery is open. Until the first reputation the

@@ -3,7 +3,10 @@
 // village sites, so these checks fix the layout and say what each fixed layout stands for.
 const T71_LCG = (seed) => { let s = seed; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; };
 // A lot next to the base the first workshop may take: open ground, not the base or a vein, and clear of
-// the facility sites and the district ground by the same distances the build rule uses.
+// the facility sites and the district ground by the same distances the build rule uses. It calls the
+// game's own predicates, so it is not an independent oracle: it only shows which kind of layout a seed
+// gives. T71B's literal spot and Task71's distance check catch a broken predicate. No workshop exists yet,
+// so the rule's "not on a workshop" clause is left out.
 const t71FreeLots = (win, ring) => {
   const base = win.state.world.base, out = [];
   for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
@@ -25,7 +28,10 @@ const t71FirstWorkshop = (win) => { win.state.gold = 1e6; win.state.products.ste
   check('T71F: the seed-1 layout leaves a free lot next to the base (the precondition Task71 relies on)', t71FreeLots(open, 1).length > 0, JSON.stringify(t71FreeLots(open, 1)));
   const lots1 = t71FreeLots(open, 1), w1 = t71FirstWorkshop(open);
   check('T71F: with a free lot next to the base the first workshop takes one of those lots', !!w1 && lots1.includes(w1.x + ',' + w1.y) && Math.max(Math.abs(w1.x - ob.x), Math.abs(w1.y - ob.y)) === 1);
-  // seed 0: the random start can really block the whole ring (the case that made Task71 flaky)
+  // seed 0: the random start can really block the whole ring (the case that made Task71 flaky). About 1 in
+  // 40 seeds does this, and which one depends on the order of Math.random calls in worldgen and village
+  // placement. If a legitimate change there fails this check (or seed 1's above), pick a new seed of the
+  // right kind; T71B keeps covering the blocked ring from a saved layout either way.
   const blocked = newDom(makeMemoryStorage(), { random: T71_LCG(0) }).window, bb = blocked.state.world.base;
   check('T71F: the seed-0 layout leaves no free lot next to the base', t71FreeLots(blocked, 1).length === 0);
   const lots2 = t71FreeLots(blocked, 2), w0 = t71FirstWorkshop(blocked);

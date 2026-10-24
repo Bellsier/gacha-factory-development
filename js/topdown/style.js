@@ -313,8 +313,9 @@ const TD_FINISH = {
 };
 // glowing pixels keep their colour: flames and the stove fire, the forge window, lit window
 // glass, lamp glass and the helmet lamp (paper, skin, petals and gold trim are finished as usual)
-const TD_FINISH_GLOW = new Set(['#f07a30', '#f0a040', '#ffe08a', '#f0a050', '#f3d27a', '#f7e2a0', '#ffd27a', '#fff3b0'].map(c => tdParseColor(c).slice(0, 3).join()));
-function tdFinishKeeps(p){ return TD_FINISH_GLOW.has(p.slice(0, 3).join()); }
+// (a numeric key per colour: this runs for every pixel of every bake)
+const TD_FINISH_GLOW = new Set(['#f07a30', '#f0a040', '#ffe08a', '#f0a050', '#f3d27a', '#f7e2a0', '#ffd27a', '#fff3b0'].map(c => { const p = tdParseColor(c); return (p[0] << 16) | (p[1] << 8) | p[2]; }));
+function tdFinishKeeps(p){ return TD_FINISH_GLOW.has((p[0] << 16) | (p[1] << 8) | p[2]); }
 function tdFinishSprite(sprite, kind){
   if(!sprite) return sprite;
   const o = TD_FINISH[kind] || TD_FINISH.prop, r = tdRaster(sprite);

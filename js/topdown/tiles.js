@@ -277,6 +277,11 @@ function tdPaintVillageGround(map, put, W, H, clip){
   for(let y = Math.max(C.y0, Math.floor(cy - r - 1)); y <= Math.min(C.y1, H - 1, Math.ceil(cy + r + 1)); y++){
     for(let x = Math.max(C.x0, Math.floor(cx - r - 1)); x <= Math.min(C.x1, W - 1, Math.ceil(cx + r + 1)); x++){
       const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if(v2){ // graphics pass 2: the plaza in the same stone style as the v2 roads
+        const pc = tdPlazaPixelV2(x - Math.floor(cx), y - Math.floor(cy), d, r);
+        if(pc && !(pc[1] < 1 && onRoad(x, y))) put(x, y, pc[0], pc[1]); // the shadow ring never darkens a road joining it
+        continue;
+      }
       if(d > r) continue;
       const rx = x - Math.floor(cx), ry = y - Math.floor(cy);
       const row = Math.floor((ry + 1000) / 8), off = (row % 2) * 4;

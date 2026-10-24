@@ -1,0 +1,43 @@
+{
+  "browser": "154.0.8037.57",
+  "results": [
+    {
+      "name": "pc",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dpr": 1,
+      "emulation": true,
+      "restored": {
+        "mine": "secured",
+        "discovered": true,
+        "amount": 1.08,
+        "x": 17.45,
+        "y": -7,
+        "seed": 3867133451
+      },
+      "saveBytes": 6787,
+      "errors": []
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dpr": 3,
+      "emulation": true,
+      "restored": {
+        "mine": "secured",
+        "discovered": true,
+        "amount": 1.36,
+        "x": -2.55,
+        "y": -15,
+        "seed": 1227060980
+      },
+      "saveBytes": 6640,
+      "errors": []
+    }
+  ]
+}

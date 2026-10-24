@@ -29,6 +29,7 @@ function topdownScale(zoom){ return TD_UNIT_PX * zoom; }
 
 // The world area that can be shown: the bounds plus the forest edge.
 function topdownWorldRect(){
+  if(typeof currentWorldContext === 'function' && currentWorldContext()) return {minX:-32,maxX:32,minY:-32,maxY:32};
   const b = BALANCE.world, e = TOPDOWN.EDGE_UNITS;
   return { minX: b.BOUNDS_MIN_X - e, maxX: b.BOUNDS_MAX_X + e, minY: b.BOUNDS_MIN_Y - e, maxY: b.BOUNDS_MAX_Y + e };
 }

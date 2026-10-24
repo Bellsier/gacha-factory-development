@@ -45,7 +45,7 @@ function tdInteractNow(){
   if(!target) return false;
   const r = tdInteract(target);
   if(r.open){ tdOpenTab(r.open); return true; }
-  if(r.text) tdAddFloat(r.text, target.x, target.y, r.ok ? '#fff3b0' : '#b8c0c6', tdBubbleLift(target));
+  if(r.text) tdAddFloat(r.text, target.x, target.y, r.ok ? '#fff3b0' : '#b8c0c6', tdBubbleLift(target), r.sum);
   return r.ok;
 }
 

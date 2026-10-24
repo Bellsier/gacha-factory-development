@@ -33,6 +33,7 @@ const TD_LIGHT_RGB = [255, 238, 205];  // warm light from the top left
 const TD_SHADE_RGB = [46, 44, 72];     // shade bottom right leans a little cool
 
 function tdParseColor(c){
+  if(c[0] === '#' && c.length === 4) return [parseInt(c[1] + c[1], 16), parseInt(c[2] + c[2], 16), parseInt(c[3] + c[3], 16), 1]; // '#888'
   if(c[0] === '#') return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16), 1];
   const m = c.match(/rgba?\(([^)]+)\)/), v = m ? m[1].split(',').map(Number) : [0, 0, 0, 1];
   return [v[0], v[1], v[2], v.length > 3 ? v[3] : 1];
@@ -310,8 +311,10 @@ const TD_FINISH = {
   thin: { round: 0, outline: 0.3, light: 0.1, shade: 0.1 },     // lamp posts, boards, the torch: mostly edge pixels
   worker: { round: 0.22, outline: 0.32, light: 0.14, shade: 0.12 }, // the helmet's top rounds; tools stay light enough to read
 };
-// glowing pixels keep their colour: warm and bright (window glass, lamp glass, flames, a helmet lamp)
-function tdFinishKeeps(p){ return p[0] >= 230 && p[1] >= 110 && p[2] <= 200; }
+// glowing pixels keep their colour: flames and the stove fire, the forge window, lit window
+// glass, lamp glass and the helmet lamp (paper, skin, petals and gold trim are finished as usual)
+const TD_FINISH_GLOW = new Set(['#f07a30', '#f0a040', '#ffe08a', '#f0a050', '#f3d27a', '#f7e2a0', '#ffd27a', '#fff3b0'].map(c => tdParseColor(c).slice(0, 3).join()));
+function tdFinishKeeps(p){ return TD_FINISH_GLOW.has(p.slice(0, 3).join()); }
 function tdFinishSprite(sprite, kind){
   if(!sprite) return sprite;
   const o = TD_FINISH[kind] || TD_FINISH.prop, r = tdRaster(sprite);

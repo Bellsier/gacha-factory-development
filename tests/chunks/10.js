@@ -207,3 +207,44 @@ const DEV_SAVE_KEY = 'gachaFactorySave.dev';
   const tones = new Set(); for (let y = -40; y < 40; y += 3) for (let x = -40; x < 40; x += 3) { const d = Math.hypot(x, y); if (d < r - 4) tones.add(v2.tdPlazaPixelV2(x, y, d, r)[0].slice(0, 3).join()); }
   check('G2: the plaza stones vary (slabs, joints, light and shade)', tones.size >= 8);
 })();
+
+// Graphics pass 2, step 1, review fixes: short hex colours survive the finish, only real
+// glow colours are kept, the lantern does not re-read the address every frame, and every
+// bake site passes its sprites through the v2 finish with the right kind.
+(function test_G2_reviewFixes() {
+  const v2 = newDom(makeMemoryStorage(), { url: 'https://example.test/?style=v2' }).window;
+  // 3-digit hex (the fallback pebble of an unknown prop or decor key is '#888')
+  check('G2R: #888 reads as grey 136', JSON.stringify(v2.tdParseColor('#888')) === '[136,136,136,1]');
+  check('G2R: #fff and #aaa read as 255 and 170', v2.tdParseColor('#fff')[0] === 255 && v2.tdParseColor('#aaa')[2] === 170);
+  const unknown = v2.tdStyleFinish(v2.tdDecorSprite('noSuchDecor'), 'prop');
+  check('G2R: an unknown decor key still bakes to valid colours in v2', unknown.rects.length > 0 && unknown.rects.every((r) => /^#[0-9a-f]{6}$/.test(r[4]) || /^rgba\(\d+,\d+,\d+,[\d.]+\)$/.test(r[4])));
+  // glow: windows, lamp glass, flames and the helmet lamp are kept; paper, petals and gold trim are finished
+  [[255, 210, 122], [243, 210, 122], [255, 243, 176], [240, 160, 80], [240, 122, 48], [240, 160, 64], [255, 224, 138]].forEach((c) => {
+    check('G2R: glow colour ' + c + ' is kept', v2.tdFinishKeeps([...c, 1]) === true);
+  });
+  [[232, 220, 192], [240, 208, 96], [242, 214, 140], [232, 192, 80]].forEach((c) => {
+    check('G2R: non-glow colour ' + c + ' gets the finish', v2.tdFinishKeeps([...c, 1]) === false);
+  });
+  // the lantern switch is read once, not on every frame
+  let reads = 0; const RealParams = v2.URLSearchParams;
+  v2.URLSearchParams = function (q) { reads++; return new RealParams(q); };
+  for (let i = 0; i < 50; i++) v2.tdLightList({ x: 0, y: 0, dir: 'down' }, i * 16, [], 0.3);
+  v2.URLSearchParams = RealParams;
+  check('G2R: 50 frames of lights read the address at most once', reads <= 1, 'reads=' + reads);
+  // every bake site asks for the v2 finish, with the kind that fits it
+  const asked = []; const realFinish = v2.tdStyleFinish;
+  v2.tdStyleFinish = function (sp, kind) { asked.push(kind); return realFinish(sp, kind); };
+  v2.tdBuildSpriteSheet();
+  const sheetKinds = asked.splice(0);
+  v2.TD.villageImages = {}; v2.TD.decorImages = {}; v2.TD.workerImages = {};
+  v2.tdVillageImage('museum', 2, 3, [], 1); const village = asked.splice(0);
+  v2.tdDecorImage('bench'); const decor = asked.splice(0);
+  v2.tdWorkerImage(v2.tdWorkerLook({ id: 'w1', rarity: 'rare' }), 'right', 'w1'); const worker = asked.splice(0);
+  v2.tdStyleFinish = realFinish;
+  const count = (k) => sheetKinds.filter((x) => x === k).length;
+  // 8 resources x 2 looks + undiscovered = 17 veins; base + 3 huts = 4 buildings; 3 torch frames + lamp, board, timber = 6 thin;
+  // 2 trees; rock, 3 vein props, crystal, shaft entrance, mine cart = 7 props; grass, clearing, digging marks = 3 left alone
+  check('G2R: the sprite sheet finishes 17 veins, 4 buildings, 2 trees, 6 thin pieces and 7 props', count('vein') === 17 && count('building') === 4 && count('tree') === 2 && count('thin') === 6 && count('prop') === 7, JSON.stringify(sheetKinds));
+  check('G2R: ...and leaves the 3 ground pieces alone', count(null) === 3);
+  check('G2R: village facilities, garden pieces and workers are finished as buildings, props and workers', village.join() === 'building' && decor.join() === 'prop' && worker.join() === 'worker');
+})();

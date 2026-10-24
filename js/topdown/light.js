@@ -36,9 +36,13 @@ const TD_FACING_ANGLE = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.
 // Graphics pass 2 (v2 only, ?light=cone keeps the old one to compare): instead of the
 // helmet lamp's cone, a round warm lantern that follows the dusk — next to nothing in
 // full day, a soft warm pool at the darkest. Drawing only; the day cycle is unchanged.
+const TD_LANTERN_CACHE = { on: null }; // read from the address once, like the style itself
 function tdLanternLook(){
-  if(!(typeof tdStyleV2 === 'function' && tdStyleV2())) return false;
-  try { return new URLSearchParams(window.location.search).get('light') !== 'cone'; } catch(e){ return true; }
+  if(TD_LANTERN_CACHE.on !== null) return TD_LANTERN_CACHE.on;
+  let on = typeof tdStyleV2 === 'function' && tdStyleV2();
+  if(on){ try { on = new URLSearchParams(window.location.search).get('light') !== 'cone'; } catch(e){ on = true; } }
+  TD_LANTERN_CACHE.on = on;
+  return on;
 }
 function tdLanternLight(player, darkness){
   const d = typeof darkness === 'number' ? darkness : TD_LIGHT.MIN_DARK;

@@ -233,6 +233,28 @@ function tdVillageSprite(key, stage, exhibits, specimens, hall){
     P(fx + 10, groundY - 6, 12, 2, '#5a3b28'); P(fx + 11, groundY - 7, 10, 1, '#7a5a36'); // a fallen beam
     [[4, -3], [16, -2], [24, -4], [fw - 14, -2]].forEach(([dx, dy]) => { P(fx + dx, groundY + dy, 3, 2, stone); P(fx + dx, groundY + dy, 3, 1, stoneLight); });
     [[2, -1], [13, 0], [fw - 6, -1], [20, -9]].forEach(([dx, dy]) => { P(fx + dx, groundY + dy - 2, 1, 3, '#5b8a4a'); P(fx + dx + 1, groundY + dy - 3, 1, 3, '#6b9b55'); });
+    // Distinct silhouettes at the earliest restoration stage: keep the
+    // original rubble footprint, but leave recognizable traces of each trade.
+    if(museum){
+      // Fallen stone columns and a broken pediment mark a former public hall.
+      P(fx + 3, groundY - 23, 4, 14, '#c6c0b6');
+      P(fx + 3, groundY - 23, 4, 2, '#e6e1d8');
+      P(fx + fw - 9, groundY - 20, 4, 11, '#a9a39a');
+      P(fx + fw - 10, groundY - 20, 6, 2, '#c6c0b6');
+      P(fx + 14, groundY - 14, 19, 3, '#a9a39a');
+      P(fx + 17, groundY - 17, 13, 3, '#c6c0b6');
+      P(fx + 20, groundY - 20, 7, 3, '#7f7a72');
+      P(fx + 18, groundY - 4, 5, 2, '#3a2a1e'); // abandoned display niche
+    }else{
+      // A cracked blue lens sign identifies the former appraiser's cottage.
+      P(fx + fw - 11, groundY - 19, 2, 10, '#7a5a36');
+      P(fx + fw - 13, groundY - 22, 10, 6, '#e8dcc0');
+      P(fx + fw - 12, groundY - 21, 8, 4, '#a9a39a');
+      P.disc(fx + fw - 9, groundY - 19, 2, '#3f7aa8');
+      P(fx + fw - 8, groundY - 18, 1, 1, '#bfe3ff');
+      P(fx + fw - 7, groundY - 17, 2, 2, '#5a3b28');
+      P(fx + 4, groundY - 12, 7, 2, '#2f5f86'); // fallen roof tile
+    }
     return P.done(false);
   }
   if(stage === 1){

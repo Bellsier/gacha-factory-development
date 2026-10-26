@@ -33,6 +33,7 @@ const TD_LIGHT_RGB = [255, 238, 205];  // warm light from the top left
 const TD_SHADE_RGB = [46, 44, 72];     // shade bottom right leans a little cool
 
 function tdParseColor(c){
+  if(c[0] === '#' && c.length === 4) return [parseInt(c[1] + c[1], 16), parseInt(c[2] + c[2], 16), parseInt(c[3] + c[3], 16), 1]; // '#888'
   if(c[0] === '#') return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16), 1];
   const m = c.match(/rgba?\(([^)]+)\)/), v = m ? m[1].split(',').map(Number) : [0, 0, 0, 1];
   return [v[0], v[1], v[2], v.length > 3 ? v[3] : 1];
@@ -292,4 +293,65 @@ function tdRoadPixelV2(x, y, d, hw){
   else if(ly === 4 || lx === 6) c = tdMix(base, TD_SHADE_RGB, 0.22);
   if(d > hw - 2.5) c = tdMix(c, TD_SHADE_RGB, 0.15); // the edge stones sit lower
   return c;
+}
+
+// --- graphics pass 2, step 1: one finish for everything else ---------------------------
+// With ?style=v2 the workshop, the craft huts, the village facilities, the veins, the trees
+// and props, the workers and the torches go through the same finishing pass as the player
+// and the house: rounded convex corners on their round parts, the warm plum inner outline,
+// light from the top left and a cooler shade bottom right. Glowing pixels (windows, lamp
+// glass, flames) are kept as they are. Same width and height, so every anchor, ground line
+// and collision box stays exactly where it was. Pure: painter sprite in, painter sprite out.
+const TD_FINISH = {
+  // roundRows as fractions of the sprite height (the round parts: roofs, canopies, stone tops)
+  building: { round: 0.55, outline: 0.45, light: 0.12, shade: 0.12 },
+  vein: { round: 1, outline: 0.5, light: 0.14, shade: 0.12 },
+  tree: { round: 0.75, outline: 0.45, light: 0.16, shade: 0.12 },
+  prop: { round: 1, outline: 0.42, light: 0.12, shade: 0.12 },
+  thin: { round: 0, outline: 0.3, light: 0.1, shade: 0.1 },     // lamp posts, boards, the torch: mostly edge pixels
+  worker: { round: 0.22, outline: 0.32, light: 0.14, shade: 0.12 }, // the helmet's top rounds; tools stay light enough to read
+};
+// glowing pixels keep their colour: flames and the stove fire, the forge window, lit window
+// glass, lamp glass and the helmet lamp (paper, skin, petals and gold trim are finished as usual)
+// (a numeric key per colour: this runs for every pixel of every bake)
+const TD_FINISH_GLOW = new Set(['#f07a30', '#f0a040', '#ffe08a', '#f0a050', '#f3d27a', '#f7e2a0', '#ffd27a', '#fff3b0'].map(c => { const p = tdParseColor(c); return (p[0] << 16) | (p[1] << 8) | p[2]; }));
+function tdFinishKeeps(p){ return TD_FINISH_GLOW.has((p[0] << 16) | (p[1] << 8) | p[2]); }
+function tdFinishSprite(sprite, kind){
+  if(!sprite) return sprite;
+  const o = TD_FINISH[kind] || TD_FINISH.prop, r = tdRaster(sprite);
+  tdStylize(r, { keep: tdFinishKeeps, roundRows: [0, Math.round(sprite.h * o.round) - 1], outline: o.outline, light: o.light, shade: o.shade });
+  return tdUnraster(r);
+}
+// What each prop is drawn as (the ground patches and the swaying tufts keep the classic look).
+const TD_FINISH_PROP = { bigTree: 'tree', sparseTree: 'tree', lamp: 'thin', villageBoard: 'thin', timberSupport: 'thin', grass: null, clearing: null, diggingMarks: null };
+function tdFinishPropKind(prop){ return prop in TD_FINISH_PROP ? TD_FINISH_PROP[prop] : 'prop'; }
+// Finishes a sprite only in v2 (`kind` null: left as it is).
+function tdStyleFinish(sprite, kind){ return kind && tdStyleV2() ? tdFinishSprite(sprite, kind) : sprite; }
+
+// v2 plaza: large flagstones in staggered courses, each lit top-left and shaded
+// bottom-right with rounded corners and dark joints, a rim of darker kerb stones and a
+// lit ring round the centre, a touch of moss; sunk into the grass by a one-pixel shadow
+// like the roads. (rx, ry) from the plaza centre in pixels, `d` the distance, `r` the radius.
+// Returns [colour, alpha] for the pixel, or null outside.
+const TD_PLAZA_V2 = {
+  slabs: [[196, 186, 166], [188, 178, 158], [204, 194, 174], [182, 174, 156]], joint: [124, 114, 100], kerb: [150, 140, 124], moss: [110, 142, 86],
+};
+function tdPlazaPixelV2(rx, ry, d, r){
+  const P = TD_PLAZA_V2;
+  if(d > r + 1) return null;
+  if(d > r) return [TD_SHADE_RGB, 0.18];
+  if(d > r - 3){ // kerb: short stones round the edge, lit on the inner side
+    const seg = Math.floor((Math.atan2(ry, rx) + Math.PI) * r / 5), gap = Math.floor((Math.atan2(ry, rx) + Math.PI) * r) % 5 === 0;
+    const base = tdMix(P.kerb, [0, 0, 0], tdHash(seg, 3, 113) * 0.08); // each kerb stone a shade darker or not
+    return [gap ? P.joint : d < r - 2 ? tdMix(base, TD_LIGHT_RGB, 0.22) : d > r - 1 ? tdMix(base, TD_SHADE_RGB, 0.3) : base, 1];
+  }
+  if(Math.abs(d - r * 0.3) < 1.5) return [d < r * 0.3 ? tdMix(P.kerb, TD_LIGHT_RGB, 0.25) : tdMix(P.kerb, TD_SHADE_RGB, 0.15), 1]; // the ring round the centre
+  const yy = ry + 1000, row = Math.floor(yy / 9), xx = rx + 1000 + (row % 2) * 5, col = Math.floor(xx / 10), lx = xx % 10, ly = yy % 9;
+  if(lx === 0 || ly === 0 || ((lx === 1 || lx === 9) && (ly === 1 || ly === 8))) return [tdHash(rx, ry, 115) < 0.06 ? P.moss : P.joint, 1];
+  const base = P.slabs[Math.floor(tdHash(col, row, 117) * P.slabs.length)];
+  let c = base;
+  if(ly === 1 || lx === 1) c = tdMix(base, TD_LIGHT_RGB, 0.3);
+  else if(ly === 8 || lx === 9) c = tdMix(base, TD_SHADE_RGB, 0.2);
+  else if(tdHash(rx, ry, 119) < 0.05) c = tdMix(base, TD_SHADE_RGB, 0.12); // a little wear
+  return [c, 1];
 }

@@ -143,44 +143,153 @@ function tdOreSprite(resource, kind){
   return P.done(false);
 }
 
-// --- the workshop (공방): a cosy cabin, 64 x 58; the door is at the bottom centre.
+// --- building parts shared by the cabin, the craft huts and the village facilities.
+// Doors are sized to the player (21 px, hair to boots): the cabin's about 1x, the
+// huts' and facilities' about 0.75x, the house's 1.2x (Task 119). Warm glass and
+// forge colours are the ones the v2 finish keeps bright (style.js TD_FINISH_GLOW).
+const TD_BUILDING = {
+  doorFrame: '#4a3626', door: '#6a4a30', doorDark: '#553a26', doorLight: '#7f5a3a', strap: '#4b4440', handle: '#e2b23c',
+  step: '#b4aaa0', stepTop: '#cfc6bc', glass: '#f3d27a', glassTop: '#f7e2a0', forge: '#f0a050', forgeHot: '#ffe08a',
+};
+// A sloped roof of shingle courses: `rows` rows from `y`, the ridge `w` wide at `x0`,
+// widening by `spread` px a side to the eaves. Each course: a lit top row, a mid row
+// with staggered tab joints, a dark lower edge.
+function tdRoof(P, x0, y, w, rows, spread, light, mid, dark){
+  for(let k = 0; k < rows; k++){
+    const o = Math.floor(k * spread / Math.max(1, rows - 1)), x = x0 - o, rw = w + 2 * o, c = k % 3;
+    P(x, y + k, rw, 1, c === 0 ? light : c === 1 ? mid : dark);
+    if(c === 1) for(let tx = x + 2 + (Math.floor(k / 3) % 2) * 3; tx < x + rw - 1; tx += 6) P(tx, y + k, 1, 1, dark);
+  }
+}
+// Horizontal boards: seams every 3 rows, staggered board ends.
+function tdPlanks(P, x, y, w, h, base, seam){
+  P(x, y, w, h, base);
+  for(let r = 0; r * 3 < h; r++){
+    if(r * 3 + 2 < h) P(x, y + r * 3 + 2, w, 1, seam);
+    for(let bx = x + 4 + (r % 2) * 7; bx < x + w - 1; bx += 14) P(bx, y + r * 3, 1, Math.min(2, h - r * 3), seam);
+  }
+}
+// Stone courses: mortar behind, blocks two rows high in a running bond, lit along their top.
+function tdStones(P, x, y, w, h, mortar, stone, light){
+  P(x, y, w, h, mortar);
+  for(let r = 0; r * 3 < h; r++){
+    const rows = Math.min(2, h - r * 3);
+    for(let bx = x - (r % 2) * 3; bx < x + w; bx += 6){
+      const x0 = Math.max(x, bx), x1 = Math.min(x + w, bx + 5);
+      P(x0, y + r * 3, x1 - x0, rows, stone); P(x0, y + r * 3, x1 - x0, 1, light);
+    }
+  }
+}
+// A plank door in its frame; `arch` rounds the top corners. (x, y) the frame's top left.
+function tdDoor(P, x, y, w, h, arch){
+  const B = TD_BUILDING;
+  for(let r = 0; r < h; r++){ const inset = arch ? (r === 0 ? 2 : r === 1 ? 1 : 0) : 0; P(x + inset, y + r, w - 2 * inset, 1, B.doorFrame); }
+  for(let r = 1; r < h; r++){ const inset = arch ? (r === 1 ? 2 : r === 2 ? 1 : 0) : 0; P(x + 1 + inset, y + r, w - 2 - 2 * inset, 1, B.door); }
+  P(x + 1, y + 2, 1, h - 2, B.doorLight);
+  for(let px = x + 3; px < x + w - 2; px += 3) P(px, y + 2, 1, h - 2, B.doorDark);
+}
+// A window: frame, warm glass lit at the top, an optional mullion cross and a sill.
+function tdWindow(P, x, y, w, h, cross, sill){
+  const B = TD_BUILDING;
+  P(x, y, w, h, '#5a3b28'); P(x + 1, y + 1, w - 2, h - 2, B.glass); P(x + 1, y + 1, w - 2, 1, B.glassTop);
+  if(cross){ P(x + Math.floor(w / 2), y + 1, 1, h - 2, '#5a3b28'); P(x + 1, y + Math.floor(h / 2), w - 2, 1, '#5a3b28'); }
+  if(sill) P(x - 1, y + h, w + 2, 1, sill);
+}
+
+// --- the workshop (공방): the miners' cabin, 64 x 58; the door is at the bottom centre
+// (ground row 54). Red shingle roof with the pickaxe-and-gem sign in its gable, plank
+// walls on a stone footing, a door the player's height, an ore crate and a pickaxe.
+// The windows stay where their lights are (render: base x -0.24 / +0.26, y -0.3).
 function tdBaseSprite(){
-  const P = tdPainter(64, 58);
+  const P = tdPainter(64, 58), B = TD_BUILDING;
   P(4, 54, 56, 4, 'rgba(0,0,0,0.22)');
-  // walls
-  P(6, 26, 52, 28, '#b08a5a'); for(let y = 30; y < 54; y += 4) P(6, y, 52, 1, '#97734a');
-  P(6, 26, 2, 28, '#8a6440'); P(56, 26, 2, 28, '#8a6440');
-  // roof
-  for(let k = 0; k < 20; k++){ const o = Math.floor(k * 8 / 19); P(10 - o, 6 + k, 44 + 2 * o, 1, k % 4 === 3 ? '#7a3a2e' : '#9a4a3a'); }
-  P(10, 6, 44, 1, '#b05a46'); P(2, 24, 60, 3, '#6a3026');
-  // chimney
-  P(44, 0, 7, 10, '#6a625a'); P(44, 0, 7, 2, '#857c72');
-  // windows (warm light) and door
-  [[11, 34], [43, 34]].forEach(([x, y]) => { P(x, y, 10, 9, '#5a3b28'); P(x + 1, y + 1, 8, 7, '#f3d27a'); P(x + 5, y + 1, 1, 7, '#5a3b28'); P(x + 1, y + 4, 8, 1, '#5a3b28'); });
-  P(26, 36, 12, 18, '#5a3b28'); P(27, 37, 10, 17, '#7a5236'); P(35, 45, 1, 2, '#e2b23c');
-  // sign
-  P(24, 28, 16, 6, '#7a5236'); P(25, 29, 14, 4, '#c9a26a'); P(27, 30, 10, 1, '#5a3b28'); P(29, 32, 6, 1, '#5a3b28');
-  // crates by the wall
-  P(51, 47, 7, 7, '#9a7446'); P(51, 47, 7, 1, '#b8915c'); P(54, 47, 1, 7, '#7a5a36');
+  // walls: boards over a stone footing, corner posts and the beam under the eaves
+  tdPlanks(P, 6, 27, 52, 23, '#b08a5a', '#97734a');
+  tdStones(P, 6, 50, 52, 4, '#6c645b', '#9a9086', '#b4aaa0');
+  P(6, 27, 2, 23, '#8a6440'); P(6, 27, 1, 23, '#a07a50'); P(56, 27, 2, 23, '#8a6440'); P(57, 27, 1, 23, '#6f5034');
+  P(6, 27, 52, 2, '#8a6440'); P(6, 29, 52, 1, '#6f5034');
+  // roof, the eaves' edge and the shade under it
+  tdRoof(P, 11, 5, 42, 21, 8, '#b05a46', '#9a4a3a', '#7a3a2e');
+  P(2, 25, 60, 2, '#6a3026'); P(8, 30, 48, 1, 'rgba(60,30,20,0.18)');
+  // the gable sign: a pickaxe and a gem
+  P(24, 12, 16, 8, '#5a3b28'); P(25, 13, 14, 6, '#c9a26a'); P(25, 13, 14, 1, '#e0bf86');
+  P(27, 14, 6, 1, '#5d5d63'); P(27, 15, 1, 1, '#5d5d63'); P(32, 15, 1, 1, '#5d5d63'); P(30, 15, 1, 3, '#7a5236');
+  P(35, 15, 2, 2, '#4fc4dc'); P(35, 15, 1, 1, '#bff3ff');
+  // chimney: bricks, a lit side and a cap
+  P(44, 1, 7, 11, '#7a6a5e'); P(44, 1, 2, 11, '#958576'); for(let y = 3; y < 12; y += 3) P(44, y, 7, 1, '#5f544b');
+  P(43, 0, 9, 2, '#a59585');
+  // windows with their sills
+  tdWindow(P, 11, 32, 11, 11, true, '#a07a50'); tdWindow(P, 43, 32, 11, 11, true, '#a07a50');
+  // the door, its iron straps and handle, the step
+  tdDoor(P, 25, 32, 14, 20, false);
+  P(26, 37, 12, 1, B.strap); P(26, 46, 12, 1, B.strap); P(35, 41, 2, 2, B.handle);
+  P(23, 52, 18, 2, B.step); P(23, 52, 18, 1, B.stepTop);
+  // a pickaxe leaning by the door and a crate of ore by the wall
+  P(19, 40, 6, 1, '#77777e'); P(19, 41, 1, 1, '#5d5d63'); P(24, 41, 1, 1, '#5d5d63'); P(22, 41, 1, 12, '#8a6440');
+  P(49, 46, 8, 8, '#9a7446'); P(49, 46, 8, 1, '#b8915c'); P(49, 50, 8, 1, '#7a5a36'); P(52, 46, 1, 8, '#7a5a36');
+  P(50, 45, 2, 1, '#b8704f'); P(53, 44, 2, 2, '#2c3034'); P(55, 45, 1, 1, '#e09a72');
   return P.done(false);
 }
 
-// --- a craft workshop (제작소) by tier 1-3 (Task 79 look tiers), 44 x 40.
+// --- a craft workshop (제작소) by tier 1-3 (Task 79 look tiers), 44 x 40, ground row 37.
+// The same walls and door (so the same collision box), growing with the tier:
+//   1 a plank smithy: brown shingles, a stone stack, one forge window, an anvil on a stump, logs
+//   2 half stone walls, moss-green roof, a taller brick chimney, a second window, a lantern,
+//     iron straps on the door, a crate of ingots
+//   3 stone masonry, a slate-plum roof with a gold ridge and emblem, a forge fire in the
+//     chimney, an arched door and window, a banner, a glowing ingot on the anvil
+// The roof rises a little each tier (ridge row 6 / 4 / 2). The forge window stays where its
+// light is (render: w.x - 0.17, w.y - 0.2).
+const TD_WORKSHOP_TIERS = {
+  1: { ridge: 6, roof: ['#8a7048', '#6e5a3a', '#58482e'], eave: '#4a3b26' },
+  2: { ridge: 4, roof: ['#6e8446', '#5a6e3a', '#48592e'], eave: '#3a4826' },
+  3: { ridge: 2, roof: ['#7a6e8e', '#5e5470', '#4a4258'], eave: '#3a3346' },
+};
 function tdWorkshopSprite(tier){
-  const P = tdPainter(44, 40);
-  const wall = tier >= 3 ? '#8f8a84' : tier === 2 ? '#a07a50' : '#9a7446';
-  const roof = tier >= 3 ? '#3f6e8a' : tier === 2 ? '#5a6e3a' : '#6e5a3a';
-  const roofDark = tier >= 3 ? '#325a72' : tier === 2 ? '#48592e' : '#58482e';
+  const P = tdPainter(44, 40), t = Math.max(1, Math.min(3, tier || 1)), T = TD_WORKSHOP_TIERS[t], B = TD_BUILDING;
   P(3, 37, 38, 3, 'rgba(0,0,0,0.22)');
-  P(5, 18, 34, 19, wall); for(let y = 22; y < 37; y += 4) P(5, y, 34, 1, 'rgba(0,0,0,0.12)');
-  if(tier >= 2) P(5, 33, 34, 4, '#77706a');
-  for(let k = 0; k < 14; k++){ const o = Math.floor(k * 6 / 13); P(8 - o, 4 + k, 28 + 2 * o, 1, k % 4 === 3 ? roofDark : roof); }
-  P(8, 4, 28, 1, 'rgba(255,255,255,0.18)'); P(2, 17, 40, 2, roofDark);
-  P(30, 0, 5, 7, '#5e5850'); // chimney
-  P(17, 25, 10, 12, '#4a3626'); P(18, 26, 8, 11, '#6a4a30');
-  P(8, 24, 6, 5, '#3a2a1e'); P(9, 25, 4, 3, '#f0a050'); // forge glow window
-  P(31, 30, 7, 3, '#4d4d52'); P(32, 28, 5, 2, '#5d5d63'); // anvil
-  if(tier >= 3){ P(36, 6, 1, 12, '#5a3b28'); P(37, 6, 5, 4, '#e2b23c'); }
+  // walls
+  if(t === 1){ tdPlanks(P, 5, 20, 34, 15, '#9a7446', '#7f5e38'); tdStones(P, 5, 35, 34, 2, '#5e5850', '#77706a', '#8a847c'); }
+  else if(t === 2){ tdPlanks(P, 5, 20, 34, 10, '#a07a50', '#86643f'); tdStones(P, 5, 30, 34, 7, '#6a6560', '#8a8580', '#a39e98'); }
+  else tdStones(P, 5, 20, 34, 17, '#6e6a65', '#8f8a84', '#a8a39c');
+  if(t < 3){ P(5, 20, 2, 17, '#7a5a36'); P(37, 20, 2, 17, '#7a5a36'); P(5, 20, 34, 1, '#7a5a36'); }
+  else { [20, 26, 32].forEach(y => { P(5, y, 3, 2, '#b4afa8'); P(36, y + 3, 3, 2, '#b4afa8'); }); } // corner quoins
+  // roof (a little taller each tier), the eaves' edge
+  const rows = 19 - T.ridge, spread = 7 + (t - 1);
+  tdRoof(P, 9 + (t - 1), T.ridge, 26 - 2 * (t - 1), rows, spread, T.roof[0], T.roof[1], T.roof[2]);
+  P(2, 18, 40, 2, T.eave);
+  // chimney
+  if(t === 1){ P(30, 3, 4, 9, '#6a625a'); P(30, 3, 1, 9, '#857c72'); P(29, 2, 6, 1, '#857c72'); }
+  else if(t === 2){ P(30, 1, 5, 11, '#8a4a3a'); P(30, 1, 1, 11, '#a85e48'); for(let y = 3; y < 12; y += 3) P(30, y, 5, 1, '#6a3a2e'); P(29, 0, 7, 1, '#5e5850'); }
+  else { P(29, 1, 7, 10, '#77706a'); P(29, 1, 2, 10, '#8f8a84'); for(let y = 4; y < 11; y += 3) P(29, y, 7, 1, '#5e5850'); P(29, 1, 7, 1, '#4a4440'); P(30, 0, 5, 1, '#f07a30'); P(31, 0, 3, 1, '#ffe08a'); }
+  // the forge window (left), the door
+  P(8, 23, 7, 6, '#3a2a1e'); P(9, 24, 5, 4, B.forge); P(10, 25, 3, 2, B.forgeHot);
+  if(t === 3) tdDoor(P, 17, 19, 10, 17, true); // the arch rises into the eaves' edge
+  else tdDoor(P, 17, 20, 10, 16, false);
+  P(15, 36, 14, 1, B.stepTop);
+  P(24, 28, 1, 2, B.handle);
+  if(t >= 2){ P(18, 24, 8, 1, B.strap); P(18, 31, 8, 1, B.strap); }
+  // tier 1: logs and an anvil on a stump
+  if(t === 1){
+    P(5, 33, 7, 4, '#7a5a36'); [[6, 34], [9, 34], [7, 36]].forEach(([x, y]) => P(x, y, 1, 1, '#b8915c'));
+  }
+  // tier 2: a second window, a lantern by the door, a crate of ingots
+  if(t === 2){
+    tdWindow(P, 31, 23, 6, 6, false, '#7a5a36');
+    P(28, 23, 2, 1, '#3a2a1e'); P(28, 24, 2, 2, '#ffd27a'); P(28, 26, 2, 1, '#3a2a1e');
+    P(5, 33, 7, 4, '#8a6440'); P(5, 33, 7, 1, '#a07a50'); P(6, 32, 2, 1, '#b9c3cc'); P(9, 32, 2, 1, '#b9c3cc');
+  }
+  // tier 3: an arched window, the gable emblem, a banner, a crate of gems
+  if(t === 3){
+    P(31, 22, 6, 7, '#5a3b28'); P(32, 23, 4, 5, B.glass); P(33, 22, 2, 1, '#5a3b28'); P(32, 23, 4, 1, B.glassTop); P(30, 29, 8, 1, '#a8a39c');
+    P(11, T.ridge, 22, 1, '#e2b23c');
+    P(19, 9, 6, 5, '#e2b23c'); P(20, 10, 4, 3, '#5a3b28'); P(20, 10, 3, 1, '#d6dde3'); P(21, 11, 1, 2, '#a07a50');
+    P(40, 3, 1, 16, '#5a3b28'); P(41, 3, 3, 4, '#e2b23c'); P(41, 7, 2, 1, '#c9a24a');
+    P(5, 33, 7, 4, '#8a6440'); P(5, 33, 7, 1, '#a07a50'); P(6, 32, 2, 1, '#7fd7ec'); P(9, 32, 2, 1, '#c4a2ff');
+  }
+  // the anvil on its stump (every tier; tier 3 has a glowing ingot on it)
+  P(32, 33, 4, 4, '#7a5a36'); P(30, 31, 8, 2, '#4d4d52'); P(30, 31, 8, 1, '#6d6d73'); P(29, 31, 1, 1, '#4d4d52');
+  if(t === 3) P(32, 30, 3, 1, '#f0a040');
   return P.done(false);
 }
 
@@ -233,52 +342,109 @@ function tdVillageSprite(key, stage, exhibits, specimens, hall){
     P(fx + 10, groundY - 6, 12, 2, '#5a3b28'); P(fx + 11, groundY - 7, 10, 1, '#7a5a36'); // a fallen beam
     [[4, -3], [16, -2], [24, -4], [fw - 14, -2]].forEach(([dx, dy]) => { P(fx + dx, groundY + dy, 3, 2, stone); P(fx + dx, groundY + dy, 3, 1, stoneLight); });
     [[2, -1], [13, 0], [fw - 6, -1], [20, -9]].forEach(([dx, dy]) => { P(fx + dx, groundY + dy - 2, 1, 3, '#5b8a4a'); P(fx + dx + 1, groundY + dy - 3, 1, 3, '#6b9b55'); });
+    // Distinct silhouettes at the earliest restoration stage: keep the
+    // original rubble footprint, but leave recognizable traces of each trade.
+    if(museum){
+      // Fallen stone columns and a broken pediment mark a former public hall.
+      P(fx + 3, groundY - 23, 4, 14, '#c6c0b6');
+      P(fx + 3, groundY - 23, 4, 2, '#e6e1d8');
+      P(fx + fw - 9, groundY - 20, 4, 11, '#a9a39a');
+      P(fx + fw - 10, groundY - 20, 6, 2, '#c6c0b6');
+      P(fx + 14, groundY - 14, 19, 3, '#a9a39a');
+      P(fx + 17, groundY - 17, 13, 3, '#c6c0b6');
+      P(fx + 20, groundY - 20, 7, 3, '#7f7a72');
+      P(fx + 18, groundY - 4, 5, 2, '#3a2a1e'); // abandoned display niche
+    }else{
+      // A cracked blue lens sign identifies the former appraiser's cottage.
+      P(fx + fw - 11, groundY - 19, 2, 10, '#7a5a36');
+      P(fx + fw - 13, groundY - 22, 10, 6, '#e8dcc0');
+      P(fx + fw - 12, groundY - 21, 8, 4, '#a9a39a');
+      P.disc(fx + fw - 9, groundY - 19, 2, '#3f7aa8');
+      P(fx + fw - 8, groundY - 18, 1, 1, '#bfe3ff');
+      P(fx + fw - 7, groundY - 17, 2, 2, '#5a3b28');
+      P(fx + 4, groundY - 12, 7, 2, '#2f5f86'); // fallen roof tile
+    }
     return P.done(false);
   }
+  const G = groundY, B = TD_BUILDING, mid = Math.round(cx);
   if(stage === 1){
-    // cleared: a clean foundation, a scaffold and a stack of materials
-    P(fx, groundY - 6, fw, 6, '#8a8072'); P(fx, groundY - 6, fw, 1, '#a39a8c'); P(fx + 1, groundY - 3, fw - 2, 1, 'rgba(0,0,0,0.15)');
-    [fx + 2, fx + fw - 4, Math.round(cx) - 1].forEach(x => P(x, groundY - 26, 2, 20, '#8a6440'));
-    P(fx + 2, groundY - 20, fw - 4, 2, '#a07a50'); P(fx + 2, groundY - 12, fw - 4, 2, '#a07a50');
-    P(fx + 4, groundY - 26, fw - 8, 2, '#a07a50');
-    P(fx + fw - 12, groundY - 10, 8, 4, '#b8915c'); P(fx + fw - 12, groundY - 10, 8, 1, '#d0ab76'); // planks
-    P(fx + 5, groundY - 9, 6, 3, '#77706a'); P(fx + 5, groundY - 9, 6, 1, '#958d85'); // cut stones
-    P(Math.round(cx) - 5, groundY - 30, 10, 3, '#e2b23c'); P(Math.round(cx) - 4, groundY - 29, 8, 1, '#3a2a1e'); // a little sign
+    // cleared: each building site already shows what it is becoming
+    if(!museum){
+      // the appraiser: a timber frame of the cottage, the roof truss, half the plaster panels
+      // up, a stack of its blue roof tiles and a crate with the display window's glass
+      P(fx, G - 4, fw, 4, '#8a8072'); P(fx, G - 4, fw, 1, '#a39a8c'); for(let x = fx + 5; x < fx + fw; x += 7) P(x, G - 3, 1, 3, '#77706a');
+      P(fx + 3, G - 12, mid - fx - 4, 8, '#e8dcc0'); P(fx + 3, G - 12, mid - fx - 4, 1, '#f0e6cc');
+      [fx + 1, mid - 1, fx + fw - 3].forEach(x => P(x, G - 20, 2, 16, '#8a6440'));
+      P(fx + 1, G - 21, fw - 2, 2, '#a07a50');
+      for(let k = 0; k <= 9; k++){ const x = Math.round(fx + 2 + k * (mid - fx - 3) / 9); P(x, G - 22 - k, 2, 1, '#8a6440'); P(2 * mid - x - 2, G - 22 - k, 2, 1, '#8a6440'); }
+      P(mid - 1, G - 31, 2, 9, '#8a6440');
+      for(let k = 0; k < 7; k++) P(mid + 2 + k, G - 19 + k * 2, 1, 2, '#7a5a36'); // a brace across the open bay
+      [['#5a90bf', 0], ['#3f7aa8', 1], ['#2f5f86', 2], ['#3f7aa8', 3], ['#2f5f86', 4]].forEach(([c, r]) => P(fx + fw - 11, G - 5 + r, 9, 1, c)); // roof tiles
+      P(fx + 1, G - 8, 6, 6, '#7a5a36'); P(fx + 2, G - 7, 4, 4, '#bfe3ff'); P(fx + 2, G - 7, 1, 1, '#ffffff'); // glass in its crate
+      P(mid - 5, G - 35, 10, 3, '#e2b23c'); P(mid - 4, G - 34, 8, 1, '#3a2a1e'); // a little sign
+      return P.done(false);
+    }
+    // the museum: the stepped base is laid, two columns stand and two are half raised, a
+    // scaffold with a ladder holds a piece of the pediment, cut stone and a covered crate of exhibits wait
+    P(fx, G - 2, fw, 2, stone); P(fx, G - 2, fw, 1, stoneLight); P(fx + 3, G - 4, fw - 6, 2, stone); P(fx + 3, G - 4, fw - 6, 1, stoneLight);
+    [fx + 3, fx + fw - 6].forEach(x => { P(x, G - 26, 3, 22, '#e6e1d8'); P(x + 2, G - 26, 1, 22, stoneLight); P(x - 1, G - 27, 5, 2, stoneLight); });
+    [fx + 12, fx + fw - 15].forEach(x => { P(x, G - 14, 3, 10, '#e6e1d8'); P(x + 2, G - 14, 1, 10, stoneLight); P(x, G - 14, 2, 1, stoneDark); });
+    [mid - 9, mid + 7].forEach(x => P(x, G - 26, 2, 22, '#8a6440'));
+    P(mid - 10, G - 27, 20, 2, '#a07a50'); P(mid - 10, G - 16, 20, 2, '#a07a50'); P(mid - 10, G - 27, 20, 1, '#b8915c'); P(mid - 10, G - 16, 20, 1, '#b8915c');
+    for(let k = 0; k < 5; k++) P(mid - 7 + k * 3, G - 25 + k * 2, 1, 2, '#7a5a36'); // a brace
+    P(mid - 4, G - 15, 1, 11, '#7a5a36'); P(mid - 1, G - 15, 1, 11, '#7a5a36'); for(let y = G - 13; y < G - 4; y += 3) P(mid - 4, y, 4, 1, '#7a5a36'); // a ladder
+    for(let k = 0; k < 3; k++) P(mid - 2 - k * 2, G - 31 + k, 5 + k * 4, 1, stoneLight); P(mid - 7, G - 28, 14, 1, stone); // the pediment piece on the scaffold
+    P(fx + fw - 12, G - 8, 6, 4, stone); P(fx + fw - 12, G - 8, 6, 1, stoneLight); P(fx + fw - 9, G - 11, 5, 3, stoneLight);
+    P(fx + 5, G - 8, 7, 4, '#8a6440'); P(fx + 5, G - 9, 7, 2, '#b0524a'); P(fx + 5, G - 9, 7, 1, '#c86a5e');
+    P(mid - 5, G - 24, 10, 3, '#e2b23c'); P(mid - 4, G - 23, 8, 1, '#3a2a1e'); // the little sign under the scaffold's top plank
     return P.done(false);
   }
   if(!museum){
-    // the appraiser: a cottage with a blue roof, a lens on its sign and a lit window
-    P(fx, groundY - 18, fw, 18, stone); for(let y = groundY - 14; y < groundY; y += 4) P(fx, y, fw, 1, 'rgba(0,0,0,0.12)');
-    for(let k = 0; k < 12; k++){ const o = Math.floor(k * 5 / 11); P(fx + 3 - o, groundY - 31 + k, fw - 6 + 2 * o, 1, k % 4 === 3 ? '#2f5f86' : '#3f7aa8'); }
-    P(fx - 2, groundY - 20, fw + 4, 2, '#2f5f86'); P(fx + 3, groundY - 31, fw - 6, 1, 'rgba(255,255,255,0.2)');
-    P(Math.round(cx) - 4, groundY - 11, 8, 11, '#4a3626'); P(Math.round(cx) - 3, groundY - 10, 6, 10, '#6a4a30'); // door
-    P(fx + 3, groundY - 14, 7, 6, '#3a2a1e'); P(fx + 4, groundY - 13, 5, 4, '#ffd27a'); // window
-    P(fx + fw - 10, groundY - 15, 8, 8, '#e8dcc0'); P(fx + fw - 10, groundY - 15, 8, 1, '#5a3b28'); // the sign
-    P.disc(fx + fw - 7, groundY - 12, 2, '#3f7aa8'); P(fx + fw - 6, groundY - 12, 1, 1, '#bfe3ff'); P(fx + fw - 5, groundY - 10, 2, 2, '#5a3b28'); // a lens
+    // the appraiser: a half-timbered cottage under a blue roof, a display window of gems under
+    // a striped awning (on the left, where its light is), the lens board, a door with a round
+    // window, a potted plant and the step
+    P(fx, G - 18, fw, 16, '#e8dcc0'); tdStones(P, fx, G - 2, fw, 2, '#77706a', '#9a9086', '#b4aaa0');
+    P(fx, G - 18, 2, 16, '#7a5a36'); P(fx + fw - 2, G - 18, 2, 16, '#7a5a36'); P(fx, G - 18, fw, 1, '#7a5a36'); P(fx + 15, G - 17, 1, 15, '#7a5a36');
+    tdRoof(P, fx + 3, G - 31, fw - 6, 11, 5, '#5a90bf', '#3f7aa8', '#2f5f86');
+    P(fx - 2, G - 20, fw + 4, 2, '#2a557a');
+    P(fx + 2, G - 15, 11, 9, '#5a3b28'); P(fx + 3, G - 14, 9, 7, B.glass); P(fx + 3, G - 14, 9, 1, B.glassTop);
+    P(fx + 3, G - 9, 9, 1, '#7a5a36'); P(fx + 4, G - 11, 2, 2, '#c4a2ff'); P(fx + 7, G - 11, 2, 2, '#4fc4dc'); P(fx + 10, G - 11, 1, 2, '#c9a24a');
+    P(fx + 1, G - 6, 13, 1, '#a07a50');
+    for(let x = fx + 1; x < fx + 14; x++){ const c = Math.floor((x - fx - 1) / 2) % 2 ? '#f0e6cc' : '#3f7aa8'; P(x, G - 17, 1, 1, c); if((x - fx) % 2) P(x, G - 16, 1, 1, c); }
+    tdDoor(P, mid - 4, G - 17, 8, 16, false); P(mid - 1, G - 14, 2, 2, '#ffd27a'); P(mid + 1, G - 9, 1, 2, B.handle);
+    P(mid + 5, G - 15, 10, 9, '#5a3b28'); P(mid + 6, G - 14, 8, 7, '#e8dcc0');
+    P.disc(mid + 9, G - 12, 3, '#c9a24a'); P.disc(mid + 9, G - 12, 2, '#3f7aa8'); P(mid + 8, G - 13, 1, 1, '#bfe3ff'); // the lens: a gold rim, blue glass
+    P(mid + 11, G - 9, 2, 1, '#5a3b28'); P(mid + 12, G - 8, 2, 1, '#5a3b28'); // its handle
+    P(fx + fw - 6, G - 4, 3, 3, '#b8704f'); P(fx + fw - 6, G - 6, 3, 2, '#4f8246'); P(fx + fw - 5, G - 7, 1, 1, '#e06f8a');
+    P(mid - 6, G - 1, 12, 1, B.stepTop);
     return P.done(false);
   }
-  // the museum: a stone hall with a pediment, columns and six display niches
-  P(fx, groundY - 22, fw, 22, stone); P(fx, groundY - 3, fw, 3, stoneDark);
-  for(let k = 0; k < 10; k++){ const o = Math.floor(k * 25 / 9); P(Math.round(cx) - o, groundY - 34 + k, 2 * o, 1, k === 9 ? stoneDark : stoneLight); }
-  P(fx - 1, groundY - 24, fw + 2, 2, stoneDark);
-  [fx + 2, fx + 10, fx + fw - 12, fx + fw - 4].forEach(x => { P(x, groundY - 22, 2, 19, '#e6e1d8'); P(x + 2, groundY - 22, 1, 19, stoneDark); });
-  P(Math.round(cx) - 4, groundY - 13, 8, 13, '#4a3626'); P(Math.round(cx) - 3, groundY - 12, 6, 12, '#6a4a30');
+  // the museum: a stone hall on two steps, four columns with capitals, an entablature with
+  // dentils, the pediment with its name board, a tall double door and six display niches,
+  // two each side of the door and one in each outer bay (none over the door)
+  P(fx - 1, G - 2, fw + 2, 2, '#8f897f'); P(fx - 1, G - 2, fw + 2, 1, '#b4aea4'); P(fx + 1, G - 4, fw - 2, 2, stone); P(fx + 1, G - 4, fw - 2, 1, stoneLight);
+  P(fx, G - 24, fw, 20, stone); for(let y = G - 20; y < G - 4; y += 4) P(fx, y, fw, 1, 'rgba(0,0,0,0.08)');
+  for(let k = 0; k < 9; k++){ const o = Math.floor(k * 25 / 8); P(mid - o, G - 35 + k, 2 * o, 1, k === 8 ? stoneDark : stoneLight); if(k >= 3 && k < 8) P(mid - o + 3, G - 35 + k, 2 * o - 6, 1, '#b8b2a8'); }
+  P(fx - 1, G - 26, fw + 2, 2, stoneDark); for(let x = fx; x < fx + fw; x += 3) P(x, G - 24, 2, 1, stoneLight);
+  [fx + 2, fx + 10, fx + fw - 12, fx + fw - 4].forEach(x => { P(x, G - 23, 2, 19, '#e6e1d8'); P(x + 2, G - 23, 1, 19, stoneDark); P(x - 1, G - 23, 4, 1, stoneLight); P(x - 1, G - 5, 4, 1, stoneLight); });
+  P(mid - 6, G - 21, 12, 1, stoneLight); tdDoor(P, mid - 5, G - 20, 10, 16, false);
+  P(mid - 4, G - 19, 8, 2, B.glass); P(mid, G - 17, 1, 13, B.doorDark); P(mid - 2, G - 11, 1, 2, B.handle); P(mid + 1, G - 11, 1, 2, B.handle);
   const lit = Math.max(0, Math.min(6, exhibits || 0));
-  for(let k = 0; k < 6; k++){
-    const nx = k < 3 ? fx + 14 + (k % 3) * 4 + Math.floor(k % 3) : fx + fw - 26 + (k % 3) * 4 + Math.floor(k % 3), ny = groundY - 17;
+  [fx + 6, fx + 13, fx + 17, fx + fw - 20, fx + fw - 16, fx + fw - 8].forEach((nx, k) => {
+    const ny = G - 17;
     P(nx, ny, 3, 6, '#3a2a1e'); P(nx, ny + 1, 3, 4, k < lit ? '#ffd27a' : '#55504a');
     if(k < lit) P(nx + 1, ny + 2, 1, 2, ['#c98a4a', '#9ab8c8', '#d8c070', '#b07ac8', '#7fd7ec', '#e6e1d8'][k]);
-  }
-  P(Math.round(cx) - 7, groundY - 31, 14, 4, '#e2b23c'); P(Math.round(cx) - 6, groundY - 30, 12, 2, '#5a3b28'); // the name board
+  });
+  P(mid - 7, G - 32, 14, 4, '#e2b23c'); P(mid - 6, G - 31, 12, 2, '#5a3b28'); // the name board
   // Task 122: the decorated hall
   if((hall || 0) >= 1){
-    [fx + 2, fx + fw - 4].forEach(x => { P(x - 1, groundY - 21, 4, 9, '#b0524a'); P(x - 1, groundY - 21, 4, 1, '#e2b23c'); P(x, groundY - 13, 2, 2, '#b0524a'); });
-    [Math.round(cx) - 8, Math.round(cx) + 6].forEach(x => { P(x, groundY - 4, 3, 3, '#b8704f'); P(x, groundY - 6, 3, 2, '#4f8246'); P(x + 1, groundY - 7, 1, 1, '#e06f8a'); });
+    [fx + 2, fx + fw - 4].forEach(x => { P(x - 1, G - 21, 4, 9, '#b0524a'); P(x - 1, G - 21, 4, 1, '#e2b23c'); P(x, G - 13, 2, 2, '#b0524a'); });
+    [mid - 8, mid + 6].forEach(x => { P(x, G - 4, 3, 3, '#b8704f'); P(x, G - 6, 3, 2, '#4f8246'); P(x + 1, G - 7, 1, 1, '#e06f8a'); });
   }
   if((hall || 0) >= 2){
-    for(let k = 0; k < 10; k++){ const o = Math.floor(k * 25 / 9); P(Math.round(cx) - o, groundY - 34 + k, 1, 1, '#e2b23c'); P(Math.round(cx) + o - 1, groundY - 34 + k, 1, 1, '#e2b23c'); }
-    P(fx - 1, groundY - 24, fw + 2, 1, '#f2d68c');
-    [fx + 6, fx + fw - 8].forEach(x => { P(x, groundY - 27, 3, 3, '#3a2a1e'); P(x + 1, groundY - 26, 1, 1, '#ffd27a'); });
+    for(let k = 0; k < 9; k++){ const o = Math.floor(k * 25 / 8); P(mid - o, G - 35 + k, 1, 1, '#e2b23c'); P(mid + o - 1, G - 35 + k, 1, 1, '#e2b23c'); }
+    P(fx - 1, G - 26, fw + 2, 1, '#f2d68c');
+    [fx + 6, fx + fw - 8].forEach(x => { P(x, G - 24, 3, 3, '#3a2a1e'); P(x + 1, G - 23, 1, 1, '#ffd27a'); });
   }
   // Task 121: donated mineral and gem samples on little stands between the columns
   (specimens || []).slice(0, 6).forEach((k, i) => {

@@ -572,9 +572,16 @@ function styleSolid(r) {
   check('Index: where the player can stand is the same everywhere (about 13 000 points) with and without the index', standSame);
   check('Index: a 320-tick walk (straight and diagonal, into walls) takes exactly the same steps with and without the index', posA.join('|') === posB.join('|') && new Set(posA).size > 100);
   // kept current: a new vein, a new hut and the opened tunnel are in the next answer; nothing is saved
-  const s3 = A.state, b3 = s3.world.base, n0 = A.worldObstacles(b3.x + 5, b3.y - 5, 1).length;
-  A.addMine({ id: 'mine_new', x: b3.x + 5, y: b3.y - 5, resource: 'coal', grade: 1, miningPower: 1, developmentState: 'unsecured' });
-  const withMine = A.worldObstacles(b3.x + 5, b3.y - 5, 1).some((o) => o.id === 'mine_new') && A.worldMinesNear(b3.x + 5, b3.y - 5, 0.5).some((m) => m.id === 'mine_new');
+  const s3 = A.state, b3 = s3.world.base;
+  // Starter veins are random: find a genuinely empty test location instead of
+  // assuming (+5, -5) is free. Otherwise addMine can reject the duplicate.
+  const candidateOffsets = [[5, -5], [6, -5], [5, -6], [6, -6], [7, -5], [7, -6], [8, -5]];
+  const spot = candidateOffsets.map(([dx, dy]) => ({ x: b3.x + dx, y: b3.y + dy }))
+    .find(({ x, y }) => !s3.world.mines.some((m) => m.x === x && m.y === y));
+  const n0 = spot ? A.worldObstacles(spot.x, spot.y, 1).length : -1;
+  if (spot) A.addMine({ id: 'mine_new', x: spot.x, y: spot.y, resource: 'coal', grade: 1, miningPower: 1, developmentState: 'unsecured' });
+  const withMine = !!spot && A.worldObstacles(spot.x, spot.y, 1).some((o) => o.id === 'mine_new') &&
+    A.worldMinesNear(spot.x, spot.y, 0.5).some((m) => m.id === 'mine_new');
   A.addWorkshop({ x: b3.x - 4, y: b3.y + 3, level: 1 });
   const withHut = A.worldObstacles(b3.x - 4, b3.y + 3, 1).some((o) => o.kind === 'workshop');
   s3.research.tunnelWork = true; A.unlockTunnel();

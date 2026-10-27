@@ -4,11 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>채굴 공방 · 건물 비교실</title>
+<script>
+// The address always names the style (v2 unless ?style=classic), so the game code below reads the
+// same options as the game would at this address, and every link keeps the other settings.
+(function(){
+  const q = new URLSearchParams(location.search);
+  if(q.get('style') !== 'classic' && q.get('style') !== 'v2'){ q.set('style', 'v2'); history.replaceState(null, '', '?' + q.toString()); }
+})();
+</script>
 <style>
 body{margin:0;background:#171e20;color:#f0e8d7;font:15px system-ui,sans-serif;padding:24px}
 h1{margin:0 0 8px}
 p{color:#c2c8c3;max-width:950px}
-a{color:#d9c98a}
+nav{display:flex;flex-wrap:wrap;gap:6px 18px;margin:10px 0}
+nav a{color:#d9c98a;margin-right:6px}
+nav a[aria-current]{color:#171e20;background:#d9c98a;border-radius:4px;padding:0 5px;text-decoration:none}
 #grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:22px}
 .card{background:#293334;border:1px solid #475654;border-radius:12px;padding:15px}
 .card h2{font-size:17px;margin:0 0 4px}
@@ -19,21 +29,24 @@ canvas{width:100%;height:auto;image-rendering:pixelated;border-radius:7px;margin
 </head>
 <body>
 <h1>🏡 채굴 공방 · 건물 디자인 비교실</h1>
-<p>개발 전용 시각 점검 도구입니다. 게임의 그림 코드(<code>js/topdown/</code>의 tiles·sprites·style·hires)만 불러와 모든 건물을 같은 픽셀 배율로 그립니다.
-게임 자체는 실행하지 않으므로 저장 데이터나 진행 상태를 읽거나 바꾸지 않습니다. 카드마다 잔디 바닥선과 캐릭터(16 × 22 px)를 함께 표시합니다.</p>
-<p>스타일: <a href="?style=v2">v2</a> · <a href="?style=classic">classic</a> · 배율: <a href="?scale=2">2배(게임과 비슷)</a> · <a href="?scale=3">3배</a> · 해상도: <a href="?res=1.5">1.5x 집·캐릭터</a></p>
+<p>개발 전용 시각 점검 도구입니다. 게임의 그림 코드(<code>js/topdown/</code>의 view·tiles·sprites·style·hires·render)만 불러와,
+게임과 같은 함수(<code>tdBuildSpriteSheet</code>, <code>tdVillageImage</code>, <code>tdDrawSprite</code>)로 같은 기준점에 그립니다.
+게임 자체는 실행하지 않으므로 저장 데이터나 진행 상태를 읽거나 바꾸지 않습니다. 잔디가 시작되는 줄이 건물 문과 캐릭터 발이 놓이는 바닥입니다.</p>
+<nav id="options"></nav>
 <div id="status">그림 코드를 불러오는 중…</div>
 <div id="grid"></div>
+<script src="../js/topdown/view.js"></script>
 <script src="../js/topdown/tiles.js"></script>
 <script src="../js/topdown/sprites.js"></script>
 <script src="../js/topdown/style.js"></script>
 <script src="../js/topdown/hires.js"></script>
+<script src="../js/topdown/render.js"></script>
 <script>
 const params = new URLSearchParams(location.search);
-// The game's own default for this page is v2 (the art direction under review); ?style=classic shows the classic look.
-if(params.get('style') !== 'classic') TD_STYLE_CACHE.name = 'v2';
-const SCALE = Math.max(1, Math.min(4, Number(params.get('scale')) || 3));
-const RES = params.get('res') === '1.5' ? 1.5 : 1;
+const SCALE = Math.max(1, Math.min(4, Math.round(Number(params.get('scale')) || 3)));
+// How far below its ground point each picture ends, in art pixels: the anchorY the game passes to
+// tdDrawSprite in tdRender (render.js). tests/chunks/12.js keeps the two in step.
+const GALLERY_ANCHOR = { house: 3, base: 4, workshop: 3, village: 3, player: 1 };
 const entries = [
   ['내 집', 'house'], ['기본 공방', 'base'],
   ['제작소 1단계', 'workshop', 1], ['제작소 2단계', 'workshop', 2], ['제작소 3단계', 'workshop', 3],
@@ -41,41 +54,59 @@ const entries = [
   ['박물관 · 폐허', 'museum', 0], ['박물관 · 공사', 'museum', 1], ['박물관 · 완공', 'museum', 2],
   ['박물관 · 장식 1단계', 'museum', 2, 1], ['박물관 · 장식 2단계', 'museum', 2, 2],
 ];
-function sprite(kind, stage, hall){
-  if(kind === 'house') return RES > 1 ? tdHouseSpriteRes(RES) : tdStyleV2() ? tdHouseSpriteV2() : tdHouseSprite();
-  if(kind === 'base') return tdStyleFinish(tdBaseSprite(), 'building');
-  if(kind === 'workshop') return tdStyleFinish(tdWorkshopSprite(stage), 'building');
+// The options: each link changes one setting and keeps the rest of the address.
+function options(){
+  const groups = [
+    ['스타일', 'style', [['v2', 'v2'], ['classic', 'classic']]],
+    ['배율', 'scale', [['2', '2배 (게임과 비슷)'], ['3', '3배'], ['4', '4배']]],
+    ['해상도 (v2만, 게임과 같음)', 'res', [['1', '1x'], ['1.5', '1.5x'], ['2', '2x']]],
+  ];
+  const nav = document.querySelector('#options');
+  groups.forEach(([name, key, values]) => {
+    const span = document.createElement('span'); span.append(name + ': ');
+    values.forEach(([value, text]) => {
+      const q = new URLSearchParams(location.search); q.set(key, value);
+      const a = document.createElement('a'); a.href = '?' + q.toString(); a.textContent = text;
+      const now = params.get(key) || (key === 'scale' ? '3' : key === 'res' ? '1' : null);
+      if(now === value) a.setAttribute('aria-current', 'true');
+      span.append(a);
+    });
+    nav.append(span);
+  });
+}
+function image(sheet, kind, stage, hall){
+  if(kind === 'house') return sheet.house;
+  if(kind === 'base') return sheet.base;
+  if(kind === 'workshop') return sheet.workshop[stage];
   const museum = kind === 'museum';
-  return tdStyleFinish(tdVillageSprite(kind, stage, museum ? 6 : 0, museum ? ['iron', 'crystal', 'mana'] : [], hall || 0), 'building');
+  return tdVillageImage(kind, stage, museum ? 6 : 0, museum ? ['iron', 'crystal', 'mana'] : [], hall || 0);
 }
-function player(){
-  if(RES > 1) return tdPlayerSprite15('down', 0);
-  return tdStyleV2() ? tdPlayerSpriteV2('down', 0) : tdPlayerSprite('down', 0);
-}
-// hires sprites are RES art pixels per game pixel: draw them RES times smaller so sizes compare truly
-function paint(g, s, x, y, scale){ for(const r of s.rects){ g.fillStyle = r[4]; g.fillRect(x + r[0] * scale, y + r[1] * scale, r[2] * scale, r[3] * scale); } }
-function draw([label, kind, stage, hall]){
-  const s = sprite(kind, stage, hall), pl = player();
-  const sScale = SCALE / (kind === 'house' && RES > 1 ? RES : 1), pScale = SCALE / RES;
-  const W = 100 * SCALE, H = 90 * SCALE, ground = H - 12 * SCALE;
+const size = (img) => Math.round(img.width / (img.artRes || 1)) + ' × ' + Math.round(img.height / (img.artRes || 1)) + ' px';
+function draw(sheet, [label, kind, stage, hall]){
+  const img = image(sheet, kind, stage, hall), pl = sheet.player.down[0];
+  const anchor = GALLERY_ANCHOR[kind === 'appraiser' || kind === 'museum' ? 'village' : kind];
+  const W = 110 * SCALE, H = 90 * SCALE, ground = H - 12 * SCALE, playerRight = 22 * SCALE;
   const card = document.createElement('article'); card.className = 'card';
   const title = document.createElement('h2'); title.textContent = label; card.append(title);
-  const meta = document.createElement('small');
-  meta.textContent = Math.round(s.w * sScale / SCALE) + ' × ' + Math.round(s.h * sScale / SCALE) + ' px · 캐릭터 ' + Math.round(pl.w * pScale / SCALE) + ' × ' + Math.round(pl.h * pScale / SCALE) + ' px';
-  card.append(meta);
+  const meta = document.createElement('small'); meta.textContent = size(img) + ' · 캐릭터 ' + size(pl) + ' · 기준점 ' + anchor + ' px'; card.append(meta);
   const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H; card.append(canvas);
+  canvas.dataset.scale = SCALE; canvas.dataset.playerRight = playerRight;
   const g = canvas.getContext('2d'); g.imageSmoothingEnabled = false;
   g.fillStyle = '#34403a'; g.fillRect(0, 0, W, H);
-  g.fillStyle = '#5a8a4a'; g.fillRect(0, ground, W, H - ground); // a strip of grass: the ground the building stands on
-  g.fillStyle = '#4f7d42'; for(let x = 0; x < W; x += 6 * SCALE) g.fillRect(x, ground + 3 * SCALE, 2 * SCALE, SCALE);
-  const bx = Math.round((W - s.w * sScale) / 2 + 8 * SCALE);
-  paint(g, s, bx, ground - s.h * sScale + 2 * SCALE, sScale); // sprites end with a 2-3 px contact shadow below the ground row
-  paint(g, pl, 4 * SCALE, ground - pl.h * pScale + 2 * SCALE, pScale);
+  g.fillStyle = '#5a8a4a'; g.fillRect(0, ground, W, H - ground); // the grass begins at the ground row
+  g.fillStyle = '#4f7d42'; for(let x = 0; x < W; x += 6 * SCALE) g.fillRect(x, ground + 4 * SCALE, 2 * SCALE, SCALE);
+  // the building's ground point (its door) right of the player, at the game's anchors and size
+  tdDrawSprite(g, img, Math.round((playerRight + W) / 2), ground, SCALE, anchor);
+  tdDrawSprite(g, pl, 12 * SCALE, ground, SCALE, GALLERY_ANCHOR.player);
   document.querySelector('#grid').append(card);
 }
+options();
 try{
-  entries.forEach(draw);
-  document.querySelector('#status').textContent = '비교 완료 · ' + entries.length + '장 · ' + (tdStyleV2() ? 'v2' : 'classic') + ' · ' + SCALE + '배 픽셀 배율' + (RES > 1 ? ' · 집·캐릭터 1.5x' : '');
+  const sheet = tdBuildSpriteSheet(), R = tdResFactor(), asked = params.get('res');
+  entries.forEach((e) => draw(sheet, e));
+  let note = '';
+  if(asked && asked !== '1' && R === 1) note = ' · res=' + asked + '은 v2에서만 쓰입니다 (게임과 같음)';
+  document.querySelector('#status').textContent = '비교 완료 · ' + entries.length + '장 · ' + (tdStyleV2() ? 'v2' : 'classic') + ' · ' + SCALE + '배 · 집·캐릭터 ' + R + 'x' + note;
 }catch(e){
   document.querySelector('#status').textContent = '비교 화면 생성 실패: ' + e.message;
 }

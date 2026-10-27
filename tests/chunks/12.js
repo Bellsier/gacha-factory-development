@@ -73,3 +73,18 @@
   check('Buildings: the cabin windows still glow where their lights are (x 17 and 49, row 35)', [[17, 35], [49, 35]].every(([x, y]) => { const p = rb.px[y * rb.w + x]; return p && win.tdFinishKeeps(p); }));
   check('Buildings: every craft hut\'s forge window still glows where its light is (x 11, row 25)', huts.every((h) => { const q = raster(h).px[25 * 44 + 11]; return q && win.tdFinishKeeps(q); }));
 })();
+
+// The building gallery (tools/building-gallery.html) draws with the game's tdDrawSprite at the
+// anchors tdRender uses; its table must follow render.js when either changes.
+(function test_buildingGalleryAnchors() {
+  const render = fs.readFileSync(path.join(JS_DIR, 'topdown', 'render.js'), 'utf8');
+  const gallery = fs.readFileSync(path.join(__dirname, '..', 'tools', 'building-gallery.html'), 'utf8');
+  const inGame = (kind) => { const m = render.match(new RegExp("it\\.kind === '" + kind + "'\\)\\{? ?tdDrawSprite\\([^;]*?, zoom, (\\d+)\\)")); return m ? Number(m[1]) : null; };
+  const table = gallery.match(/GALLERY_ANCHOR = (\{[^}]*\})/);
+  const anchors = table ? Function('return ' + table[1])() : {};
+  ['house', 'base', 'workshop', 'village', 'player'].forEach((kind) => {
+    check('Gallery: the ' + kind + ' stands ' + inGame(kind) + ' px into the ground as in the game (render.js)', inGame(kind) !== null && anchors[kind] === inGame(kind), 'gallery ' + anchors[kind] + ', game ' + inGame(kind));
+  });
+  check('Gallery: it draws with the game\'s own tdDrawSprite, sprite sheet and village images', /tdDrawSprite\(g, img,/.test(gallery) && /tdBuildSpriteSheet\(\)/.test(gallery) && /tdVillageImage\(/.test(gallery));
+  check('Gallery: it never loads the game itself or touches storage', !/<iframe|index\.html|localStorage|main\.js|state\.js/.test(gallery));
+})();

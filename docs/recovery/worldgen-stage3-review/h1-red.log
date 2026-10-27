@@ -1,0 +1,16 @@
+false Review H1: generated vein materialization keeps village ground and cached chunks AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ '2,0|{"x":0,"y":-3.5,"layout":3}|4,0;1.5,2|24@29,29||0'
+- '2,0|{"x":0,"y":-3.5,"layout":3}|4,0;1.5,2|20@9,15||0'
+
+    at eval (eval at <anonymous> (/workspace/work/publish/work/focused.cjs:2:1), <anonymous>:10:9)
+    at test (eval at <anonymous> (/workspace/work/publish/work/focused.cjs:2:1), <anonymous>:6:28)
+    at eval (eval at <anonymous> (/workspace/work/publish/work/focused.cjs:2:1), <anonymous>:7:1)
+    at Object.<anonymous> (/workspace/work/publish/work/focused.cjs:2:77)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)

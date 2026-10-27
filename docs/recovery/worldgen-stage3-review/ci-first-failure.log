@@ -1,0 +1,42 @@
+2026-10-22T10:35:47.8647456Z [PASS] Task71: auto-craft is locked in a new game
+2026-10-22T10:35:48.0215272Z [PASS] Task71: the flag alone does not auto-craft without the device
+2026-10-22T10:35:48.1742953Z [PASS] Task71: a worker no longer unlocks auto-craft
+2026-10-22T10:35:48.3576871Z [PASS] Task71: the recipe checkbox is disabled and names the research
+2026-10-22T10:35:48.3578008Z [PASS] Task71: researching the device costs 800G + 10 steel
+2026-10-22T10:35:48.3578784Z [PASS] Task71: auto-craft opens
+2026-10-22T10:35:48.5160817Z [PASS] Task71: the stored auto flag now crafts
+2026-10-22T10:35:48.6958729Z [PASS] Task71: the checkbox is enabled after the research
+2026-10-22T10:35:49.1949996Z [PASS] Task71: an auto workshop waits for the device
+2026-10-22T10:35:49.1950883Z [PASS] Task71: ...and works once the device is researched
+2026-10-22T10:35:49.6884838Z [PASS] Task71: building is locked at first
+2026-10-22T10:35:49.6908564Z [PASS] Task71: the build area points to the research
+2026-10-22T10:35:49.6909729Z [PASS] Task71: the research is paid and done
+2026-10-22T10:35:49.8658765Z [PASS] Task71: a build button appears, disabled without gold
+2026-10-22T10:35:49.8659459Z [PASS] Task71: the cost grows with each workshop
+2026-10-22T10:35:50.0255427Z [PASS] Task71: the per-tick refresh enables the button
+2026-10-22T10:35:50.2107299Z [PASS] Task71: clicking builds one workshop and spends the gold
+2026-10-22T10:35:50.2108067Z [FAIL] Task71: it stands next to the base on open ground
+2026-10-22T10:35:50.2112552Z [PASS] Task71: the card is listed and the map shows it
+2026-10-22T10:35:50.2286608Z [PASS] Task71: workshops never share a cell with each other, mines or the base
+2026-10-22T10:35:50.2287155Z [PASS] Task71: the number of workshops is capped
+2026-10-22T10:35:50.4697829Z [PASS] Task71: at the cap the button gives way to a note
+2026-10-22T10:35:51.1761707Z [PASS] Task71: the workshop auto checkbox is locked until the device exists
+2026-10-22T10:35:51.3440726Z [PASS] Task71: ...and the refresh unlocks it
+2026-10-22T10:35:51.8802241Z [PASS] Task71: every research belongs to a known branch
+2026-10-22T10:35:51.8813519Z [PASS] Task71: the tab shows one title per branch with its cards
+2026-10-22T10:35:51.8814785Z [PASS] Task71: branches are 제작/자동화/탐험/납품
+2026-10-22T10:35:52.2326968Z [PASS] Task71: re-rendering never duplicates titles
+2026-10-22T10:35:52.2331938Z [PASS] Task71: branch titles are styled
+2026-10-22T10:35:52.7186478Z [PASS] Task71: both researches are saved in the same additive map
+2026-10-22T10:35:52.8726365Z [PASS] Task71: they are still done after loading
+2026-10-22T10:35:53.0313794Z [PASS] Task71: an old save without research keeps nothing it never used
+2026-10-22T10:35:53.1944457Z [PASS] Task71: an old save that had auto-craft on keeps auto-craft
+2026-10-22T10:35:53.3608636Z [PASS] Task71: an old save with a workshop keeps building and auto-craft
+2026-10-22T10:35:53.5288548Z [PASS] Task71: invalid research value #0 loads as not done
+2026-10-22T10:35:53.6860362Z [PASS] Task71: invalid research value #1 loads as not done
+2026-10-22T10:35:53.8489377Z [PASS] Task71: invalid research value #2 loads as not done
+2026-10-22T10:35:54.0076834Z [PASS] Task71: invalid research value #3 loads as not done
+2026-10-22T10:35:54.1653396Z [PASS] Task71: invalid research value #4 loads as not done
+2026-10-22T10:38:30.5688587Z Total: 2354  Pass: 2353  Fail: 1
+2026-10-22T10:38:30.5689493Z  - Task71: it stands next to the base on open ground
+

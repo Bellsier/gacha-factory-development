@@ -432,17 +432,25 @@ function tickAutoSell(){
 // reveals it. Mines without an entry (starters, expansion seeds, any older
 // save) are discovered.
 // ---------------------------------------------------------------------------
+let hiddenMineCache=null;
+function hiddenMineSet(){
+ const ids=state.world.hiddenMineIds;
+ if(!Array.isArray(ids))return new Set();
+ if(!hiddenMineCache||hiddenMineCache.ids!==ids||hiddenMineCache.length!==ids.length)hiddenMineCache={ids,length:ids.length,set:new Set(ids)};
+ return hiddenMineCache.set;
+}
 function isMineDiscovered(mine){
   if(!mine) return false;
   const hidden = state.world.hiddenMineIds;
-  return !Array.isArray(hidden) || !hidden.includes(mine.id);
+  return !Array.isArray(hidden) || !hiddenMineSet().has(mine.id);
 }
 
 function discoverMine(mineId){
   const hidden = state.world.hiddenMineIds;
-  if(!Array.isArray(hidden) || !hidden.includes(mineId)) return false;
+  if(!Array.isArray(hidden) || !hiddenMineSet().has(mineId)) return false;
   const mine = mineById(mineId);
   state.world.hiddenMineIds = hidden.filter(id => id !== mineId);
+  if(typeof recordGeneratedMineEdit === 'function') recordGeneratedMineEdit(mineId);
   if(mine){
     const res = resourceByKey(mine.resource);
     log('새 광맥 발견: ' + (res ? res.name : mine.resource) + ' (' + mine.x + ', ' + mine.y + ')');
@@ -457,8 +465,10 @@ function tickExploration(){
   if(!Array.isArray(hidden) || hidden.length === 0) return [];
   const p = state.world.player;
   const r = discoveryRadius(); // Task 80: 탐사 장비 widens it
-  const found = state.world.mines
-    .filter(m => m && hidden.includes(m.id) && Math.hypot(m.x - p.x, m.y - p.y) <= r)
+  if(typeof worldEnsureRect==='function')worldEnsureRect({minX:p.x-r,maxX:p.x+r,minY:p.y-r,maxY:p.y+r});
+  const candidates=typeof worldMinesNear==='function'?worldMinesNear(p.x,p.y,r):state.world.mines;
+  const found = candidates
+    .filter(m => m && hiddenMineSet().has(m.id) && Math.hypot(m.x - p.x, m.y - p.y) <= r)
     .map(m => m.id);
   found.forEach(discoverMine);
   if(found.length && typeof renderWorldObjects === 'function'){

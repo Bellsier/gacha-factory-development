@@ -194,6 +194,9 @@ function terrainInBounds(x, y){
 // player position against the save's own tunnel state before `state` is
 // replaced); when omitted the current game's state is used.
 function isWorldPointWalkable(x, y, tunnelOpen){
+  const context = typeof currentWorldContext === 'function' ? currentWorldContext() : null;
+  if(context && worldConnector(x,y)) return Math.abs(y)<=WORLD_CONNECTOR.standHalfY;
+  if(context && worldOutsideLegacy(x,y)) return worldGeneratedWalkable(context,x,y);
   if(!Number.isFinite(x) || !Number.isFinite(y)) return false;
   if(!terrainInBounds(x, y)) return false;
   if(x >= terrainFaceX(y) + WORLD_TERRAIN.PLAYER_MARGIN) return true;

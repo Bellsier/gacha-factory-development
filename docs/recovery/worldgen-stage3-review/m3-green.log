@@ -1,0 +1,1 @@
+true Review M3: minimap consumes cached chunks without whole-world allocation 

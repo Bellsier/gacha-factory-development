@@ -1,0 +1,24 @@
+false Review navigation: arrival faces the assigned vein AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'right' !== 'left'
+
+    at eval (eval at <anonymous> (/workspace/work/publish/work/focused.cjs:2:1), <anonymous>:7:64)
+    at Object.<anonymous> (/workspace/work/publish/work/focused.cjs:2:77)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
+    at node:internal/main/run_main_module:33:47
+false Review navigation: all workers share the elapsed-time budget Error: expired frame started another search
+    at w.worldNavStart (eval at <anonymous> (/workspace/work/publish/work/focused.cjs:2:1), <anonymous>:10:106)
+    at worldWorkerStep (eval at open (/workspace/work/publish/tests/stage3-harness.cjs:12:4), <anonymous>:1169:19)
+    at eval (eval at <anonymous> (/workspace/work/publish/work/focused.cjs:2:1), <anonymous>:11:25)
+    at Object.<anonymous> (/workspace/work/publish/work/focused.cjs:2:77)
+    at Module._compile (node:internal/modules/cjs/loader:1872:14)
+    at Object..js (node:internal/modules/cjs/loader:2003:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)

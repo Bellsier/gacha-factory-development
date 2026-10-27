@@ -553,6 +553,7 @@ function reportSaveFailed(){
 
 function saveGame(){
   if(saveBlocked) return false; // a future-version save exists on disk — never overwrite it
+  if(saveCorrupt){ setSaveStatus('저장 보호 중'); return false; } // C1: a damaged save is kept until the player starts over
   try{
     if(!storageAvailable()){
       return reportSaveFailed();
@@ -576,7 +577,7 @@ function saveGame(){
 //   {ok:true, permanent, run}
 //   {ok:false, reason:'none'}        — nothing saved yet (not an error)
 //   {ok:false, reason:'unavailable'} — localStorage can't be used here
-//   {ok:false, reason:'corrupted'}   — save exists but isn't valid JSON/shape
+//   {ok:false, reason:'corrupted', raw} — save exists but isn't valid JSON/shape, or has no run (C1: raw is the text as stored)
 //   {ok:false, reason:'future'}      — save is from a newer saveVersion than this build understands
 function loadGame(){
   let raw;
@@ -591,19 +592,78 @@ function loadGame(){
   try{
     payload = JSON.parse(raw);
   }catch(e){
-    return { ok:false, reason:'corrupted' };
+    return { ok:false, reason:'corrupted', raw };
   }
   if(!isPlainObject(payload) || !isFiniteNumber(payload.saveVersion)){
-    return { ok:false, reason:'corrupted' };
+    return { ok:false, reason:'corrupted', raw };
   }
   if(payload.saveVersion > CURRENT_SAVE_VERSION){
     return { ok:false, reason:'future' }; // never touch the raw storage in this case
   }
+  if(!isPlainObject(payload.run)) return { ok:false, reason:'corrupted', raw }; // C1: no run, nothing to load — keep it rather than overwrite it
   payload = migrateSave(payload);
   return {
     ok:true,
     permanent: sanitizePermanent(payload.permanent),
     run: sanitizeRunState(payload.run),
   };
+}
+
+// ---------------------------------------------------------------------------
+// C1: a damaged save is never overwritten. boot() hands the text that could
+// not be read to protectCorruptSave(): a copy goes to a backup key (when the
+// storage takes it), and saveGame() refuses to write — autosave, closing the
+// tab, every caller — until the player chooses to start the new game's save
+// (saveStartOver, the notice's button). The original key is only read here.
+// Nothing about this is saved; the save format is unchanged.
+// ---------------------------------------------------------------------------
+let saveCorrupt = null; // { backupKey, backupOk } while a damaged save is being kept
+const SAVE_BACKUP_PREFIX = SAVE_KEY + '.corrupt-backup.';
+
+// A short fixed name for a text (the same damaged save always gets the same backup key).
+function saveBackupHash(text){
+  let h = 5381;
+  for(let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, '0');
+}
+
+// Copies the damaged text to its backup key; a key that already holds other text is left alone.
+function backupCorruptSave(raw){
+  const base = SAVE_BACKUP_PREFIX + saveBackupHash(raw);
+  try{
+    for(let n = 0; n < 5; n++){
+      const key = n ? base + '.' + n : base, have = localStorage.getItem(key);
+      if(have === raw) return { backupKey: key, backupOk: true };
+      if(have !== null) continue;
+      localStorage.setItem(key, raw);
+      return { backupKey: key, backupOk: localStorage.getItem(key) === raw };
+    }
+  }catch(e){ /* storage full or refusing: the original stays where it is */ }
+  return { backupKey: null, backupOk: false };
+}
+
+function protectCorruptSave(raw){
+  saveCorrupt = backupCorruptSave(typeof raw === 'string' ? raw : String(raw));
+  log(saveCorrupt.backupOk
+    ? '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두고 백업도 만들었습니다(' + saveCorrupt.backupKey + ').'
+    : '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두었지만 백업을 만들지 못했습니다.');
+  setSaveStatus('저장 보호 중');
+  if(typeof renderSaveNotice === 'function') renderSaveNotice();
+}
+
+// What the protection is doing now (read by the notice and the tests).
+function saveProtection(){
+  return { corrupt: !!saveCorrupt, backupKey: saveCorrupt ? saveCorrupt.backupKey : null, backupOk: saveCorrupt ? saveCorrupt.backupOk : false };
+}
+
+// The player chose to start the new game's save: the damaged original under the
+// save key is replaced from now on (its backup, if any, stays).
+function saveStartOver(){
+  if(!saveCorrupt) return false;
+  saveCorrupt = null;
+  const ok = saveGame();
+  if(ok) log('새 게임 저장을 시작했습니다.');
+  if(typeof renderSaveNotice === 'function') renderSaveNotice();
+  return ok;
 }
 

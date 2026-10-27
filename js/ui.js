@@ -1139,6 +1139,35 @@ function renderAll(){
   updatePlayerSprite();
 }
 
+// C1: the notice shown while a damaged save is being kept (state.js
+// protectCorruptSave). The button starts the new game's save; without a backup
+// it asks once more, since the original is then gone for good.
+function renderSaveNotice(){
+  let box = document.getElementById('saveNotice');
+  const p = typeof saveProtection === 'function' ? saveProtection() : { corrupt: false };
+  if(!p.corrupt){ if(box) box.hidden = true; return; }
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'saveNotice'; box.className = 'save-notice'; box.setAttribute('role', 'alert');
+    document.body.appendChild(box);
+  }
+  box.hidden = false;
+  box.textContent = '';
+  const text = document.createElement('p');
+  text.textContent = p.backupOk
+    ? '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 지우지 않고 그대로 두었고, 백업(' + p.backupKey + ')도 만들었어요. 지금은 저장하지 않습니다. 이 새 게임을 저장하려면 아래 버튼을 누르세요.'
+    : '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 그대로 두었지만 백업을 만들지 못했어요. 지금은 저장하지 않습니다. 새 게임을 저장하면 원래 저장은 사라집니다.';
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.setAttribute('data-save-start-over', '');
+  btn.textContent = '새 게임 저장 시작';
+  let armed = false;
+  btn.onclick = () => {
+    if(!p.backupOk && !armed){ armed = true; btn.textContent = '한 번 더 누르면 원래 저장 대신 새 게임을 저장합니다'; return; }
+    saveStartOver();
+  };
+  box.append(text, btn);
+}
+
 function playerTypingTarget(el){
   if(!el || !el.tagName) return false;
   const tag = el.tagName;

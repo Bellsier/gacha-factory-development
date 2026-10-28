@@ -502,3 +502,12 @@
 .village-reward.is-earned{opacity:1; border-color:rgba(226,178,60,0.7); background:rgba(226,178,60,0.12);}
 .village-codex.is-hall-1, .village-codex.is-hall-2{padding:6px; border-radius:8px; border:2px solid rgba(176,82,74,0.6); background:rgba(176,82,74,0.08);}
 .village-codex.is-hall-2{border-color:rgba(226,178,60,0.8); background:rgba(226,178,60,0.08);}
+
+/* C1: the notice for a damaged save that is being kept (above the world-first view) */
+.save-notice{position:fixed; z-index:60; left:50%; transform:translateX(-50%); top:calc(env(safe-area-inset-top, 0px) + 12px);
+  width:min(560px, calc(100vw - 24px)); background:var(--panel); border:1px solid var(--amber); border-radius:8px;
+  padding:12px 14px; color:var(--text); font-family:var(--font-body); font-size:max(0.86rem, var(--fs-min)); line-height:1.5;
+  box-shadow:0 6px 24px rgba(0,0,0,0.45); display:grid; gap:10px;}
+.save-notice p{margin:0;}
+.save-notice button{justify-self:start;}
+.save-notice[hidden]{display:none;} /* C1 review: the grid above must not keep a hidden notice on screen */

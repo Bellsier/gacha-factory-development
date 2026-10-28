@@ -52,17 +52,17 @@ let src;
 try {
   src = files.map((f) => {
     const text = fs.readFileSync(path.join(chunkDir, f), 'utf8');
-    return f === '99.js' ? text : markTestEnds(f, text) + '\n;' + BETWEEN + '\n';
+    return f === '99.js' ? text : `${markTestEnds(f, text)}\n;${BETWEEN}\n`;
   }).join('');
 } catch (e) {
-  console.error('tests/regression.test.js: ' + e.message);
+  console.error(`tests/regression.test.js: ${e.message}`);
   process.exit(2);
 }
 const code = src.replace(/^#![^\n]*\n/, '');
 
 // Closes the windows a finished test opened (allDoms, 00.js) and yields once.
 async function betweenTests(doms) {
-  doms.splice(0).forEach((d) => { try { d.window.close(); } catch (e) { /* ignore */ } });
+  doms.splice(0).forEach((d) => { try { d.window.close(); } catch { /* already closed */ } });
   await new Promise((resolve) => setImmediate(resolve));
 }
 

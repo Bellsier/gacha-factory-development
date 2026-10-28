@@ -61,3 +61,38 @@ function perfStandBySteps(win, x0, y0, nx, ny, st) {
   }
   check('Perf: the village sites and plaza are placed exactly where they were before (6 worlds)', checked === 6 && bad === 0, firstDetail);
 })();
+
+// updateNumbers finds its elements with one pass per attribute (uiFirstByAttr) instead of
+// one document.querySelector per key: the same elements, found afresh on every tick.
+(function test_perf_updateNumbersFindsTheSameElements() {
+  const storage = makeMemoryStorage();
+  storage.setItem('gachaFactorySave', fs.readFileSync(path.join(__dirname, 'fixtures', 'save_v1_midgame.json'), 'utf8'));
+  const win = newDom(storage).window, doc = win.document, s = win.state;
+  const attrs = ['data-shared-amt', 'data-amt', 'data-rate', 'data-train', 'data-fac', 'data-unlocksite', 'data-stock', 'data-craft', 'data-sell', 'data-buyautosell', 'data-research', 'data-research-cost'];
+  const same = attrs.every((a) => {
+    const map = win.uiFirstByAttr(a), values = new Set([...doc.querySelectorAll('[' + a + ']')].map((e) => e.getAttribute(a)));
+    return map.size === values.size && [...values].every((v) => map.get(v) === doc.querySelector('[' + a + '="' + v + '"]'));
+  });
+  check('Perf: for every attribute the tick reads, each value maps to the element querySelector finds', same);
+  // the numbers on screen follow the state, tick after tick
+  const shown = () => win.RESOURCES.every((r) => { const el = doc.querySelector('[data-shared-amt="' + r.key + '"]'); return !el || el.textContent === win.fmt(s.resources[r.key]); }) &&
+    win.RECIPES.every((r) => { const el = doc.querySelector('[data-stock="' + r.key + '"]'); return !el || el.textContent === win.fmt(s.products[r.key]) + '개 보유'; });
+  win.RESOURCES.forEach((r, i) => { s.resources[r.key] = 1000 + i * 37; });
+  win.RECIPES.forEach((r, i) => { s.products[r.key] = 5 + i; });
+  win.updateNumbers();
+  check('Perf: after a change, every shared amount and product stock on screen shows the new value', shown() && doc.querySelectorAll('[data-shared-amt]').length >= 8);
+  // a rebuilt panel: the tick writes to the new elements, not to the ones that were replaced
+  const oldStock = doc.querySelector('[data-stock]');
+  win.buildRecipes();
+  const newStock = doc.querySelector('[data-stock]');
+  win.RECIPES.forEach((r) => { s.products[r.key] += 3; });
+  win.updateNumbers();
+  check('Perf: after the recipe cards are rebuilt the new cards get the numbers (nothing stale)', newStock && newStock !== oldStock && !oldStock.isConnected && shown());
+  // two elements with the same key: only the first one is written to, as with querySelector
+  const first = doc.querySelector('[data-shared-amt]'), key = first.getAttribute('data-shared-amt');
+  const decoy = doc.createElement('span'); decoy.setAttribute('data-shared-amt', key); decoy.textContent = 'decoy';
+  first.parentNode.insertBefore(decoy, first.nextSibling);
+  s.resources[key] = 4242; win.updateNumbers();
+  check('Perf: with two elements for one key only the first in the page is updated (as before)', first.textContent === win.fmt(4242) && decoy.textContent === 'decoy');
+  decoy.remove();
+})();

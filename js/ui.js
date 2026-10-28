@@ -1137,15 +1137,18 @@ function renderAll(){
   renderWorldGround();
   renderWorldObjects();
   updatePlayerSprite();
+  renderSaveNotice(); // C1: redrawn too, so a block set later in boot (PR #5's trial mode) takes the button away
 }
 
-// C1: the notice shown while a damaged save is being kept (state.js
-// protectCorruptSave). The button starts the new game's save; without a backup
-// it asks once more, since the original is then gone for good.
+// C1: the notice shown while a damaged or unread save is being kept (state.js).
+// It offers to start the new game's save only when that can work: not when the
+// save could not be read, not after another tab changed it, not while saving is
+// blocked for the session (a future-version save, PR #5's trial mode). Without a
+// backup the button asks once more, since the original is then gone for good.
 function renderSaveNotice(){
   let box = document.getElementById('saveNotice');
-  const p = typeof saveProtection === 'function' ? saveProtection() : { corrupt: false };
-  if(!p.corrupt){ if(box) box.hidden = true; return; }
+  const p = typeof saveProtection === 'function' ? saveProtection() : { corrupt: false, unverified: false };
+  if(!p.corrupt && !p.unverified){ if(box) box.hidden = true; return; }
   if(!box){
     box = document.createElement('div');
     box.id = 'saveNotice'; box.className = 'save-notice'; box.setAttribute('role', 'alert');
@@ -1154,18 +1157,37 @@ function renderSaveNotice(){
   box.hidden = false;
   box.textContent = '';
   const text = document.createElement('p');
-  text.textContent = p.backupOk
-    ? '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 지우지 않고 그대로 두었고, 백업(' + p.backupKey + ')도 만들었어요. 지금은 저장하지 않습니다. 이 새 게임을 저장하려면 아래 버튼을 누르세요.'
-    : '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 그대로 두었지만 백업을 만들지 못했어요. 지금은 저장하지 않습니다. 새 게임을 저장하면 원래 저장은 사라집니다.';
-  const btn = document.createElement('button');
-  btn.type = 'button'; btn.setAttribute('data-save-start-over', '');
-  btn.textContent = '새 게임 저장 시작';
-  let armed = false;
-  btn.onclick = () => {
-    if(!p.backupOk && !armed){ armed = true; btn.textContent = '한 번 더 누르면 원래 저장 대신 새 게임을 저장합니다'; return; }
-    saveStartOver();
-  };
-  box.append(text, btn);
+  let button = null;
+  if(p.unverified){
+    text.textContent = '저장 데이터를 읽지 못했어요(브라우저 저장소에 접근할 수 없음). 원래 저장을 덮어쓰지 않도록 이번 세션은 저장하지 않습니다. 저장소 문제를 해결한 뒤 새로고침하세요.';
+  } else if(p.changed){
+    text.textContent = '다른 탭에서 저장이 바뀌었어요. 이 탭의 새 게임은 그 저장을 덮어쓰지 않으며, 이번 세션은 저장하지 않습니다. 바뀐 저장으로 이어 하려면 새로고침하세요.';
+    button = document.createElement('button');
+    button.type = 'button'; button.setAttribute('data-save-reload', ''); button.textContent = '새로고침';
+    button.onclick = () => { try { window.location.reload(); } catch(e){ /* the page stays as it is */ } };
+  } else {
+    const kept = p.backupOk
+      ? '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 지우지 않고 그대로 두었고, 백업(' + p.backupKey + ')도 만들었어요. 지금은 저장하지 않습니다.'
+      : '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 그대로 두었지만 백업을 만들지 못했어요. 지금은 저장하지 않습니다.';
+    if(p.blocked){
+      const trial = typeof worldTestMode === 'function' && worldTestMode();
+      text.textContent = kept + (trial ? ' 시험 모드에서는 원래 저장을 보호하려고 이번 세션의 진행을 저장하지 않아요.' : ' 이번 세션은 저장이 막혀 있어 진행을 저장하지 않아요.');
+    } else {
+      text.textContent = kept + (p.backupOk ? ' 이 새 게임을 저장하려면 아래 버튼을 누르세요.' : ' 새 게임을 저장하면 원래 저장은 사라집니다.');
+      button = document.createElement('button');
+      button.type = 'button'; button.setAttribute('data-save-start-over', ''); button.textContent = '새 게임 저장 시작';
+      let armed = false;
+      button.onclick = () => {
+        if(!p.backupOk && !armed){
+          if(typeof saveCheckUnchanged === 'function' && !saveCheckUnchanged()) return; // changed meanwhile: the notice was redrawn
+          armed = true; button.textContent = '한 번 더 누르면 원래 저장 대신 새 게임을 저장합니다'; return;
+        }
+        saveStartOver();
+      };
+    }
+  }
+  box.append(text);
+  if(button) box.append(button);
 }
 
 function playerTypingTarget(el){

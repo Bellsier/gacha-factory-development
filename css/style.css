@@ -510,3 +510,4 @@
   box-shadow:0 6px 24px rgba(0,0,0,0.45); display:grid; gap:10px;}
 .save-notice p{margin:0;}
 .save-notice button{justify-self:start;}
+.save-notice[hidden]{display:none;} /* C1 review: the grid above must not keep a hidden notice on screen */

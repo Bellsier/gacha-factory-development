@@ -126,3 +126,118 @@ function c1CheckDamaged(label, raw) {
   newDom(taken);
   check('C1 earlier backup: a taken backup key is not overwritten, another is used', taken._raw()[want] === 'something else' && c1BackupKeys(taken).some((k) => k !== want && taken._raw()[k] === raw));
 })();
+
+// -----------------------------------------------------------------------------
+// C1 review fixes (PR #13): full storage, other tabs, the notice going away, and
+// a session whose saving is blocked for another reason (PR #5's trial mode).
+// -----------------------------------------------------------------------------
+const c1Text = (win) => { const n = c1Notice(win); return n ? n.textContent : ''; };
+const c1Button = (win) => { const n = c1Notice(win); return n ? n.querySelector('[data-save-start-over]') : null; };
+// A storage that is full: reads work, every write throws until free() is called.
+function c1FullStorage() {
+  const inner = makeMemoryStorage();
+  let full = true;
+  return Object.assign({}, inner, {
+    setItem: (k, v) => { if (full) throw new Error('QuotaExceededError'); inner.setItem(k, v); },
+    free: () => { full = false; },
+  });
+}
+// A storage that cannot be read at boot (access refused), then works.
+function c1UnreadableStorage() {
+  const inner = makeMemoryStorage();
+  let broken = true;
+  return Object.assign({}, inner, {
+    getItem: (k) => { if (broken) throw new Error('SecurityError'); return inner.getItem(k); },
+    setItem: (k, v) => { if (broken) throw new Error('SecurityError'); inner.setItem(k, v); },
+    fix: () => { broken = false; },
+  });
+}
+
+(function test_C1R_fullStorage() {
+  // a damaged save in a full storage: still found, kept, and not overwritten once space frees up
+  const raw = '{"saveVersion":1,"run":{"gold":5000';
+  const a = c1FullStorage(); a._setRaw(C1_KEY, raw);
+  const wa = newDom(a).window;
+  check('C1R full storage: a damaged save is still recognised (read works when writes do not)', wa.saveProtection().corrupt === true && c1Shown(wa));
+  check('C1R full storage: no backup could be written, the notice says so', c1BackupKeys(a).length === 0 && /백업을 만들지 못/.test(c1Text(wa)));
+  a.free();
+  check('C1R full storage: after space frees up, an autosave still leaves the damaged original', wa.saveGame() === false && a._raw()[C1_KEY] === raw);
+  // a future-version save in a full storage: kept after space frees up
+  const fraw = JSON.stringify({ saveVersion: 2, run: { gold: 9 }, permanent: {} });
+  const f = c1FullStorage(); f._setRaw(C1_KEY, fraw);
+  const wf = newDom(f).window;
+  f.free();
+  check('C1R full storage: a future-version save is kept after space frees up', wf.saveBlocked === true && wf.saveGame() === false && f._raw()[C1_KEY] === fraw);
+  // a good save in a full storage: it loads, and once space frees up the loaded progress is saved (not a new game)
+  const g = makeMemoryStorage();
+  const first = newDom(g).window; first.state.gold = 4321; first.saveGame();
+  const graw = g._raw()[C1_KEY];
+  const gs = c1FullStorage(); gs._setRaw(C1_KEY, graw);
+  const wg = newDom(gs).window;
+  check('C1R full storage: a good save still loads', wg.state.gold === 4321 && !c1Shown(wg));
+  check('C1R full storage: saving fails while full and the original stays', wg.saveGame() === false && gs._raw()[C1_KEY] === graw);
+  gs.free();
+  check('C1R full storage: after space frees up the loaded progress is saved', wg.saveGame() === true && JSON.parse(gs._raw()[C1_KEY]).run.gold === 4321);
+})();
+
+(function test_C1R_unreadableStorage() {
+  const s = c1UnreadableStorage();
+  const raw = JSON.stringify({ saveVersion: 1, run: { gold: 8888 }, permanent: {} });
+  s._setRaw(C1_KEY, raw);
+  const win = newDom(s).window;
+  check('C1R unreadable: the game still starts', win.state.gold === 0);
+  s.fix();
+  check('C1R unreadable: a save that could not be read is never overwritten, even once storage works', win.saveGame() === false && s._raw()[C1_KEY] === raw);
+  check('C1R unreadable: a notice says saving is off this session, with no start-over button', c1Shown(win) && /읽지 못/.test(c1Text(win)) && !c1Button(win));
+  check('C1R unreadable: starting over is refused too', win.saveStartOver() === false && s._raw()[C1_KEY] === raw);
+})();
+
+(function test_C1R_otherTabChangedTheSave() {
+  const raw = '{"saveVersion":1,"run":{"gold":5000';
+  const good = JSON.stringify({ saveVersion: 1, savedAt: 1, permanent: { totalPrestige: 0, runCount: 1, tickets: 3, firstGachaGranted: true }, run: { gold: 999 } });
+  // A shows the notice; B (another tab) saves new progress; A presses its old button
+  const { storage, win } = c1CheckDamaged('two tabs', raw);
+  const btn = c1Button(win);
+  storage._setRaw(C1_KEY, good); // tab B wrote its progress (no storage event reached A yet)
+  btn.click();
+  check('C1R two tabs: A\'s old confirmation does not overwrite B\'s new save', storage._raw()[C1_KEY] === good);
+  check('C1R two tabs: A stays protected and its button is gone', win.saveGame() === false && storage._raw()[C1_KEY] === good && !c1Button(win));
+  check('C1R two tabs: the notice tells A the save changed in another tab', c1Shown(win) && /다른 탭/.test(c1Text(win)));
+  // with the storage event: the confirmation is withdrawn as soon as B saves
+  const r2 = c1CheckDamaged('two tabs (event)', raw);
+  r2.storage._setRaw(C1_KEY, good);
+  r2.win.dispatchEvent(new r2.win.StorageEvent('storage', { key: C1_KEY, newValue: good }));
+  check('C1R two tabs (event): the button goes away when another tab saves', !c1Button(r2.win) && /다른 탭/.test(c1Text(r2.win)));
+  check('C1R two tabs (event): starting over is refused', r2.win.saveStartOver() === false && r2.storage._raw()[C1_KEY] === good);
+  // the two-press confirmation (no backup) is withdrawn the same way
+  const nb = c1StorageNoBackup(); nb._setRaw(C1_KEY, raw);
+  const wn = newDom(nb).window;
+  c1Button(wn).click(); // first press: asks again
+  nb._setRaw(C1_KEY, good);
+  const again = c1Button(wn);
+  if (again) again.click(); // the old second press
+  check('C1R two tabs (no backup): the armed second press does not overwrite the new save', nb._raw()[C1_KEY] === good);
+})();
+
+(function test_C1R_noticeHides() {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  check('C1R notice: a hidden notice is not shown (its display rule yields to [hidden])', /\.save-notice\[hidden\]\s*\{[^}]*display\s*:\s*none/.test(css));
+  const { win } = c1CheckDamaged('notice hides', '{"saveVersion":1,"run":{"gold":5000');
+  c1Button(win).click();
+  check('C1R notice: after starting over the notice is hidden', c1Notice(win).hidden === true);
+})();
+
+(function test_C1R_savingBlockedElsewhere() {
+  // PR #5's trial mode sets saveBlocked after the damaged save was found; the notice is redrawn by renderAll()
+  const { storage, win } = c1CheckDamaged('blocked', '{"saveVersion":1,"run":{"gold":5000');
+  const raw = storage._raw()[C1_KEY];
+  win.saveIsBlocked = () => true;
+  win.worldTestMode = () => true;
+  win.renderAll();
+  check('C1R blocked: no start-over button when saving is blocked for this session', c1Shown(win) && !c1Button(win));
+  check('C1R blocked: the notice says why (trial mode)', /시험 모드/.test(c1Text(win)));
+  check('C1R blocked: starting over is refused and the original stays', win.saveStartOver() === false && storage._raw()[C1_KEY] === raw);
+  win.worldTestMode = () => false;
+  win.renderSaveNotice();
+  check('C1R blocked: without trial mode it still says saving is off this session', /저장하지 않/.test(c1Text(win)) && !c1Button(win));
+})();

@@ -553,7 +553,7 @@ function reportSaveFailed(){
 
 function saveGame(){
   if(saveBlocked) return false; // a future-version save exists on disk — never overwrite it
-  if(saveCorrupt){ setSaveStatus('저장 보호 중'); return false; } // C1: a damaged save is kept until the player starts over
+  if(saveCorrupt || saveUnverified){ setSaveStatus('저장 보호 중'); return false; } // C1: a damaged or unread save is kept
   try{
     if(!storageAvailable()){
       return reportSaveFailed();
@@ -576,15 +576,15 @@ function saveGame(){
 // Returns one of:
 //   {ok:true, permanent, run}
 //   {ok:false, reason:'none'}        — nothing saved yet (not an error)
-//   {ok:false, reason:'unavailable'} — localStorage can't be used here
+//   {ok:false, reason:'unavailable'} — the save can't be read here (C1: saving is then off this session)
 //   {ok:false, reason:'corrupted', raw} — save exists but isn't valid JSON/shape, or has no run (C1: raw is the text as stored)
 //   {ok:false, reason:'future'}      — save is from a newer saveVersion than this build understands
 function loadGame(){
   let raw;
   try{
-    if(!storageAvailable()) return { ok:false, reason:'unavailable' };
-    raw = localStorage.getItem(SAVE_KEY);
+    raw = localStorage.getItem(SAVE_KEY); // C1: only read here — a full storage still reads (a write probe used to skip every check)
   }catch(e){
+    saveUnverified = true; // the save could not be read: nothing may be written over it this session
     return { ok:false, reason:'unavailable' };
   }
   if(!raw) return { ok:false, reason:'none' };
@@ -617,7 +617,9 @@ function loadGame(){
 // (saveStartOver, the notice's button). The original key is only read here.
 // Nothing about this is saved; the save format is unchanged.
 // ---------------------------------------------------------------------------
-let saveCorrupt = null; // { backupKey, backupOk } while a damaged save is being kept
+let saveCorrupt = null;      // { raw, backupKey, backupOk, changed } while a damaged save is being kept
+let saveUnverified = false;  // the save could not be read at all: never write over it this session
+let saveWatching = false;
 const SAVE_BACKUP_PREFIX = SAVE_KEY + '.corrupt-backup.';
 
 // A short fixed name for a text (the same damaged save always gets the same backup key).
@@ -643,27 +645,56 @@ function backupCorruptSave(raw){
 }
 
 function protectCorruptSave(raw){
-  saveCorrupt = backupCorruptSave(typeof raw === 'string' ? raw : String(raw));
+  const text = typeof raw === 'string' ? raw : String(raw);
+  saveCorrupt = Object.assign(backupCorruptSave(text), { raw: text, changed: false });
   log(saveCorrupt.backupOk
     ? '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두고 백업도 만들었습니다(' + saveCorrupt.backupKey + ').'
     : '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두었지만 백업을 만들지 못했습니다.');
   setSaveStatus('저장 보호 중');
+  // another tab saving over the kept text withdraws this tab's offer to start over
+  if(!saveWatching && typeof window !== 'undefined' && window.addEventListener){
+    saveWatching = true;
+    window.addEventListener('storage', (e) => { if(e.key === SAVE_KEY || e.key === null) saveCheckUnchanged(); });
+  }
   if(typeof renderSaveNotice === 'function') renderSaveNotice();
 }
+
+// Is the stored save still the text this tab is keeping? If not (another tab saved,
+// or it can't be read), the offer to start over is withdrawn for good.
+function saveCheckUnchanged(){
+  if(!saveCorrupt) return true;
+  let now;
+  try{ now = localStorage.getItem(SAVE_KEY); }catch(e){ now = undefined; }
+  if(now === saveCorrupt.raw && !saveCorrupt.changed) return true;
+  if(!saveCorrupt.changed){
+    saveCorrupt.changed = true;
+    log('다른 탭에서 저장이 바뀌어 이 탭은 저장하지 않습니다. 이어 하려면 새로고침하세요.');
+    if(typeof renderSaveNotice === 'function') renderSaveNotice();
+  }
+  return false;
+}
+
+// Saving is off for this whole session for another reason (a future-version save, PR #5's trial mode).
+function saveIsBlocked(){ return saveBlocked; }
 
 // What the protection is doing now (read by the notice and the tests).
 function saveProtection(){
-  return { corrupt: !!saveCorrupt, backupKey: saveCorrupt ? saveCorrupt.backupKey : null, backupOk: saveCorrupt ? saveCorrupt.backupOk : false };
+  return {
+    corrupt: !!saveCorrupt, unverified: saveUnverified, changed: !!(saveCorrupt && saveCorrupt.changed), blocked: saveIsBlocked(),
+    backupKey: saveCorrupt ? saveCorrupt.backupKey : null, backupOk: saveCorrupt ? saveCorrupt.backupOk : false,
+  };
 }
 
-// The player chose to start the new game's save: the damaged original under the
-// save key is replaced from now on (its backup, if any, stays).
+// The player chose to start the new game's save. Only while the stored text is still
+// the damaged one this tab found: the original is replaced (its backup, if any, stays).
 function saveStartOver(){
-  if(!saveCorrupt) return false;
+  if(!saveCorrupt || saveCorrupt.changed || saveIsBlocked() || saveUnverified) return false;
+  if(!saveCheckUnchanged()) return false;
+  const kept = saveCorrupt;
   saveCorrupt = null;
   const ok = saveGame();
   if(ok) log('새 게임 저장을 시작했습니다.');
+  else saveCorrupt = kept; // nothing was written: keep protecting it
   if(typeof renderSaveNotice === 'function') renderSaveNotice();
   return ok;
 }
-

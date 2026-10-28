@@ -96,3 +96,27 @@ function perfStandBySteps(win, x0, y0, nx, ny, st) {
   check('Perf: with two elements for one key only the first in the page is updated (as before)', first.textContent === win.fmt(4242) && decoy.textContent === 'decoy');
   decoy.remove();
 })();
+
+// PR #5's test world loads generated chunks as worldObstacles is asked about a spot; the stand
+// grid loads the whole rectangle first and must still match playerCanStand point by point,
+// also over ground whose chunks were not loaded yet. The second window loads the first one's
+// save, so both stand in the same generated world.
+(function test_perf_standGridInTheTestWorld() {
+  const url = 'https://example.test/?worldgen=256';
+  const sa = makeMemoryStorage();
+  const a = newDom(sa, { url, fullWorld: true }).window;
+  a.saveGame();
+  const sb = makeMemoryStorage();
+  Object.entries(sa._raw()).forEach(([k, v]) => sb.setItem(k, v));
+  const b = newDom(sb, { url, fullWorld: true }).window;
+  const inTestWorld = typeof a.currentWorldContext === 'function' && !!a.currentWorldContext() && !!b.currentWorldContext();
+  const sameWorld = inTestWorld && a.state.world.seed === b.state.world.seed;
+  const areas = [[a.state.world.base.x - 7, a.state.world.base.y - 7, 141, 141, 0.1], [14, 10, 81, 61, 0.2], [-30, -30, 61, 41, 0.25]];
+  let diff = 0, stand = 0, n = 0;
+  areas.forEach(([x0, y0, nx, ny, st]) => {
+    const g = a.villageStandGrid(x0, y0, nx, ny, st), e = perfStandBySteps(b, x0, y0, nx, ny, st);
+    for (let c = 0; c < g.length; c++) { if (g[c] !== e[c]) diff++; stand += e[c]; n++; }
+  });
+  check('Perf: in the 256 test world the stand grid matches playerCanStand, also where no chunk was loaded yet', sameWorld && diff === 0 && stand > 0 && stand < n, JSON.stringify({ inTestWorld, sameWorld, diff, stand, n }));
+  a.close(); b.close();
+})();

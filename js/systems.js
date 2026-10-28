@@ -55,10 +55,14 @@ function log(msg){
   while(el.children.length > 40) el.removeChild(el.lastChild);
 }
 
+// toLocaleString() with no arguments formats like a default Intl.NumberFormat, but looks the
+// formatter up on every call (half of updateNumbers' time); one formatter gives the same text.
+let fmtFormat = null;
 function fmt(n){
   if(n <= 0) return '0';
   if(n < 10 && n % 1 !== 0) return n.toFixed(1);
-  return Math.floor(n).toLocaleString();
+  if(!fmtFormat) fmtFormat = typeof Intl === 'object' && Intl.NumberFormat ? new Intl.NumberFormat() : { format: (x) => x.toLocaleString() };
+  return fmtFormat.format(Math.floor(n));
 }
 
 // Shared helpers to avoid repeating the same formula/lookup everywhere.

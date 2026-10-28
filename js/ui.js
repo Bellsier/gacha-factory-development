@@ -811,6 +811,16 @@ document.getElementById('craftFacilityBtn').onclick = ()=>{
   updateNumbers();
 };
 
+// The first element (in document order) for each value of a data attribute: what
+// document.querySelector('[attr="value"]') would find, for every value in one pass. The
+// tick asks for many keys whose cards are not on screen yet, and each of those misses
+// read the whole page; this reads it once per attribute. Built afresh at each use.
+function uiFirstByAttr(attr){
+  const map = new Map();
+  document.querySelectorAll('[' + attr + ']').forEach(el => { const v = el.getAttribute(attr); if(!map.has(v)) map.set(v, el); });
+  return map;
+}
+
 // Runs 10x/second: only touches numbers and disabled flags on EXISTING
 // elements — never rebuilds the DOM, so nothing flickers and clicks never
 // get dropped mid-render.
@@ -822,26 +832,29 @@ function updateNumbers(){
     : `첫 골드 ${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G를 모으면 첫 가챠권을 드려요 (현재 ${fmt(state.gold)}/${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G)`;
   document.getElementById('gachaTicketBtn').disabled = !canPullWorker() || permanent.tickets < BALANCE.gacha.PULL_COST_TICKET;
   document.getElementById('gachaGoldBtn').disabled = !canPullWorker() || state.gold < BALANCE.gacha.PULL_COST_GOLD;
+  const sharedEls = uiFirstByAttr('data-shared-amt'), amtEls = uiFirstByAttr('data-amt'), rateEls = uiFirstByAttr('data-rate'), trainBtns = uiFirstByAttr('data-train'), facBtns = uiFirstByAttr('data-fac');
   RESOURCES.forEach(r=>{
-    const sharedEl = document.querySelector(`[data-shared-amt="${r.key}"]`);
+    const sharedEl = sharedEls.get(r.key);
     if(sharedEl) sharedEl.textContent = fmt(state.resources[r.key]);
-    const el = document.querySelector(`[data-amt="${r.key}"]`);
+    const el = amtEls.get(r.key);
     if(el) el.textContent = fmt(state.resources[r.key]);
-    const rateEl = document.querySelector(`[data-rate="${r.key}"]`);
+    const rateEl = rateEls.get(r.key);
     if(rateEl) rateEl.textContent = lineRateText(r.key); // Task 98
-    const trainBtn = document.querySelector(`[data-train="${r.key}"]`);
+    const trainBtn = trainBtns.get(r.key);
     if(trainBtn) trainBtn.disabled = workforceAtMax(r.key) || state.resources[r.key] < workforceCost(r.key);
-    const facBtn = document.querySelector(`[data-fac="${r.key}"]`);
+    const facBtn = facBtns.get(r.key);
     if(facBtn) facBtn.disabled = facilityAtMax(r.key) || state.resources[r.key] < facilityCost(r.key);
   });
+  const unlockBtns = uiFirstByAttr('data-unlocksite');
   SITES.forEach(s=>{
-    const unlockBtn = document.querySelector(`[data-unlocksite="${s.key}"]`);
+    const unlockBtn = unlockBtns.get(s.key);
     if(unlockBtn) unlockBtn.disabled = !canUnlockSite(s);
   });
+  const stockEls = uiFirstByAttr('data-stock'), craftBtns = uiFirstByAttr('data-craft'), sellBtns = uiFirstByAttr('data-sell'), buyAutoSellBtns = uiFirstByAttr('data-buyautosell');
   RECIPES.forEach(r=>{
-    const stockEl = document.querySelector(`[data-stock="${r.key}"]`);
+    const stockEl = stockEls.get(r.key);
     if(stockEl) stockEl.textContent = fmt(state.products[r.key]) + '개 보유';
-    const craftBtn = document.querySelector(`[data-craft="${r.key}"]`);
+    const craftBtn = craftBtns.get(r.key);
     if(craftBtn){
       if(state.craftQueue[r.key] !== null){
         craftBtn.disabled = true;
@@ -851,12 +864,12 @@ function updateNumbers(){
         craftBtn.textContent = '제작';
       }
     }
-    const sellBtn = document.querySelector(`[data-sell="${r.key}"]`);
+    const sellBtn = sellBtns.get(r.key);
     if(sellBtn){
       sellBtn.disabled = state.products[r.key] <= 0 || (state.autoSell[r.key] && state.autoSellOn[r.key]);
       sellBtn.textContent = `전량 판매 (${fmt(r.sell * mult())}G/개)`;
     }
-    const buyAutoSellBtn = document.querySelector(`[data-buyautosell="${r.key}"]`);
+    const buyAutoSellBtn = buyAutoSellBtns.get(r.key);
     if(buyAutoSellBtn) buyAutoSellBtn.disabled = state.gold < autoSellCost(r);
   });
   state.world.workshops.forEach(workshop=>{
@@ -881,10 +894,11 @@ function updateNumbers(){
   updateTunnelContract();
   const buildBtn = document.querySelector('[data-build-workshop]');
   if(buildBtn){ buildBtn.disabled = !canBuildWorkshop(); buildBtn.textContent = workshopBuildLabel(); }
+  const researchBtns = uiFirstByAttr('data-research'), researchCosts = uiFirstByAttr('data-research-cost');
   RESEARCH.forEach(def=>{
-    const btn = document.querySelector('[data-research="' + def.key + '"]');
+    const btn = researchBtns.get(def.key);
     if(btn) btn.disabled = !canResearch(def.key);
-    const costEl = document.querySelector('[data-research-cost="' + def.key + '"]');
+    const costEl = researchCosts.get(def.key);
     if(costEl) costEl.textContent = researchCostText(def);
   });
   const expandBtn = document.querySelector('[data-expand-base]');

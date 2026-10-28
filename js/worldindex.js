@@ -15,7 +15,7 @@ const WORLD_INDEX = { UNITS: 8, built: null, builds: 0 };
 function worldIndexInputs(){
   const w = state.world, open = terrainTunnelOpen();
   return [w.mines, w.mines.length, w.workshops, w.workshops.length, w.base ? w.base.x : null, w.base ? w.base.y : null,
-    typeof villageObstacleBoxes === 'function' ? villageObstacleBoxes() : null, open ? worldScenery() : null, open];
+    typeof villageObstacleBoxes === 'function' ? villageObstacleBoxes() : null, (open || typeof currentWorldContext === 'function' && currentWorldContext()) ? worldScenery() : null, open];
 }
 
 function worldIndex(){

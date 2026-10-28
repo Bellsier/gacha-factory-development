@@ -549,9 +549,10 @@ let villageRoadCache = null;
 
 function villageRoadKey(){
   const w = state.world, v = state.village, ws = w.workshops.filter(Boolean).map(h => h.x + ',' + h.y).join(';');
-  const last = w.mines[w.mines.length - 1];
+  const mines = typeof worldVillageMines === 'function' ? worldVillageMines() : w.mines;
+  const last = mines[mines.length - 1];
   return w.base.x + ',' + w.base.y + '|' + JSON.stringify(v.district) + '|' + VILLAGE.ORDER.map(k => v.sites[k] ? v.sites[k].x + ',' + v.sites[k].y : '-').join(';') +
-    '|' + w.mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
+    '|' + mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
 }
 
 // The roads: [{ to, points: [{x, y}, ...] }]. Each starts at a door step (or the

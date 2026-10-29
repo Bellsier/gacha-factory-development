@@ -6,6 +6,35 @@
 // ---------------------------------------------------------------------------
 let tickTimer, ticketTimer, autoSaveTimer;
 
+// ---------------------------------------------------------------------------
+// Task 21: the game clock. Game time moves in fixed ticks of TICK_MS (everything is written per
+// tick), driven by a TICK_MS interval. On a slow device that interval fires late — the page is
+// busy drawing — and each late call used to be just one tick, so game time ran slower than real
+// time (about 4 ticks a second instead of 10 on a slow phone). Now each call runs the ticks that
+// real time says are due, at most TICK_CLOCK.MAX_PER_CALL of them, and updates the screen once.
+// Time owed beyond TICK_CLOCK.MAX_BACKLOG_MS (a long stall) is dropped, never replayed. While the
+// tab is hidden the browser slows the interval down and each call stays one tick, as before, and
+// the clock starts afresh when the tab comes back: nothing is fast-forwarded.
+// ---------------------------------------------------------------------------
+const TICK_CLOCK = { MAX_PER_CALL: 4, MAX_BACKLOG_MS: 1000 };
+let tickClockLast = null, tickClockOwed = 0;
+function tickClock(now){
+  const t = now === undefined ? performance.now() : now;
+  if(tickClockLast === null || (typeof document !== 'undefined' && document.hidden)){
+    tickClockLast = t; tickClockOwed = 0;
+    tickLoop();
+    return 1;
+  }
+  tickClockOwed = Math.min(tickClockOwed + Math.max(0, t - tickClockLast), TICK_CLOCK.MAX_BACKLOG_MS);
+  tickClockLast = t;
+  const n = Math.min(TICK_CLOCK.MAX_PER_CALL, Math.floor(tickClockOwed / TICK_MS));
+  if(n < 1) return 0; // called a little early: the tick waits for the next call
+  tickClockOwed -= n * TICK_MS;
+  for(let i = 1; i < n; i++) tickStep();
+  tickLoop();
+  return n;
+}
+
 // Named (rather than an anonymous startup IIFE) purely so it reads like any
 // other function in the file; the startup sequence itself is unchanged:
 //   1. load save            5. tickTimer
@@ -42,11 +71,12 @@ function boot(){
   worldTestControls();
   log(loaded.ok ? '이전 진행 상황을 불러왔습니다.' : '공방 가동을 시작합니다. 채굴장을 눌러 자원을 모으세요.');
 
-  tickTimer = setInterval(tickLoop, TICK_MS);
+  tickTimer = setInterval(() => tickClock(), TICK_MS);
   ticketTimer = setInterval(ticketTrickle, BALANCE.gacha.TICKET_TRICKLE_MS);
   autoSaveTimer = setInterval(saveGame, 10000);
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState === 'hidden') saveGame();
+    tickClockLast = null; // Task 21: hidden or back, the clock starts afresh (no catch-up for the time away)
   });
   window.addEventListener('beforeunload', ()=>{ saveGame(); });
 }

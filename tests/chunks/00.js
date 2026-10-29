@@ -118,6 +118,7 @@ function newDom(storage, opts) {
   VILLAGE: () => VILLAGE, VILLAGE_RELICS: () => VILLAGE_RELICS, VILLAGE_RELIC_KEYS: () => VILLAGE_RELIC_KEYS, // Task 113
   TD_LIGHT: () => TD_LIGHT, // Task 108
   TD_WORKER: () => TD_WORKER, // Task 109
+  tickTimer: () => tickTimer, TICK_CLOCK: () => TICK_CLOCK, // Task 21: the game clock
 };
 `;
   win.eval(moduleSource + expose);

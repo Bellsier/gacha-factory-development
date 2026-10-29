@@ -25,7 +25,7 @@ function clearPlayerHeld(){
 }
 
 function clampPlayerPosition(x, y){
-  if(typeof currentWorldContext === 'function' && currentWorldContext()){ const b=worldBounds(); return {x:clampPlayerAxis(x,b.minX,b.maxX),y:clampPlayerAxis(y,b.minY,b.maxY)}; }
+  if(currentWorldContext()){ const b=worldBounds(); return {x:clampPlayerAxis(x,b.minX,b.maxX),y:clampPlayerAxis(y,b.minY,b.maxY)}; }
   return {
     x: clampPlayerAxis(x, BALANCE.world.BOUNDS_MIN_X, BALANCE.world.BOUNDS_MAX_X),
     y: clampPlayerAxis(y, BALANCE.world.BOUNDS_MIN_Y, BALANCE.world.BOUNDS_MAX_Y),
@@ -128,7 +128,7 @@ function worldSceneryBase(){
 // The scenery of this game: the fixed pieces minus those on a mine, with a
 // grid of the solid ones for quick lookups. Cached until the mines change.
 function worldScenery(){
-  if(typeof currentWorldContext === 'function' && currentWorldContext()) return worldGeneratedScenery();
+  if(currentWorldContext()) return worldGeneratedScenery();
   return worldSceneryLegacy();
 }
 function worldSceneryLegacy(){
@@ -146,8 +146,11 @@ function worldSceneryLegacy(){
 
 // Obstacle boxes in world coordinates, optionally only those near (x, y). Near a point the chunk
 // index answers (worldindex.js, same boxes in the same order); the whole world is the full scan.
+// In the 256 test world this first loads the generated chunks round the point (worldEnsureRect),
+// which adds their veins to state.world.mines: code that reads the index directly must do the same
+// (villageStandGrid in village.js does).
 function worldObstacles(nearX, nearY, radius){
-  if(radius !== undefined && Number.isFinite(nearX) && Number.isFinite(nearY) && typeof worldEnsureRect === 'function') worldEnsureRect({minX:nearX-radius-1,maxX:nearX+radius+1,minY:nearY-radius-1,maxY:nearY+radius+1});
+  if(radius !== undefined && Number.isFinite(nearX) && Number.isFinite(nearY)) worldEnsureRect({minX:nearX-radius-1,maxX:nearX+radius+1,minY:nearY-radius-1,maxY:nearY+radius+1});
   if(radius !== undefined && typeof worldObstaclesNear === 'function') return worldObstaclesNear(nearX, nearY, radius);
   return worldObstaclesScan(nearX, nearY, radius);
 }
@@ -169,7 +172,7 @@ function worldObstaclesScan(nearX, nearY, radius){
     out.push(o);
   });
   // Task 111: solid scenery beyond the mountain (only reachable, and drawn, with the tunnel open)
-  if(terrainTunnelOpen() || typeof currentWorldContext === 'function' && currentWorldContext()){
+  if(terrainTunnelOpen() || currentWorldContext()){
     const sc = worldScenery();
     let cands = sc.solid;
     if(radius !== undefined){
@@ -211,7 +214,7 @@ function tickPlayer(){
   const step = BALANCE.world.PLAYER_SPEED / TICKS_PER_SECOND;
   const startX = player.x, startY = player.y;
   const moved = worldStepFoot(startX, startY, dx, dy, step);
-  if(typeof worldRememberReturn==='function')worldRememberReturn(startX,startY,moved.x,moved.y);
+  worldRememberReturn(startX,startY,moved.x,moved.y);
   player.x = moved.x;
   player.y = moved.y;
   if(Math.abs(dx) >= Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';

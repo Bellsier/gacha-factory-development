@@ -454,7 +454,7 @@ function discoverMine(mineId){
   if(!Array.isArray(hidden) || !hiddenMineSet().has(mineId)) return false;
   const mine = mineById(mineId);
   state.world.hiddenMineIds = hidden.filter(id => id !== mineId);
-  if(typeof recordGeneratedMineEdit === 'function') recordGeneratedMineEdit(mineId);
+  recordGeneratedMineEdit(mineId);
   if(mine){
     const res = resourceByKey(mine.resource);
     log('새 광맥 발견: ' + (res ? res.name : mine.resource) + ' (' + mine.x + ', ' + mine.y + ')');
@@ -469,7 +469,7 @@ function tickExploration(){
   if(!Array.isArray(hidden) || hidden.length === 0) return [];
   const p = state.world.player;
   const r = discoveryRadius(); // Task 80: 탐사 장비 widens it
-  if(typeof worldEnsureRect==='function')worldEnsureRect({minX:p.x-r,maxX:p.x+r,minY:p.y-r,maxY:p.y+r});
+  worldEnsureRect({minX:p.x-r,maxX:p.x+r,minY:p.y-r,maxY:p.y+r});
   const candidates=typeof worldMinesNear==='function'?worldMinesNear(p.x,p.y,r):state.world.mines;
   const found = candidates
     .filter(m => m && hiddenMineSet().has(m.id) && Math.hypot(m.x - p.x, m.y - p.y) <= r)

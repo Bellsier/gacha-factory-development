@@ -170,7 +170,7 @@ function villageStandGrid(x0, y0, nx, ny, st){
   const R = 2; // worldObstacles(x, y, 1) asks the index within 1 + 1
   // worldObstacles first loads the generated chunks round each point it is asked about (the
   // test world); every chunk an entry within R of a grid point lives in is in this rectangle
-  if(typeof worldEnsureRect === 'function') worldEnsureRect({ minX: x0 - R, maxX: x0 + (nx - 1) * st + R, minY: y0 - R, maxY: y0 + (ny - 1) * st + R });
+  worldEnsureRect({ minX: x0 - R, maxX: x0 + (nx - 1) * st + R, minY: y0 - R, maxY: y0 + (ny - 1) * st + R });
   const index = typeof worldIndex === 'function' && typeof worldObstaclesNear === 'function' ? worldIndex() : null;
   const U = index ? WORLD_INDEX.UNITS : 0;
   for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++){
@@ -553,7 +553,7 @@ let villageRoadCache = null;
 
 function villageRoadKey(){
   const w = state.world, v = state.village, ws = w.workshops.filter(Boolean).map(h => h.x + ',' + h.y).join(';');
-  const mines = typeof worldVillageMines === 'function' ? worldVillageMines() : w.mines;
+  const mines = worldVillageMines();
   const last = mines[mines.length - 1];
   return w.base.x + ',' + w.base.y + '|' + JSON.stringify(v.district) + '|' + VILLAGE.ORDER.map(k => v.sites[k] ? v.sites[k].x + ',' + v.sites[k].y : '-').join(';') +
     '|' + mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);

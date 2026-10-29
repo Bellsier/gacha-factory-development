@@ -302,7 +302,7 @@ function secureMine(mineId){
   if(!isMineDiscovered(mine)) return false; // Task 65: find it before securing it
   if(!isMineSiteUnlocked(mine)) return false;
   mine.developmentState = 'secured';
-  if(typeof recordGeneratedMineEdit === 'function') recordGeneratedMineEdit(mineId);
+  recordGeneratedMineEdit(mineId);
   return true;
 }
 

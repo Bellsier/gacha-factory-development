@@ -213,7 +213,12 @@ function tdWorkerSimStep(dtMs, nowMs){
   if(!TD.workerSim) tdWorkerSimReset();
   const sim = TD.workerSim, W = TD_WORKER, dt = Math.max(0, Math.min(100, dtMs));
   const placements = tdWorkerPlacements(), base = state.world.base, ids = {};
-  TD.navBudget=256;TD.navDeadline=performance.now()+2;
+  // The test world's route searches (worldWorkerStep) share a time budget per frame: 12% of
+  // the time since the last frame, at least 2 ms and at most 6 ms (128 search nodes a ms).
+  // At 60 fps that is the 2 ms it always was; when frames are slow (a weak PC or phone)
+  // the search keeps its share of the time instead of falling behind the walking.
+  const navMs = Math.min(6, Math.max(2, (dtMs || 0) * 0.12));
+  TD.navBudget = Math.round(128 * navMs); TD.navDeadline = performance.now() + navMs;
   let newcomers = 0;
   placements.forEach(p => {
     ids[p.id] = true;

@@ -31,6 +31,26 @@ function worldNavClear(a, b) {
   for (let i = 0; i < cuts.length; i++) if (!free(cuts[i]) || (i && !free((cuts[i - 1] + cuts[i]) / 2))) return false;
   return true;
 }
+const WORLD_NAV_DIRS = [
+  [1, 0],
+  [0, 1],
+  [-1, 0],
+  [0, -1]
+];
+// Whether the step between two neighbouring cells is clear depends only on the world
+// (terrain, the obstacle boxes), not on who asks, so the answers are shared by every
+// search: workers sent the same way test the same corridor once. The cache is dropped
+// whenever the obstacle index is rebuilt (a hut built, a chunk's veins loaded, the
+// tunnel opened ...), and when it grows past MAX entries.
+const WORLD_NAV_EDGES = { index: null, clear: new Map(), MAX: 200000 };
+function worldNavEdgesFresh() {
+  const index = typeof worldIndex === 'function' ? worldIndex() : null;
+  if (!index || WORLD_NAV_EDGES.index !== index || WORLD_NAV_EDGES.clear.size > WORLD_NAV_EDGES.MAX) {
+    WORLD_NAV_EDGES.index = index;
+    WORLD_NAV_EDGES.clear = new Map();
+  }
+  return index ? WORLD_NAV_EDGES.clear : null;
+}
 function worldNavAnchor(p) {
   const x = Math.floor(p.x * 4),
     y = Math.floor(p.y * 4),
@@ -72,6 +92,10 @@ function worldNavPop(job) {
   h[i] = last;
   return first;
 }
+// One number per cell, for the search's maps (a start or goal cell may lie just past the grid).
+function worldNavCell(gx, gy) {
+  return (gx + 512) * 1024 + (gy + 512);
+}
 function worldNavStart(from, to) {
   const a = worldNavAnchor(from),
     b = worldNavAnchor(to),
@@ -82,16 +106,17 @@ function worldNavStart(from, to) {
   }
   job.target = b;
   const n = { ...a, g: 0, f: Math.abs(a.gx - b.gx) + Math.abs(a.gy - b.gy), parent: null };
-  job.nodes.set(a.gx + ',' + a.gy, n);
+  job.nodes.set(worldNavCell(a.gx, a.gy), n);
   worldNavPush(job, n);
   return job;
 }
 function worldNavAdvance(job, limit = 128, deadline = performance.now() + 2) {
   let count = 0;
+  const edges = worldNavEdgesFresh();
   while (!job.done && job.heap.length && count++ < limit) {
     if (performance.now() >= deadline) break;
     const n = worldNavPop(job),
-      key = n.gx + ',' + n.gy;
+      key = worldNavCell(n.gx, n.gy);
     if (job.closed.has(key)) continue;
     job.closed.add(key);
     if (n.gx === job.target.gx && n.gy === job.target.gy) {
@@ -108,21 +133,24 @@ function worldNavAdvance(job, limit = 128, deadline = performance.now() + 2) {
       job.done = true;
       break;
     }
-    for (const [dx, dy] of [
-      [1, 0],
-      [0, 1],
-      [-1, 0],
-      [0, -1]
-    ]) {
-      const gx = n.gx + dx,
-        gy = n.gy + dy,
-        k = gx + ',' + gy;
-      if (gx < WORLD_NAV_MIN || gx > WORLD_NAV_MAX || gy < WORLD_NAV_MIN || gy > WORLD_NAV_MAX || job.closed.has(k)) continue;
+    for (let dir = 0; dir < 4; dir++) {
+      const [dx, dy] = WORLD_NAV_DIRS[dir],
+        gx = n.gx + dx,
+        gy = n.gy + dy;
+      if (gx < WORLD_NAV_MIN || gx > WORLD_NAV_MAX || gy < WORLD_NAV_MIN || gy > WORLD_NAV_MAX) continue;
+      const k = worldNavCell(gx, gy);
+      if (job.closed.has(k)) continue;
       const g = n.g + 1,
         old = job.nodes.get(k);
       if (old && old.g <= g) continue;
       const q = { gx, gy, x: (gx + 0.5) / 4, y: (gy + 0.5) / 4, g, parent: n };
-      if (!worldNavClear(n, q)) continue;
+      const ek = key * 4 + dir;
+      let clear = edges ? edges.get(ek) : undefined;
+      if (clear === undefined) {
+        clear = worldNavClear(n, q);
+        if (edges) edges.set(ek, clear);
+      }
+      if (!clear) continue;
       q.f = g + Math.abs(gx - job.target.gx) + Math.abs(gy - job.target.gy);
       job.nodes.set(k, q);
       worldNavPush(job, q);

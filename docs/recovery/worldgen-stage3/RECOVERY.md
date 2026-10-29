@@ -85,14 +85,16 @@ npm run bench:stage3
 
 ## 증거
 
-- [전체 회귀 로그](regression-final.log.gz)
-- [Chromium smoke 로그](smoke-final.log)
-- [브라우저 결과](../../screenshots/worldgen-stage3/browser-results.json)
-- [성능 원시 자료](../../screenshots/worldgen-stage3/performance.json)
-- [PC 경계 연결](../../screenshots/worldgen-stage3/pc-connector.png)
-- [모바일 경계 연결](../../screenshots/worldgen-stage3/mobile-connector.png)
-- [PC 서북쪽 생성 지형](../../screenshots/worldgen-stage3/pc-northwest.png)
-- [모바일 서북쪽 생성 지형](../../screenshots/worldgen-stage3/mobile-northwest.png)
+원본 로그·원시 측정·스크린샷은 저장소 크기를 줄이려고 develop에 옮기지 않았습니다(PR #16). 아래 링크는 PR #5의 마지막 커밋 `9e4875f`에 있는 원본을 가리킵니다.
+
+- [전체 회귀 로그](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3/regression-final.log.gz)
+- [Chromium smoke 로그](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3/smoke-final.log)
+- [브라우저 결과](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/screenshots/worldgen-stage3/browser-results.json)
+- [성능 원시 자료](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/screenshots/worldgen-stage3/performance.json)
+- [PC 경계 연결](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/screenshots/worldgen-stage3/pc-connector.png)
+- [모바일 경계 연결](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/screenshots/worldgen-stage3/mobile-connector.png)
+- [PC 서북쪽 생성 지형](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/screenshots/worldgen-stage3/pc-northwest.png)
+- [모바일 서북쪽 생성 지형](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/screenshots/worldgen-stage3/mobile-northwest.png)
 
 복구 수정 커밋: `9167e0d`. 실제 develop에 이식한 뒤 실행 소스·테스트·도구 53개 파일을 검증 당시 파일과 비교했다. 차이는 기존 develop 파일 끝의 빈 줄뿐이며 실행 코드 차이는 없다. 보호 파일과 99.js는 실제 develop과 동일하다.
 

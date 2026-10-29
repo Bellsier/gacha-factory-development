@@ -28,8 +28,9 @@
 NODE_OPTIONS=--max-old-space-size=5120 npm test
 node -r /workspace/work/stage3/work/system-chromium.cjs tests/browser-smoke.cjs
 node tests/worldgen-stage3-browser.cjs
-node tools/measure-pr5-review.cjs
-node tools/measure-pr5-workers.cjs
+# 수정 전후 비교 도구(일회성, PR #5 커밋 9e4875f에만 있음):
+#   https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/tools/measure-pr5-review.cjs
+#   https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/tools/measure-pr5-workers.cjs
 ```
 
 Smoke의 preload는 Playwright에 환경의 `/usr/bin/chromium`과 `--no-sandbox`를 지정하는 로컬 보조 파일입니다. CI는 기존 Playwright 설치 절차를 사용합니다.
@@ -51,11 +52,13 @@ H1, H2, M3, M4, M5, 도착 방향 및 공유 탐색 예산은 수정 전 실패�
 
 ## 최종 로컬 검증
 
-- 최종 전체 회귀 **2,355 / 2,355 통과, 실패 0**: [최종 로그](regression-final.log.gz). 최초 로컬 실행 2,354개 통과 기록은 [이전 로그](regression.log.gz)에 보존했습니다.
-- 실제 Chromium browser smoke 통과: [로그](smoke.log).
-- 실제 Chromium PC·모바일 키보드/터치 이동, 채굴, 저장/재로드, 원본 저장 보호 검증 통과. 페이지 오류 0: [결과](browser-results.json).
+원본 로그·원시 측정과 나머지 스크린샷은 저장소 크기를 줄이려고 develop에 옮기지 않았습니다(PR #16). 아래 링크는 PR #5의 마지막 커밋 `9e4875f`에 있는 원본을 가리킵니다.
+
+- 최종 전체 회귀 **2,355 / 2,355 통과, 실패 0**: [최종 로그](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/regression-final.log.gz). 최초 로컬 실행 2,354개 통과 기록은 [이전 로그](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/regression.log.gz)에 보존했습니다.
+- 실제 Chromium browser smoke 통과: [로그](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/smoke.log).
+- 실제 Chromium PC·모바일 키보드/터치 이동, 채굴, 저장/재로드, 원본 저장 보호 검증 통과. 페이지 오류 0: [결과](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/browser-results.json).
 - 동·남·북 일꾼 시뮬레이션 각각 snaps=0 및 실제 도착 통과. 마을/시험 구역 경계 충돌, 생성 광맥 발견·확보·자원 및 일꾼 참조, 기존 v1/v2 저장 재로드, classic/v2 마을 타일 픽셀 동등성과 음수 좌표 청크 연결 테스트도 통과했습니다.
-- [30개 조건 성능표](PERFORMANCE.md)와 [원시 측정](movement-raw.json.gz). 전체 바닥 재생성은 시험 모드 **2회 → 0회**입니다. 수정 후 시험 모드 6개 조건 모두 청크 경계 통과를 확인했습니다. 수정 전 Chromebook 시험 1×의 최초 실행은 경계 진입 전 측정 시간이 끝나 별도 재측정했습니다.
+- [30개 조건 성능표](PERFORMANCE.md)와 [원시 측정](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/movement-raw.json.gz). 전체 바닥 재생성은 시험 모드 **2회 → 0회**입니다. 수정 후 시험 모드 6개 조건 모두 청크 경계 통과를 확인했습니다. 수정 전 Chromebook 시험 1×의 최초 실행은 경계 진입 전 측정 시간이 끝나 별도 재측정했습니다.
 - 브라우저 측정은 실제 Chromium 실행이지만 PC/Chromebook/모바일 프로필과 CPU 감속은 에뮬레이션입니다. 실제 휴대폰·Chromebook 기기 테스트는 수행하지 않았습니다.
 
 ## 실제 Chromium 스크린샷
@@ -65,17 +68,17 @@ H1, H2, M3, M4, M5, 도착 방향 및 공유 탐색 예산은 수정 전 실패�
 ![PC 생성 지역](screenshots/pc-northwest.png)
 ![모바일 연결 통로와 HUD](screenshots/mobile-connector.png)
 
-[전체 스크린샷](screenshots/)
+[전체 스크린샷 8장](https://github.com/Bellsier/gacha-factory-development/tree/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/screenshots) (이 저장소에는 위 2장만 둡니다)
 
 일꾼 부하 측정 도구의 첫 실행은 렌더용 투영 객체에서 `snaps`를 읽어 집계가 NaN이 되는 계측 오류가 있었습니다. 실제 `TD.workerSim.byId` 상태를 읽도록 고친 뒤 12개 조건 모두 재측정했습니다. 잘못된 계측 결과는 최종 표의 순간이동 검증에 사용하지 않습니다.
 
-이번 추가 코드 커밋은 `284dfa1`(H1 캐시 유지), `379037c`(H2·M3–M5·저장 키/조작 검증)입니다. 기존 이력을 재작성하지 않았습니다. [변경 파일 목록](FILES.txt)은 수정 전 `1b4dff8` 대비 목록입니다.
+이번 추가 코드 커밋은 `284dfa1`(H1 캐시 유지), `379037c`(H2·M3–M5·저장 키/조작 검증)입니다. 기존 이력을 재작성하지 않았습니다. [변경 파일 목록](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/FILES.txt)은 수정 전 `1b4dff8` 대비 목록입니다.
 
-Chromium 13명 동시 이동 재측정은 수정 전 순간이동 5–13회, 수정 후 6개 프로필 모두 **0회**입니다. 다만 수정 후 30초 내 도착은 0명이며, 장거리 보행·탐색 대기는 남아 있습니다. [표](PERFORMANCE.md) / [원시 자료](workers-raw.json.gz).
+Chromium 13명 동시 이동 재측정은 수정 전 순간이동 5–13회, 수정 후 6개 프로필 모두 **0회**입니다. 다만 수정 후 30초 내 도착은 0명이며, 장거리 보행·탐색 대기는 남아 있습니다. [표](PERFORMANCE.md) / [원시 자료](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/workers-raw.json.gz).
 
 ## 첫 GitHub CI 실패와 재현
 
-`09d7b97`의 [첫 Node 22 CI](https://github.com/Bellsier/gacha-factory-development/actions/runs/39763575286)는 **2353/2354, 실패 1**이었습니다. 실패 항목은 기존 `Task71: it stands next to the base on open ground`이며 새 월드 생성 검사들은 통과했습니다. [실패 요약 로그](ci-first-failure.log).
+`09d7b97`의 [첫 Node 22 CI](https://github.com/Bellsier/gacha-factory-development/actions/runs/39763575286)는 **2353/2354, 실패 1**이었습니다. 실패 항목은 기존 `Task71: it stands next to the base on open ground`이며 새 월드 생성 검사들은 통과했습니다. [실패 요약 로그](https://github.com/Bellsier/gacha-factory-development/blob/9e4875fe13cea2efaeee63e0719fcd16fc02b5e9/docs/recovery/worldgen-stage3-review/ci-first-failure.log).
 
 Task71은 무작위 초기 광맥/마을 배치에서도 첫 제작소가 무조건 거점에서 Chebyshev 거리 1에 놓인다고 가정했습니다. seed0 LCG 배치에서 거리 1의 후보들이 광맥·시설·도로에 막히면 실제 게임은 다음 열린 링의 `(4,-2)`를 선택합니다(거점 `(2,0)`, 감정소 `(2,2)`, 박물관 `(0,-1)`). 이 현상은 수정 전 `1b4dff8`과 수정 후에서 동일하게 재현했습니다. 제작소 배치 게임 로직을 바꿀 문제가 아니라 기존 테스트의 무작위 전제 문제입니다.
 

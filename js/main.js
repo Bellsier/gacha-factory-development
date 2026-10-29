@@ -31,9 +31,10 @@ function boot(){
     if(['corrupted','worldgen','future'].includes(loaded.reason)){ saveBlocked=true; log('시험 저장을 불러올 수 없습니다. 원본을 보호하기 위해 저장을 중지합니다.'); }
     else { worldTestInitialize(state.world); worldRestoreEdits(); }
   }
-  // 'none' (no save yet) and 'unavailable' (storage inaccessible) are not
-  // announced here — they aren't errors, and 'unavailable' will surface
-  // naturally as '저장 안 됨' the moment an actual save attempt is made.
+  // 'none' (no save yet) is not announced here — it isn't an error. 'unavailable'
+  // (the save could not be read) is not logged here either: loadGame() has set
+  // saveUnverified, so nothing is saved this session (the status reads
+  // '저장 보호 중') and renderAll() shows the notice that says why (C1).
 
   // Task 114: the village facilities get their sites (once; a save keeps them)
   if(typeof villageEnsureSites === 'function') villageEnsureSites();

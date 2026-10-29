@@ -1184,7 +1184,7 @@ function renderSaveNotice(){
       ? '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 지우지 않고 그대로 두었고, 백업(' + p.backupKey + ')도 만들었어요. 지금은 저장하지 않습니다.'
       : '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 그대로 두었지만 백업을 만들지 못했어요. 지금은 저장하지 않습니다.';
     if(p.blocked){
-      const trial = typeof worldTestMode === 'function' && worldTestMode();
+      const trial = worldTestMode();
       text.textContent = kept + (trial ? ' 시험 모드에서는 원래 저장을 보호하려고 이번 세션의 진행을 저장하지 않아요.' : ' 이번 세션은 저장이 막혀 있어 진행을 저장하지 않아요.');
     } else {
       text.textContent = kept + (p.backupOk ? ' 이 새 게임을 저장하려면 아래 버튼을 누르세요.' : ' 새 게임을 저장하면 원래 저장은 사라집니다.');

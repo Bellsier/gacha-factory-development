@@ -580,14 +580,15 @@ function saveGame(){
 //   {ok:true, permanent, run}
 //   {ok:false, reason:'none'}        — nothing saved yet (not an error)
 //   {ok:false, reason:'unavailable'} — the save can't be read here (C1: saving is then off this session)
-//   {ok:false, reason:'corrupted', raw} — save exists but isn't valid JSON/shape, or has no run (C1: raw is the text as stored)
+//   {ok:false, reason:'corrupted', raw, key} — save exists but isn't valid JSON/shape, or has no run (C1: raw is the text as
+//                                    stored under `key`: SAVE_KEY, or SAVE_BASE_KEY when the test world has no save of its own)
 //   {ok:false, reason:'future'}      — save is from a newer saveVersion than this build understands
 function loadGame(){
-  let raw, hadTrialSave = false;
+  let raw, key = SAVE_KEY, hadTrialSave = false;
   try{
     raw = localStorage.getItem(SAVE_KEY); // C1: only read here — a full storage still reads (a write probe used to skip every check)
     hadTrialSave = !!raw && worldTestMode();
-    if(!raw && worldTestMode()) raw = localStorage.getItem(SAVE_BASE_KEY);
+    if(!raw && worldTestMode()){ key = SAVE_BASE_KEY; raw = localStorage.getItem(SAVE_BASE_KEY); }
   }catch(e){
     saveUnverified = true; // the save could not be read: nothing may be written over it this session
     return { ok:false, reason:'unavailable' };
@@ -597,15 +598,15 @@ function loadGame(){
   try{
     payload = JSON.parse(raw);
   }catch(e){
-    return { ok:false, reason:'corrupted', raw };
+    return { ok:false, reason:'corrupted', raw, key };
   }
   if(!isPlainObject(payload) || !isFiniteNumber(payload.saveVersion)){
-    return { ok:false, reason:'corrupted', raw };
+    return { ok:false, reason:'corrupted', raw, key };
   }
   if(payload.saveVersion > CURRENT_SAVE_VERSION){
     return { ok:false, reason:'future' }; // never touch the raw storage in this case
   }
-  if(!isPlainObject(payload.run)) return { ok:false, reason:'corrupted', raw }; // C1: no run, nothing to load — keep it rather than overwrite it
+  if(!isPlainObject(payload.run)) return { ok:false, reason:'corrupted', raw, key }; // C1: no run, nothing to load — keep it rather than overwrite it
   payload = migrateSave(payload);
   try{
     worldLoadingContext = worldContext(payload.run && payload.run.world);
@@ -622,16 +623,16 @@ function loadGame(){
 
 // ---------------------------------------------------------------------------
 // C1: a damaged save is never overwritten. boot() hands the text that could
-// not be read to protectCorruptSave(): a copy goes to a backup key (when the
-// storage takes it), and saveGame() refuses to write — autosave, closing the
-// tab, every caller — until the player chooses to start the new game's save
-// (saveStartOver, the notice's button). The original key is only read here.
+// not be read to protectCorruptSave(), with the key it was read from: a copy
+// goes to a backup key named after that key (when the storage takes it), and
+// saveGame() refuses to write — autosave, closing the tab, every caller — until
+// the player chooses to start the new game's save (saveStartOver, the notice's
+// button). The original key is only read here.
 // Nothing about this is saved; the save format is unchanged.
 // ---------------------------------------------------------------------------
-let saveCorrupt = null;      // { raw, backupKey, backupOk, changed } while a damaged save is being kept
+let saveCorrupt = null;      // { key, raw, backupKey, backupOk, changed } while a damaged save is being kept
 let saveUnverified = false;  // the save could not be read at all: never write over it this session
 let saveWatching = false;
-const SAVE_BACKUP_PREFIX = SAVE_KEY + '.corrupt-backup.';
 
 // A short fixed name for a text (the same damaged save always gets the same backup key).
 function saveBackupHash(text){
@@ -640,9 +641,11 @@ function saveBackupHash(text){
   return h.toString(16).padStart(8, '0');
 }
 
-// Copies the damaged text to its backup key; a key that already holds other text is left alone.
-function backupCorruptSave(raw){
-  const base = SAVE_BACKUP_PREFIX + saveBackupHash(raw);
+// Copies the damaged text found under `from` to its backup key (`from` + '.corrupt-backup.' + hash),
+// so the test world backs up a damaged normal save under the normal key's name, as the normal game
+// does. A key that already holds other text is left alone.
+function backupCorruptSave(raw, from){
+  const base = from + '.corrupt-backup.' + saveBackupHash(raw);
   try{
     for(let n = 0; n < 5; n++){
       const key = n ? base + '.' + n : base, have = localStorage.getItem(key);
@@ -655,9 +658,9 @@ function backupCorruptSave(raw){
   return { backupKey: null, backupOk: false };
 }
 
-function protectCorruptSave(raw){
-  const text = typeof raw === 'string' ? raw : String(raw);
-  saveCorrupt = Object.assign(backupCorruptSave(text), { raw: text, changed: false });
+function protectCorruptSave(raw, key){
+  const text = typeof raw === 'string' ? raw : String(raw), from = key || SAVE_KEY;
+  saveCorrupt = Object.assign(backupCorruptSave(text, from), { key: from, raw: text, changed: false });
   log(saveCorrupt.backupOk
     ? '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두고 백업도 만들었습니다(' + saveCorrupt.backupKey + ').'
     : '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두었지만 백업을 만들지 못했습니다.');
@@ -665,17 +668,17 @@ function protectCorruptSave(raw){
   // another tab saving over the kept text withdraws this tab's offer to start over
   if(!saveWatching && typeof window !== 'undefined' && window.addEventListener){
     saveWatching = true;
-    window.addEventListener('storage', (e) => { if(e.key === SAVE_KEY || e.key === null) saveCheckUnchanged(); });
+    window.addEventListener('storage', (e) => { if(e.key === null || (saveCorrupt && e.key === saveCorrupt.key)) saveCheckUnchanged(); });
   }
   if(typeof renderSaveNotice === 'function') renderSaveNotice();
 }
 
-// Is the stored save still the text this tab is keeping? If not (another tab saved,
-// or it can't be read), the offer to start over is withdrawn for good.
+// Is the stored save (under the key it was read from) still the text this tab is keeping?
+// If not (another tab saved, or it can't be read), the offer to start over is withdrawn for good.
 function saveCheckUnchanged(){
   if(!saveCorrupt) return true;
   let now;
-  try{ now = localStorage.getItem(SAVE_KEY); }catch(e){ now = undefined; }
+  try{ now = localStorage.getItem(saveCorrupt.key); }catch(e){ now = undefined; }
   if(now === saveCorrupt.raw && !saveCorrupt.changed) return true;
   if(!saveCorrupt.changed){
     saveCorrupt.changed = true;

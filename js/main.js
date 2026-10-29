@@ -22,7 +22,7 @@ function boot(){
     state = loaded.run;
     permanent = loaded.permanent;
   } else if(loaded.reason === 'corrupted'){
-    protectCorruptSave(loaded.raw); // C1: keep (and back up) the damaged save; nothing is saved until the player starts over
+    protectCorruptSave(loaded.raw, loaded.key); // C1: keep (and back up, under the key it was read from) the damaged save; nothing is saved until the player starts over
   } else if(loaded.reason === 'future'){
     saveBlocked = true;
     log('더 최신 버전의 저장 데이터가 있어 이 게임에서는 불러올 수 없습니다. 이번 세션은 저장 없이 진행됩니다.');

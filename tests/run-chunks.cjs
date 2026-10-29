@@ -13,10 +13,10 @@ let total = 0, failed = 0;
 function check(name, ok, detail) {
   total++;
   if (!ok) failed++;
-  console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail ? '\n' + detail : ''));
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${detail ? `\n${detail}` : ''}`);
 }
 for (const n of chunks) {
-  const file = path.join(__dirname, 'chunks', n + '.js');
+  const file = path.join(__dirname, 'chunks', `${n}.js`);
   new Function('require', '__dirname', 'check', fs.readFileSync(file, 'utf8'))(require, __dirname, check);
 }
 console.log({ chunks, total, failed });

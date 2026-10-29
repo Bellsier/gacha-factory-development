@@ -183,15 +183,17 @@ function sanitizeVillageState(raw){
 }
 
 // ---------------------------------------------------------------------------
-// Save / load (localStorage). Task 1. Single storage key, versioned payload,
+// Save / load (localStorage). Task 1. One key per page, versioned payload,
 // per-field defensive validation. Never touches game balance/rules — only
 // persists and restores the state that already exists above.
 // ---------------------------------------------------------------------------
-// The development repository's Pages preview (<owner>.github.io/gacha-factory-development/)
-// shares its origin, and so its localStorage, with the original game's preview on the
-// same github.io domain. It saves under its own key and never reads, writes or removes the
-// original one. Everywhere else (local files, a local server, the tests, the original
-// preview) the key stays 'gachaFactorySave'. The saved payload is the same either way.
+// SAVE_BASE_KEY is the game's key (storagekeys.js): 'gachaFactorySave', or
+// 'gachaFactorySave.dev' on the development repository's Pages preview, which shares
+// its origin (and so its localStorage) with the original game's preview and must never
+// read, write or remove the original's save. In the 256 test world (?worldgen=256,
+// worldchunks.js) the page saves under SAVE_BASE_KEY + '.worldgen256.v1' instead, and
+// only reads SAVE_BASE_KEY once, to start the test world from the game's progress.
+// The saved payload has the same shape either way.
 const SAVE_BASE_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null);
 const SAVE_KEY = worldTestMode() ? WORLDGEN_TEST_KEY : SAVE_BASE_KEY;
 const CURRENT_SAVE_VERSION = 1;
@@ -203,6 +205,8 @@ function isNonNegativeFinite(v){ return isFiniteNumber(v) && v >= 0; }
 function isNonNegativeInt(v){ return isNonNegativeFinite(v) && Number.isInteger(v); }
 function isPlainObject(v){ return v !== null && typeof v === 'object' && !Array.isArray(v); }
 
+// Before a save: can storage be used at all? The test world only reads (it writes no probe
+// key); a write that fails is still caught by saveGame's own try.
 function storageAvailable(){
   try{
     if(worldTestMode()){ localStorage.getItem(SAVE_KEY); return true; }

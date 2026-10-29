@@ -150,6 +150,11 @@ function worldGeneratedWalkable(context, x, y) {
     }
   return true;
 }
+// Puts a generated chunk's veins and scenery into the running world, once per chunk: the veins
+// join context.mines (generated ones kept after the saved ones, sorted by position) and, unless
+// the chunk's saved edits say they were found, the hidden list. state.world.mines becomes a new
+// array, so caches keyed on it rebuild. Nothing here is saved; serializeRunForSave leaves the
+// generated veins out and keeps only the edits.
 function materializeChunkEntities(context, chunk) {
   if (!chunk) return;
   const rt = worldRuntime(context);
@@ -182,6 +187,8 @@ function materializeChunkEntities(context, chunk) {
   rt.materialized.add(key);
   rt.revision++;
 }
+// Loads every chunk overlapping the rectangle (world units). Called by worldObstacles, the draw
+// list, exploration and the village's stand grid before they look at a spot.
 function worldEnsureRect(r) {
   const c = currentWorldContext();
   if (!c || worldLoadingContext) return;

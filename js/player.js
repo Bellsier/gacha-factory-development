@@ -146,6 +146,9 @@ function worldSceneryLegacy(){
 
 // Obstacle boxes in world coordinates, optionally only those near (x, y). Near a point the chunk
 // index answers (worldindex.js, same boxes in the same order); the whole world is the full scan.
+// In the 256 test world this first loads the generated chunks round the point (worldEnsureRect),
+// which adds their veins to state.world.mines: code that reads the index directly must do the same
+// (villageStandGrid in village.js does).
 function worldObstacles(nearX, nearY, radius){
   if(radius !== undefined && Number.isFinite(nearX) && Number.isFinite(nearY)) worldEnsureRect({minX:nearX-radius-1,maxX:nearX+radius+1,minY:nearY-radius-1,maxY:nearY+radius+1});
   if(radius !== undefined && typeof worldObstaclesNear === 'function') return worldObstaclesNear(nearX, nearY, radius);

@@ -623,10 +623,11 @@ function loadGame(){
 
 // ---------------------------------------------------------------------------
 // C1: a damaged save is never overwritten. boot() hands the text that could
-// not be read to protectCorruptSave(), with the key it was read from: a copy goes
-// to a backup key named after that key (when the storage takes it), and saveGame() refuses to write — autosave, closing the
-// tab, every caller — until the player chooses to start the new game's save
-// (saveStartOver, the notice's button). The original key is only read here.
+// not be read to protectCorruptSave(), with the key it was read from: a copy
+// goes to a backup key named after that key (when the storage takes it), and
+// saveGame() refuses to write — autosave, closing the tab, every caller — until
+// the player chooses to start the new game's save (saveStartOver, the notice's
+// button). The original key is only read here.
 // Nothing about this is saved; the save format is unchanged.
 // ---------------------------------------------------------------------------
 let saveCorrupt = null;      // { key, raw, backupKey, backupOk, changed } while a damaged save is being kept

@@ -19,6 +19,7 @@ const TD = {
 // `view` (a world rectangle, optional): only veins and scenery props inside it are listed (by the chunk
 // index) — the renderer passes the screen plus a margin wider than its own culling, so what is drawn is the same.
 function tdDrawList(player, view){
+  if(view && typeof worldEnsureRect === 'function') worldEnsureRect(view);
   const list = [];
   const base = state.world.base;
   // Task 107: buildings sort by the front edge of their footprint, so the player
@@ -61,12 +62,13 @@ function tdDrawList(player, view){
     list.push({ kind: 'ore', id: m.id, resource: m.resource, look, x: m.x, y: m.y, sortY: m.y });
   });
   tdOpenLandTufts().forEach(t => list.push({ kind: 'decor', prop: 'grass', x: t.x, y: t.y, sortY: t.y - 0.2 }));
-  if(terrainTunnelOpen()){
+  if(terrainTunnelOpen() || typeof currentWorldContext === 'function' && currentWorldContext()){
     // Task 111: the same pieces that block (worldScenery leaves out those on a mine or walling something in)
     (view ? worldSceneryInRect(view) : worldScenery().props).forEach(pr => {
       list.push({ kind: 'prop', prop: pr.kind, x: pr.x, y: pr.y, sortY: pr.kind === 'clearing' ? pr.y - 5 : pr.y });
     });
-  } else {
+  }
+  if(!terrainTunnelOpen()){
     const t = terrainTunnel();
     list.push({ kind: 'gate', x: t.gateX, y: t.y + t.halfWidth, sortY: t.y + t.halfWidth - 0.01 });
   }
@@ -134,7 +136,7 @@ function tdOpenLandTufts(){
   const sites = ['appraiser', 'museum'].map(k => vs[k]).filter(Boolean); // Task 114: none on a village site
   const vg = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: nor on the plaza, roads or lots
   const vparts = vg ? villageDistrict() : null;
-  const key = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
+  const key = w.base.x + ',' + w.base.y + '|' + (typeof worldVillageMines === 'function' ? worldVillageMines().length : w.mines.length) + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
   if(TD.tuftKey === key && TD.tufts) return TD.tufts;
   const out = [], b = BALANCE.world;
   for(let y = b.BOUNDS_MIN_Y + 0.25; y <= b.BOUNDS_MAX_Y; y += 0.5){
@@ -168,22 +170,19 @@ function tdDrawSway(g, img, sx, sy, zoom, anchorY, k){
 function tdEnsureGround(){
   const base = state.world.base;
   const village = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: the plaza and roads are ground too
-  const key = (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
+  const context=typeof currentWorldContext === 'function' ? currentWorldContext():null;
+  const key = (context ? context.seed+':'+context.generatorVersion+':256|' : '') + (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
   if(TD.groundKey === key && TD.groundMap) return;
   const map = tdBuildTileMap(terrainTunnelOpen(), base, village);
   // the picture is painted chunk by chunk as it comes into view (tdChunkCanvas); a new state drops the old chunks
   TD.groundKey = key; TD.groundMap = map; TD.chunks = new Map();
   // minimap base: one pixel per tile, mountain / ground / beyond colours
   const mc = document.createElement('canvas');
-  mc.width = map.cols; mc.height = map.rows;
+  mc.width = Math.min(256,map.cols); mc.height = Math.min(256,map.rows);
   const mg = mc.getContext('2d');
-  if(!mg) return; // no canvas (tests): the map and the chunk cache are ready, the minimap is not drawn
-  const mid = mg.createImageData(map.cols, map.rows);
-  const col = { [TD_TILE.GRASS]: [86, 128, 76], [TD_TILE.BEYOND]: [60, 98, 64], [TD_TILE.ROCK]: [120, 114, 106], [TD_TILE.TUNNEL]: [150, 120, 80], [TD_TILE.EDGE]: [34, 58, 40], [TD_TILE.PATH]: [160, 132, 92],
-    [TD_TILE.ROAD]: [176, 162, 138], [TD_TILE.PLAZA]: [206, 194, 170], [TD_TILE.GARDEN]: [112, 168, 92] };
-  for(let k = 0; k < map.types.length; k++){ const c3 = col[map.types[k]]; mid.data.set([c3[0], c3[1], c3[2], 255], k * 4); }
-  mg.putImageData(mid, 0, 0);
-  TD.miniBase = mc;
+  TD.miniBase=mc;TD.miniPainted=new Set();
+  if(mg){mg.fillStyle='#223a28';mg.fillRect(0,0,mc.width,mc.height);}
+
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +236,7 @@ function tdChunkWork(cx, cy, rows, now){
   const stop = rows === Infinity ? area.j1 : Math.min(area.j1, job.next + rows);
   while(job.next < stop){
     const j1 = Math.min(stop, job.next + TD_CHUNK.SLICE_ROWS), t0 = performance.now();
-    const img = tdPaintTileMap(map, { i0: area.i0, i1: area.i1, j0: job.next, j1 });
+    const img = worldPaintTileMap(map, { i0: area.i0, i1: area.i1, j0: job.next, j1 });
     job.data.set(img.data, (job.next - area.j0) * T * job.W * 4);
     const ms = performance.now() - t0; job.ms += ms; st.slices++; st.maxSliceMs = Math.max(st.maxSliceMs, ms);
     job.next = j1;
@@ -505,6 +504,7 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
 
 // Minimap (blueprint 3.5): ground, the workshop, DISCOVERED mines only, the player and the view.
 function tdRenderMinimap(cam){
+  tdUpdateMinimapChunks(1);
   const c = TD.mini;
   if(!c || !TD.miniBase) return;
   const g = c.getContext('2d');
@@ -587,4 +587,23 @@ function tdRenderHome(now){
   vg.addColorStop(0, 'rgba(20,12,6,0)'); vg.addColorStop(1, 'rgba(20,12,6,0.4)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);
   return cam;
+}
+
+// Paint at most a few already-known chunks; unknown land stays dark.
+// The overview backing store stays bounded, even if the world grows later.
+function tdUpdateMinimapChunks(budget=1){
+ const map=TD.groundMap,canvas=TD.miniBase;if(!map||!canvas)return;
+ const g=canvas.getContext('2d');if(!g)return;
+ const colors=['#56804c','#3c6240','#78726a','#967850','#223a28','#a0845c','#b0a28a','#cec2aa','#70a85c'];
+ const sx=canvas.width/map.cols,sy=canvas.height/map.rows;
+ for(const [key,types] of map.chunkTypes){
+  if(TD.miniPainted.has(key))continue;
+  const cy=((key%65536)+65536+32768)%65536-32768,cx=(key-cy)/65536;
+  const i0=cx*32-map.originX*4,j0=cy*32-map.originY*4;
+  for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+   const i=i0+x,j=j0+y;if(i<0||j<0||i>=map.cols||j>=map.rows)continue;
+   g.fillStyle=colors[types[y*32+x]];g.fillRect(Math.floor(i*sx),Math.floor(j*sy),Math.max(1,Math.ceil(sx)),Math.max(1,Math.ceil(sy)));
+  }
+  TD.miniPainted.add(key);if(--budget<=0)break;
+ }
 }

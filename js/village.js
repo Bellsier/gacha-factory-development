@@ -167,8 +167,12 @@ function villageReachGrid(reach){
 // within 2 units) without building and sorting a list per point (most of a new game's start-up).
 function villageStandGrid(x0, y0, nx, ny, st){
   const can = new Uint8Array(nx * ny);
+  const R = 2; // worldObstacles(x, y, 1) asks the index within 1 + 1
+  // worldObstacles first loads the generated chunks round each point it is asked about (the
+  // test world); every chunk an entry within R of a grid point lives in is in this rectangle
+  if(typeof worldEnsureRect === 'function') worldEnsureRect({ minX: x0 - R, maxX: x0 + (nx - 1) * st + R, minY: y0 - R, maxY: y0 + (ny - 1) * st + R });
   const index = typeof worldIndex === 'function' && typeof worldObstaclesNear === 'function' ? worldIndex() : null;
-  const U = index ? WORLD_INDEX.UNITS : 0, R = 2; // worldObstacles(x, y, 1) asks the index within 1 + 1
+  const U = index ? WORLD_INDEX.UNITS : 0;
   for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++){
     const x = x0 + i * st, y = y0 + j * st;
     if(!index){ can[j * nx + i] = playerCanStand(x, y) ? 1 : 0; continue; }
@@ -549,9 +553,10 @@ let villageRoadCache = null;
 
 function villageRoadKey(){
   const w = state.world, v = state.village, ws = w.workshops.filter(Boolean).map(h => h.x + ',' + h.y).join(';');
-  const last = w.mines[w.mines.length - 1];
+  const mines = typeof worldVillageMines === 'function' ? worldVillageMines() : w.mines;
+  const last = mines[mines.length - 1];
   return w.base.x + ',' + w.base.y + '|' + JSON.stringify(v.district) + '|' + VILLAGE.ORDER.map(k => v.sites[k] ? v.sites[k].x + ',' + v.sites[k].y : '-').join(';') +
-    '|' + w.mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
+    '|' + mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
 }
 
 // The roads: [{ to, points: [{x, y}, ...] }]. Each starts at a door step (or the

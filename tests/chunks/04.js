@@ -176,13 +176,19 @@ function t103Random(seed) {
   check('Task103: player — 4000 random steps with the tunnel closed stay on walkable ground', bad === 0);
   check('Task103: player — the closed mountain is never crossed (no mountain, no land beyond)', !regions.has('mountain') && !regions.has('beyond') && regions.has('open'));
   check('Task103: player — the walk did reach the mountain face (the test pushed against it)', minX < win.terrainRockFaceX(0) + 1);
-  // pushing straight into the face stops flush against it and slides along it
-  p.x = 0; p.y = -5; hold(['left']);
+  // pushing straight into the face stops flush against it and slides along it. The row must be open
+  // from x 0 to the face and a little below it: the village's house (placed at random) can stand on y -5.
+  const faceRow = [-5, -4, -6, -3, -7, -2].find((y) => {
+    const fx = win.terrainFaceX(y) + win.WORLD_TERRAIN.PLAYER_MARGIN;
+    for (let x = 0; x >= fx; x -= 0.05) if (!win.playerCanStand(x, y) || !win.playerCanStand(x, y + 0.35)) return false;
+    return true;
+  });
+  p.x = 0; p.y = faceRow; hold(['left']);
   for (let i = 0; i < 40; i++) win.tickPlayer();
   const flushX = p.x;
-  check('Task103: player — walking into the face stops flush against the rock', Math.abs(flushX - (win.terrainFaceX(-5) + win.WORLD_TERRAIN.PLAYER_MARGIN)) < 1e-3);
+  check('Task103: player — walking into the face stops flush against the rock', faceRow !== undefined && Math.abs(flushX - (win.terrainFaceX(faceRow) + win.WORLD_TERRAIN.PLAYER_MARGIN)) < 1e-3, 'row ' + faceRow);
   hold(['left', 'down']); win.tickPlayer();
-  check('Task103: player — pushing diagonally along the face slides along it', p.y > -5 && Math.abs(p.x - flushX) < 1e-3);
+  check('Task103: player — pushing diagonally along the face slides along it', p.y > faceRow && Math.abs(p.x - flushX) < 1e-3);
   hold([]);
   // with the tunnel open the land beyond can be reached, the range itself still cannot
   s.world.tunnelUnlocked = true;

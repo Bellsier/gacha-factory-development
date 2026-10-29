@@ -24,6 +24,12 @@ function tdSegDist(px, py, ax, ay, bx, by){
 // Tile type at a world point (the tile's centre).
 // Task 118: `village` (villageGroundLayout(), optional) adds the plaza, the garden and the roads on open ground.
 function tdTileAt(x, y, tunnelOpen, base, village){
+  const context=typeof currentWorldContext === 'function' ? currentWorldContext():null;
+  if(context && worldConnector(x,y)) return TD_TILE.GRASS;
+  if(context && worldOutsideLegacy(x,y)){
+    const tx=Math.floor(x*4),ty=Math.floor(y*4),cx=Math.floor(tx/32),cy=Math.floor(ty/32),chunk=worldChunk(context,cx,cy);
+    return chunk ? chunk.tiles[(ty-cy*32)*32+tx-cx*32] : TD_TILE.EDGE;
+  }
   if(!terrainInBounds(x, y)) return TD_TILE.EDGE;
   const region = terrainRegionAt(x, y);
   if(region === 'mountain') return TD_TILE.ROCK;
@@ -91,6 +97,7 @@ function tdBuildTileMap(tunnelOpen, base, village){
 }
 
 function tdTileType(map, i, j){
+  if(map.worldPaintTypeAt) return map.worldPaintTypeAt(i, j);
   if(i < 0 || j < 0 || i >= map.cols || j >= map.rows) return TD_TILE.EDGE;
   return map.typeAt ? map.typeAt(i, j) : map.types[j * map.cols + i];
 }
@@ -132,7 +139,7 @@ function tdPaintTileMap(map, area){
   };
   const pick = (list, h) => list[Math.floor(h * list.length) % list.length];
   const v2 = typeof tdStyleV2 === 'function' && tdStyleV2();
-  const ti0 = Math.max(0, A.i0 - 1), tj0 = Math.max(0, A.j0 - 1), ti1 = Math.min(map.cols, A.i1 + 1), tj1 = Math.min(map.rows, A.j1 + 1);
+  const ti0 = Math.max(map.minI ?? 0, A.i0 - 1), tj0 = Math.max(map.minJ ?? 0, A.j0 - 1), ti1 = Math.min(map.cols, A.i1 + 1), tj1 = Math.min(map.rows, A.j1 + 1);
   for(let j = tj0; j < tj1; j++){
     for(let i = ti0; i < ti1; i++){
       const type = tdTileType(map, i, j);

@@ -1,2 +1,4 @@
 node_modules/
 dist/
+# output of the browser and measurement scripts (tests/worldgen-stage3-browser.cjs, tools/measure-worldgen-stage3.cjs)
+work/

@@ -27,13 +27,19 @@ function boot(){
     saveBlocked = true;
     log('더 최신 버전의 저장 데이터가 있어 이 게임에서는 불러올 수 없습니다. 이번 세션은 저장 없이 진행됩니다.');
   }
-  // 'none' (no save yet) and 'unavailable' (storage inaccessible) are not
-  // announced here — they aren't errors, and 'unavailable' will surface
-  // naturally as '저장 안 됨' the moment an actual save attempt is made.
+  if(typeof worldTestMode === 'function' && worldTestMode()){
+    if(['corrupted','worldgen','future'].includes(loaded.reason)){ saveBlocked=true; log('시험 저장을 불러올 수 없습니다. 원본을 보호하기 위해 저장을 중지합니다.'); }
+    else { worldTestInitialize(state.world); worldRestoreEdits(); }
+  }
+  // 'none' (no save yet) is not announced here — it isn't an error. 'unavailable'
+  // (the save could not be read) is not logged here either: loadGame() has set
+  // saveUnverified, so nothing is saved this session (the status reads
+  // '저장 보호 중') and renderAll() shows the notice that says why (C1).
 
   // Task 114: the village facilities get their sites (once; a save keeps them)
   if(typeof villageEnsureSites === 'function') villageEnsureSites();
   renderAll();
+  if(typeof worldTestControls === 'function') worldTestControls();
   log(loaded.ok ? '이전 진행 상황을 불러왔습니다.' : '공방 가동을 시작합니다. 채굴장을 눌러 자원을 모으세요.');
 
   tickTimer = setInterval(tickLoop, TICK_MS);

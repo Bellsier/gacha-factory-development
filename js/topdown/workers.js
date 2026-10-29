@@ -60,7 +60,7 @@ function tdWorkerPlacements(){
   // cached: the answer only changes when the workers, veins, huts, base or tunnel change
   const w = state.world;
   const key = state.characters.map(c => c && c.id + ':' + c.resource + ':' + c.rarity).join(',') + '|' +
-    w.mines.map(m => m && m.id + ':' + m.x + ':' + m.y + ':' + m.developmentState + ':' + (isMineDiscovered(m) ? 1 : 0)).join(',') + '|' +
+    (typeof currentWorldContext==='function'&&currentWorldContext()?worldVillageMines():w.mines).map(m => m && m.id + ':' + m.x + ':' + m.y + ':' + m.developmentState + ':' + (isMineDiscovered(m) ? 1 : 0)).join(',') + '|' + (typeof currentWorldContext==='function'&&currentWorldContext()?worldRuntime().workerRevision||0:0) + '|' +
     w.workshops.map(ws => ws && ws.x + ':' + ws.y).join(',') + '|' + w.base.x + ',' + w.base.y + '|' + (w.tunnelUnlocked ? 1 : 0);
   if(TD.workerKey === key && TD.workerPlacements) return TD.workerPlacements;
   const out = tdComputeWorkerPlacements();
@@ -213,6 +213,7 @@ function tdWorkerSimStep(dtMs, nowMs){
   if(!TD.workerSim) tdWorkerSimReset();
   const sim = TD.workerSim, W = TD_WORKER, dt = Math.max(0, Math.min(100, dtMs));
   const placements = tdWorkerPlacements(), base = state.world.base, ids = {};
+  TD.navBudget=256;TD.navDeadline=performance.now()+2;
   let newcomers = 0;
   placements.forEach(p => {
     ids[p.id] = true;
@@ -222,6 +223,7 @@ function tdWorkerSimStep(dtMs, nowMs){
         delay: newcomers++ * W.START_GAP_MS, walked: 0, goalKey: '', route: [], lane: (tdWorkerHash(p.id, 8) * 2 - 1) * W.LANE,
         best: Infinity, stuckMs: 0, detours: 0, ghostMs: 0, ghosts: 0, snaps: 0, hidden: true };
     }
+    if(typeof currentWorldContext === 'function' && currentWorldContext()){worldWorkerStep(s,p,dt);return;}
     const key = p.x + ',' + p.y;
     if(s.goalKey !== key){ // a new place to work (or wait): walk there from wherever it is
       s.goalKey = key; s.route = tdWorkerRoute(s.x, s.y, p.x, p.y, s.lane); s.mode = 'walk';

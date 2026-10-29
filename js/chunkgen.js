@@ -25,9 +25,6 @@ function chunkValidate(context, x, y) {
 function chunkMod(n, d) {
   return ((n % d) + d) % d;
 }
-function chunkLegacyTile(tx, ty) {
-  return tx >= -48 && tx < 48 && ty >= -48 && ty < 48;
-}
 function chunkNoise(seed, tx, ty) {
   const gx = Math.floor(tx / 16),
     gy = Math.floor(ty / 16);

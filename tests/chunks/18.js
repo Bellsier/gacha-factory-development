@@ -81,3 +81,17 @@ const CLOCK_MID = fs.readFileSync(path.join(__dirname, 'fixtures', 'save_v1_midg
   const pa = a.win.state.world.player, pb = b.win.state.world.player;
   check('Task21: the player walks the same distance in game time whether the ticks come one by one or caught up', b.counts.steps === 10 && Math.abs(pa.y - pb.y) < 1e-9 && pa.y > 3.5, JSON.stringify({ steps: b.counts.steps, a: pa.y, b: pb.y }));
 })();
+
+(function test_workersSlowFrames() {
+  // the normal world: one 200 ms frame walks the workers as far as two 100 ms frames; past 250 ms it is capped
+  const mk = () => { const w = clockWin(CLOCK_MID).win; w.tdWorkerSimReset(); for (let i = 0; i < 20; i++) w.tdWorkerSimStep(100, i * 100); return w; };
+  const a = mk(), b = mk(), c = mk(), d = mk();
+  a.tdWorkerSimStep(100, 2100); a.tdWorkerSimStep(100, 2200);
+  b.tdWorkerSimStep(200, 2200);
+  c.tdWorkerSimStep(250, 2250);
+  d.tdWorkerSimStep(5000, 7000);
+  const at = (w) => JSON.stringify(Object.values(w.TD.workerSim.byId).map((s) => [s.id, +s.x.toFixed(9), +s.y.toFixed(9), s.mode]));
+  check('Task21: a 200 ms frame walks the workers like two 100 ms frames', at(a) === at(b));
+  check('Task21: a 5 s stall walks them only 250 ms (as a 250 ms frame), never a jump', at(d) === at(c));
+  check('Task21: the walking speed is unchanged (1.6 units a second)', a.TD_WORKER.WALK_SPEED === 1.6 && a.TD_WORKER.FRAME_MAX_MS === 250);
+})();

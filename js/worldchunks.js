@@ -1,4 +1,9 @@
 // Test-world runtime. Data cache is independent of TD's disposable canvases.
+
+// The 256 test world: 8 x 8 chunks of 8 units (32 x 32 quarter-unit tiles each), chunk keys -4..3 on
+// both axes, so the ground runs from -32 to 32 and a foot stays within +-EDGE. The legacy -12..12 map
+// (the village and the old world inside its border) sits in the middle at the same coordinates.
+const WORLD256 = Object.freeze({ SIZE: 256, CHUNK_UNITS: 8, CHUNK_MIN: -4, CHUNK_MAX: 3, EDGE: 31.75, LEGACY_EDGE: 12 });
 const WORLDGEN_TEST_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null) + '.worldgen256.v1';
 const WORLDGEN_MODE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('worldgen') === '256';
 let worldLoadingContext = null;
@@ -12,7 +17,7 @@ function worldContext(raw) {
   if (!fields.some((k) => Object.prototype.hasOwnProperty.call(raw || {}, k))) return null;
   if (
     !fields.every((k) => Object.prototype.hasOwnProperty.call(raw, k)) ||
-    raw.size !== 256 ||
+    raw.size !== WORLD256.SIZE ||
     raw.chunkEditsVersion !== 1
   )
     throw new Error('Unsupported test world');
@@ -36,7 +41,7 @@ function worldContext(raw) {
   for (const [key, entry] of Object.entries(edits)) {
     const pair = key.split(',').map(Number),
       [cx, cy] = pair;
-    if (pair.length !== 2 || !pair.every((v) => Number.isInteger(v) && v >= -4 && v <= 3) || key !== cx + ',' + cy)
+    if (pair.length !== 2 || !pair.every((v) => Number.isInteger(v) && v >= WORLD256.CHUNK_MIN && v <= WORLD256.CHUNK_MAX) || key !== cx + ',' + cy)
       throw new Error('Invalid chunk key');
     if (
       !entry ||
@@ -50,7 +55,7 @@ function worldContext(raw) {
     for (const [id, e] of Object.entries(entry.mines)) {
       const m = new RegExp('^gen:v' + raw.generatorVersion + ':mine:(-?\\d+):(-?\\d+)$').exec(id);
       const candidate = m && chunkMineCandidate(raw, Number(m[1]), Number(m[2]));
-      if (!candidate || candidate.id !== id || Math.floor(candidate.x / 8) !== cx || Math.floor(candidate.y / 8) !== cy)
+      if (!candidate || candidate.id !== id || Math.floor(candidate.x / WORLD256.CHUNK_UNITS) !== cx || Math.floor(candidate.y / WORLD256.CHUNK_UNITS) !== cy)
         throw new Error('Invalid mine id');
       if (
         !e ||
@@ -64,7 +69,7 @@ function worldContext(raw) {
   }
   return {
     seed: raw.seed,
-    size: 256,
+    size: WORLD256.SIZE,
     generatorVersion: raw.generatorVersion,
     chunkEditsVersion: 1,
     chunkEdits: JSON.parse(JSON.stringify(edits))
@@ -74,21 +79,21 @@ function currentWorldContext() {
   if (!WORLDGEN_MODE) return null;
   if (worldLoadingContext) return worldLoadingContext;
   try {
-    return state.world.size === 256 ? state.world : null;
+    return state.world.size === WORLD256.SIZE ? state.world : null;
   } catch (_) {
     return null;
   }
 }
 function worldBounds(context = currentWorldContext()) {
   return context
-    ? { minX: -31.75, maxX: 31.75, minY: -31.75, maxY: 31.75 }
-    : { minX: -10, maxX: 10, minY: -10, maxY: 10 };
+    ? { minX: -WORLD256.EDGE, maxX: WORLD256.EDGE, minY: -WORLD256.EDGE, maxY: WORLD256.EDGE }
+    : { minX: BALANCE.world.BOUNDS_MIN_X, maxX: BALANCE.world.BOUNDS_MAX_X, minY: BALANCE.world.BOUNDS_MIN_Y, maxY: BALANCE.world.BOUNDS_MAX_Y };
 }
 function worldTestInitialize(world) {
   if (!WORLDGEN_MODE) return;
-  if (world.size !== 256) {
+  if (world.size !== WORLD256.SIZE) {
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
-    Object.assign(world, { seed, size: 256, generatorVersion: 2, chunkEditsVersion: 1, chunkEdits: {} });
+    Object.assign(world, { seed, size: WORLD256.SIZE, generatorVersion: 2, chunkEditsVersion: 1, chunkEdits: {} });
   }
 }
 function worldRuntime(world = state.world) {
@@ -105,7 +110,7 @@ function worldRuntime(world = state.world) {
   return worldChunkRuntime;
 }
 function worldChunk(context, cx, cy) {
-  if (cx < -4 || cx > 3 || cy < -4 || cy > 3) return null;
+  if (cx < WORLD256.CHUNK_MIN || cx > WORLD256.CHUNK_MAX || cy < WORLD256.CHUNK_MIN || cy > WORLD256.CHUNK_MAX) return null;
   const rt = worldRuntime(context),
     key = cx + ',' + cy;
   if (rt.data.has(key)) return rt.data.get(key);
@@ -119,7 +124,7 @@ function worldChunk(context, cx, cy) {
   return chunk;
 }
 function serializeRunForSave(run) {
-  if (!WORLDGEN_MODE || run.world.size !== 256) return run;
+  if (!WORLDGEN_MODE || run.world.size !== WORLD256.SIZE) return run;
   const rt = worldRuntime(run.world),
     world = { ...run.world };
   world.mines = world.mines.filter((m) => rt.mines.get(m.id) !== m);
@@ -134,7 +139,8 @@ function worldConnector(x, y) {
   return x >= c.minX && x < c.maxX && y >= c.minY && y < c.maxY;
 }
 function worldOutsideLegacy(x, y) {
-  return x < -12 || x >= 12 || y < -12 || y >= 12;
+  const e = WORLD256.LEGACY_EDGE;
+  return x < -e || x >= e || y < -e || y >= e;
 }
 function worldGeneratedWalkable(context, x, y) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
@@ -179,8 +185,9 @@ function materializeChunkEntities(context, chunk) {
 function worldEnsureRect(r) {
   const c = currentWorldContext();
   if (!c || worldLoadingContext) return;
-  for (let cy = Math.max(-4, Math.floor(r.minY / 8)); cy <= Math.min(3, Math.floor(r.maxY / 8)); cy++)
-    for (let cx = Math.max(-4, Math.floor(r.minX / 8)); cx <= Math.min(3, Math.floor(r.maxX / 8)); cx++)
+  const { CHUNK_UNITS: U, CHUNK_MIN: lo, CHUNK_MAX: hi } = WORLD256;
+  for (let cy = Math.max(lo, Math.floor(r.minY / U)); cy <= Math.min(hi, Math.floor(r.maxY / U)); cy++)
+    for (let cx = Math.max(lo, Math.floor(r.minX / U)); cx <= Math.min(hi, Math.floor(r.maxX / U)); cx++)
       materializeChunkEntities(c, worldChunk(c, cx, cy));
 }
 function worldRestoreEdits() {
@@ -200,7 +207,7 @@ function recordGeneratedMineEdit(id) {
   if (!m) return;
   const rt = worldRuntime(c);
   rt.workerRevision = (rt.workerRevision || 0) + 1;
-  const key = Math.floor(m.x / 8) + ',' + Math.floor(m.y / 8);
+  const key = Math.floor(m.x / WORLD256.CHUNK_UNITS) + ',' + Math.floor(m.y / WORLD256.CHUNK_UNITS);
   if (!c.chunkEdits[key]) c.chunkEdits[key] = { mines: {} };
   c.chunkEdits[key].mines[id] = { discovered: !c.hiddenMineIds.includes(id), developmentState: m.developmentState };
 }

@@ -275,7 +275,7 @@ function sanitizeCharacters(raw){
 
 function isValidWorldCoord(v, axis){
   const context = typeof currentWorldContext === 'function' ? currentWorldContext() : null;
-  if(context) return Number.isInteger(v) && v >= -31 && v <= 31;
+  if(context) return Number.isInteger(v) && Math.abs(v) <= WORLD256.EDGE; // the integers inside the 256 world's edge: -31..31
   const b = BALANCE.world;
   const min = axis === 'y' ? b.BOUNDS_MIN_Y : b.BOUNDS_MIN_X;
   const max = axis === 'y' ? b.BOUNDS_MAX_Y : b.BOUNDS_MAX_X;
@@ -397,7 +397,7 @@ function sanitizeWorldState(raw){
 // positions are kept exactly as saved.
 function sanitizeTorches(raw){
   if(!Array.isArray(raw)) return [];
-  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && (terrainInBounds(t.x, t.y) || typeof currentWorldContext === 'function' && currentWorldContext() && Math.abs(t.x)<31.75 && Math.abs(t.y)<31.75))
+  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && (terrainInBounds(t.x, t.y) || typeof currentWorldContext === 'function' && currentWorldContext() && Math.abs(t.x) < WORLD256.EDGE && Math.abs(t.y) < WORLD256.EDGE))
     .slice(0, typeof TORCH !== 'undefined' ? TORCH.MAX : 12).map(t => ({ x: t.x, y: t.y }));
 }
 

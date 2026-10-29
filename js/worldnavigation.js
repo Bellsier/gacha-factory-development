@@ -1,5 +1,7 @@
 // Trial navigation: bounded incremental A* on absolute quarter-unit cells.
 // No saved navigation state, no teleports, and no changes to generator v1.
+// Cells are quarter units: from -EDGE * 4 (-127) up to the last cell that still starts inside EDGE (126).
+const WORLD_NAV_MIN = -WORLD256.EDGE * 4, WORLD_NAV_MAX = WORLD256.EDGE * 4 - 1;
 function worldNavFree(x, y) {
   return playerCanStand(x, y);
 }
@@ -115,7 +117,7 @@ function worldNavAdvance(job, limit = 128, deadline = performance.now() + 2) {
       const gx = n.gx + dx,
         gy = n.gy + dy,
         k = gx + ',' + gy;
-      if (gx < -127 || gx > 126 || gy < -127 || gy > 126 || job.closed.has(k)) continue;
+      if (gx < WORLD_NAV_MIN || gx > WORLD_NAV_MAX || gy < WORLD_NAV_MIN || gy > WORLD_NAV_MAX || job.closed.has(k)) continue;
       const g = n.g + 1,
         old = job.nodes.get(k);
       if (old && old.g <= g) continue;

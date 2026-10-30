@@ -483,7 +483,16 @@ function tickExploration(){
   return found;
 }
 
+// One game tick (TICK_MS of game time), then the numbers on screen.
 function tickLoop(){
+  tickStep();
+  updateNumbers();
+  updatePlayerSprite();
+}
+
+// Task 21: one game tick without the screen update. The game clock (main.js) runs several of
+// these in a row when ticks are overdue, and redraws the numbers once after the last.
+function tickStep(){
   // Task 114: a village without sites (a new game or an older save) gets them once
   if(typeof villageEnsureSites === 'function' && state.village && state.village.sites && !(state.village.sites.appraiser && state.village.sites.museum && state.village.district)) villageEnsureSites(); // Task 118: and the plaza
   tickMining();
@@ -495,8 +504,6 @@ function tickLoop(){
   tickPlayer();
   tickExploration(); // Task 65
   if(tickTunnelWork() && typeof renderAll === 'function') renderAll(); // Task 93: the work is done, the tunnel opens
-  updateNumbers();
-  updatePlayerSprite();
 }
 
 // passive ticket trickle — only once the first (50G-earned) ticket has been

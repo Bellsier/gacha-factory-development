@@ -370,6 +370,9 @@ function tdFrame(now){
   }
   TD.lastFrame = now;
   if(TD.frameAvg !== undefined && (TD.qualityCheck = (TD.qualityCheck || 0) + 1) % 30 === 0) TD.quality = tdQualityFor(TD.frameAvg, TD.quality);
+  // Task 21: the game clock also runs from the frames, so on a slow device the due ticks come a
+  // frame at a time (and the frame shows them) instead of in bursts when the late interval fires
+  if(typeof tickClockFrame === 'function'){ try { tickClockFrame(); } catch(e){ /* the interval keeps the clock going */ } }
   try { tdRender(now); } catch(e){ /* keep the loop alive; the game itself runs on its own tick */ }
   window.requestAnimationFrame(tdFrame);
 }

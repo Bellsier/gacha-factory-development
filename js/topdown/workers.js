@@ -30,6 +30,7 @@ const TD_WORKER = {
   SUB_STEP: 0.08,    // longest single collision step
   START_GAP_MS: 450, // workers leave the door one after another
   STUCK_MS: 900,     // no progress for this long = stuck
+  FRAME_MAX_MS: 250, // Task 21: the longest frame time walked (in steps of at most 100 ms)
   PROGRESS: 0.04,    // getting this much closer counts as progress
   DETOUR: 0.45,      // side step taken round something in the way
   GHOST_MS: 1400,    // after two detours: this long ignoring obstacles (not rock)
@@ -211,7 +212,9 @@ function tdWorkerDetour(s, wp){
 // Moves the walking workers on by dtMs. Renderer state only (TD.workerSim).
 function tdWorkerSimStep(dtMs, nowMs){
   if(!TD.workerSim) tdWorkerSimReset();
-  const sim = TD.workerSim, W = TD_WORKER, dt = Math.max(0, Math.min(100, dtMs));
+  // Task 21: a slow frame (up to FRAME_MAX_MS) is walked in steps of at most 100 ms, so the workers keep
+  // their walking speed when the frames are slow; anything longer (a stall) still counts as FRAME_MAX_MS
+  const sim = TD.workerSim, W = TD_WORKER, total = Math.max(0, Math.min(W.FRAME_MAX_MS, dtMs || 0)), steps = Math.max(1, Math.ceil(total / 100)), dt = total / steps;
   const placements = tdWorkerPlacements(), base = state.world.base, ids = {};
   // The test world's route searches (worldWorkerStep) share a time budget per frame: 12% of
   // the time since the last frame, at least 2 ms and at most 6 ms (128 search nodes a ms).
@@ -220,7 +223,7 @@ function tdWorkerSimStep(dtMs, nowMs){
   const navMs = Math.min(6, Math.max(2, (dtMs || 0) * 0.12));
   TD.navBudget = Math.round(128 * navMs); TD.navDeadline = performance.now() + navMs;
   let newcomers = 0;
-  placements.forEach(p => {
+  for(let k = 0; k < steps; k++) placements.forEach(p => {
     ids[p.id] = true;
     let s = sim.byId[p.id];
     if(!s){ // a worker (just hired, or the game just opened) comes out of the workshop door

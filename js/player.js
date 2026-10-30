@@ -2,6 +2,9 @@
 // No wandering AI, no collision with mines, no pathfinding.
 // Task 66: the mountain range (js/terrain.js) blocks movement — see tickPlayer.
 const playerHeld = { up: false, down: false, left: false, right: false };
+// Task 21: when the player started holding a direction (performance.now()). A game tick the clock
+// makes up for time before that moment does not move the player (main.js tickClock).
+let playerHeldSince = -Infinity;
 
 function playerDirFromKey(key){
   if(key === 'w' || key === 'W' || key === 'ArrowUp') return 'up';
@@ -13,6 +16,7 @@ function playerDirFromKey(key){
 
 function setPlayerHeld(dir, down){
   if(!Object.prototype.hasOwnProperty.call(playerHeld, dir)) return false;
+  if(down && !playerHeld.up && !playerHeld.down && !playerHeld.left && !playerHeld.right && typeof performance !== 'undefined') playerHeldSince = performance.now();
   playerHeld[dir] = !!down;
   return true;
 }
@@ -199,6 +203,7 @@ function playerCanStand(x, y){
 }
 
 function tickPlayer(){
+  if(typeof tickClockTickAt === 'number' && tickClockTickAt < playerHeldSince) return; // Task 21: a made-up tick from before the press
   const player = state.world.player;
   // Task 119: inside the house the room moves; the world position waits on the door step
   if(typeof villageHomeInside === 'function' && villageHomeInside()){ player.pose = 'idle'; villageHomeTick(); return; }

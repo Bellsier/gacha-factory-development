@@ -264,8 +264,11 @@ function worldStepFoot(startX, startY, dx, dy, step, opts){
     }
     return 0;
   };
-  // Only obstacles are slipped around; the mountain behaves exactly as before (Task 66).
-  const terrainAllows = (tx, ty) => !terrainOk || isWorldPointWalkable(tx, ty);
+  // Only obstacles are slipped around; the mountain behaves exactly as before (Task 66). Task 22: in
+  // the 256 test world the generated rock's corners are slipped round too (its gaps can be one cell
+  // wide), within the same CORNER_SLIP; a straight face still stops the player flush there, as no
+  // side step clears it.
+  const terrainAllows = (tx, ty) => !terrainOk || isWorldPointWalkable(tx, ty) || !!currentWorldContext();
   if(dy === 0 && Math.abs(x - next.x) > 1e-9 && Math.abs(x - startX) < step * 0.5 && terrainAllows(next.x, startY)){
     const s2 = slip('x', startY, next.x);
     if(s2 && ok(x, startY + s2)) y = startY + s2;

@@ -300,14 +300,52 @@ function tdDrawGroundChunks(g, cam, w, h, zoom, now){
 }
 const TD_CHUNK_DEBUG = (() => { try { return new URLSearchParams(window.location.search).get('chunks') === 'debug'; } catch(e){ return false; } })();
 
+// ---------------------------------------------------------------------------
+// Task 22: the drawing resolution on slow screens. A phone's canvas has device-ratio times
+// (up to 3 x 3 = 9 times) the pixels of its CSS size, and filling them is most of a frame on a
+// slow phone. When the frames stay slow, the canvas is drawn at 1/k of the device ratio, k a
+// whole number, and the browser shows each canvas pixel as a k x k block (the canvas is
+// image-rendering: pixelated), so the picture keeps its size and stays sharp. k is only used
+// where an art pixel is still a whole number of canvas pixels (zoom x ratio / k whole), so the
+// pixel art looks the same; text and soft light on the canvas get coarser. One step at a time,
+// at most MAX_CHANGES a session, HOLD_MS apart; back up only when the frames would stay fast at
+// the finer size (pixels grow with the square). PC screens at ratio 1 never change.
+// ---------------------------------------------------------------------------
+const TD_RES_STEP = { SLOW_MS: 45, BACK_MS: 20, HOLD_MS: 4000, MAX_CHANGES: 3 };
+// The divisors usable now: k = 1 always; 2 and 3 where the canvas stays at least the CSS size and
+// an art pixel stays whole.
+function tdRenderDivisors(native, zoom){
+  const out = [1];
+  for(let k = 2; k <= 3; k++){ const s = native / k; if(s >= 1 && Math.abs(zoom * s - Math.round(zoom * s)) < 1e-9) out.push(k); }
+  return out;
+}
+// Called once a second or so with the average frame time: steps the divisor down or up.
+function tdRenderScaleStep(now, avgMs){
+  if(!(avgMs > 0)) return false;
+  const st = TD.resStep || (TD.resStep = { k: 1, at: -Infinity, frame: 0, changes: 0 });
+  if(st.changes >= TD_RES_STEP.MAX_CHANGES || now - st.at < TD_RES_STEP.HOLD_MS || (TD.frames || 0) - st.frame < 60) return false;
+  const native = Math.max(1, Math.min(3, window.devicePixelRatio || 1)), v = TD.view;
+  const ks = tdRenderDivisors(native, v ? v.zoom : 1), i = Math.max(0, ks.indexOf(st.k));
+  let next = st.k;
+  if(avgMs > TD_RES_STEP.SLOW_MS && i < ks.length - 1) next = ks[i + 1];
+  else if(i > 0 && avgMs * Math.pow(st.k / ks[i - 1], 2) < TD_RES_STEP.BACK_MS) next = ks[i - 1];
+  if(next === st.k) return false;
+  st.k = next; st.at = now; st.frame = TD.frames || 0; st.changes++;
+  TD.frameAvg = undefined; // measure the new size afresh
+  return true;
+}
+
 function tdResize(){
   const c = TD.canvas;
   const w = Math.max(1, c.clientWidth || window.innerWidth), h = Math.max(1, c.clientHeight || window.innerHeight);
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  const native = Math.max(1, Math.min(3, window.devicePixelRatio || 1)), zoom = topdownZoom(w, h);
+  const div = TD.resStep && tdRenderDivisors(native, zoom).includes(TD.resStep.k) ? TD.resStep.k : 1; // Task 22 (another zoom: back to 1 if it no longer fits)
+  const dpr = native / div;
   if(c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)){ c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
-  const zoom = topdownZoom(w, h), k = typeof tdStyleRenderScale === 'function' ? tdStyleRenderScale(zoom, dpr) : dpr;
+  const k = typeof tdStyleRenderScale === 'function' ? tdStyleRenderScale(zoom, dpr) : dpr;
   // the style experiment snaps the drawing scale so an art pixel is whole device pixels; the view is then measured in those units
   TD.view = k === dpr ? { w, h, zoom, dpr } : { w: c.width / k, h: c.height / k, zoom, dpr: k };
+  TD.view.div = div; // Task 22: the divisor in use (1 = full resolution)
   // the resolution experiment's auto mode: another zoom or device ratio may need the other sprite set
   if(typeof tdResOnResize === 'function' && tdResOnResize(zoom, dpr) && TD.sheet) TD.sheet = tdBuildSpriteSheet();
 }
@@ -369,7 +407,10 @@ function tdFrame(now){
     TD.frameAvg = TD.frameAvg === undefined ? dt : TD.frameAvg * 0.95 + dt * 0.05;
   }
   TD.lastFrame = now;
-  if(TD.frameAvg !== undefined && (TD.qualityCheck = (TD.qualityCheck || 0) + 1) % 30 === 0) TD.quality = tdQualityFor(TD.frameAvg, TD.quality);
+  if(TD.frameAvg !== undefined && (TD.qualityCheck = (TD.qualityCheck || 0) + 1) % 30 === 0){
+    TD.quality = tdQualityFor(TD.frameAvg, TD.quality);
+    tdRenderScaleStep(now, TD.frameAvg); // Task 22
+  }
   // Task 21: the game clock also runs from the frames, so on a slow device the due ticks come a
   // frame at a time (and the frame shows them) instead of in bursts when the late interval fires
   if(typeof tickClockFrame === 'function'){ try { tickClockFrame(); } catch(e){ /* the interval keeps the clock going */ } }

@@ -215,3 +215,19 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   const rects = win.tdDoorRects({ x: W.player.x, y: W.player.y }, 390, 844, 2);
   check('Task23: the door buildings near the player are listed (the cabin and both huts at least)', rects.length >= 3 && rects.every((q) => q.w > 0 && q.h > 0), String(rects.length));
 })();
+
+(function test_buildCheckStaysCheap() {
+  // the screen asks canBuildWorkshop every tick: it must not lay the village roads out again
+  const win = hutWin(), s = win.state;
+  s.research.workshopBuild = true; s.gold = 1e12;
+  win.villageRoads(); // the roads as they are, cached
+  let computes = 0;
+  const real = win.villageRoadsCompute;
+  win.villageRoadsCompute = function () { computes++; return real.apply(this, arguments); };
+  for (let i = 0; i < 20; i++) win.canBuildWorkshop();
+  win.updateNumbers();
+  check('Task23: asking whether a hut can be built (every tick) never lays the roads out again', computes === 0 && win.canBuildWorkshop() === true, String(computes));
+  win.workshopBuildSpot();
+  const after = computes; win.villageRoads();
+  check('Task23: choosing the spot leaves the cached roads as they were (no extra layout afterwards)', computes === after, JSON.stringify({ after, now: computes }));
+})();

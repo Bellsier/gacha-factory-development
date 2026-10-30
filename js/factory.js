@@ -102,7 +102,9 @@ function workshopBuildProducts(){
   return BALANCE.workshop.BUILD_PRODUCTS[state.world.workshops.length + 1] || {};
 }
 
-function workshopBuildSpot(){
+// anyOnly: only whether there is a spot at all (the old rule; the screen asks this every tick, so the
+// spaced choice below, which lays the roads out again per spot, runs only when a hut is really built)
+function workshopBuildSpot(anyOnly){
   const base = state.world.base;
   const taken = (x, y) =>
     (x === base.x && y === base.y) ||
@@ -120,12 +122,12 @@ function workshopBuildSpot(){
   // ...and a spot off the packed ring must not turn the village roads (laid round the huts) onto a hut
   const roadsKeepOff = (x, y) => {
     if(typeof villageGroundNear !== 'function' || !state.village || !state.village.district) return true;
-    const list = state.world.workshops;
+    const list = state.world.workshops, cache = typeof villageRoadCache !== 'undefined' ? villageRoadCache : null;
     list.push({ id: '_spot', x, y });
     try { return list.every(w => !w || !villageGroundNear(w.x, w.y, VILLAGE.DISTRICT.BUILD_CLEAR)); }
-    finally { list.pop(); }
+    finally { list.pop(); if(typeof villageRoadCache !== 'undefined') villageRoadCache = cache; } // the roads as they are now
   };
-  for(const spaced of [true, false]){
+  for(const spaced of anyOnly ? [false] : [true, false]){
     for(let r = 1; r <= 4; r++){
       for(let dy = -r; dy <= r; dy++){
         for(let dx = -r; dx <= r; dx++){
@@ -148,7 +150,7 @@ function canBuildWorkshop(){
   if(state.gold < workshopBuildCost()) return false;
   const parts = workshopBuildProducts();
   if(!Object.keys(parts).every(k => (state.products[k] || 0) >= parts[k])) return false;
-  return workshopBuildSpot() !== null;
+  return workshopBuildSpot(true) !== null;
 }
 
 function buildWorkshop(){

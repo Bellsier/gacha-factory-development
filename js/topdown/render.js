@@ -566,7 +566,8 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
   if(TD.target){
     const sp = topdownToScreen(TD.target.x, TD.target.y, cam, w, h, zoom);
     const label = (TD.touch ? '' : '[E] ') + TD.target.label;
-    g.font = 'bold ' + (12 + zoom) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+    // Task 24: 14px and up on a PC, 16px on a phone
+    g.font = 'bold ' + (TD.touch ? 16 : Math.max(14, 12 + zoom)) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
     let lines = [label];
     if(g.measureText(label).width + 14 > w - 12 && label.includes(' · ')){ const cut = label.indexOf(' · '); lines = [label.slice(0, cut), label.slice(cut + 3)]; }
     const tw = Math.min(w - 12, Math.max(...lines.map(l => g.measureText(l).width)) + 14), bh = 22 * lines.length;
@@ -586,12 +587,13 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
     if(TD.view.div > 1) tdBubbleHtml(lines, TD.bubbleRect, locked, thin, g.font); // Task 23: sharp text on a lowered resolution
     else {
       tdBubbleHtml(null);
-      g.fillStyle = locked ? (thin ? 'rgba(40,36,34,0.5)' : 'rgba(40,36,34,0.88)') : (thin ? 'rgba(22,28,32,0.5)' : 'rgba(22,28,32,0.9)');
-      g.fillRect(bx, by, tw, bh); g.fillStyle = locked ? '#8b98a1' : '#ffd27a';
+      // Task 24: the panels' wood and copper (style.css .td-bubble matches)
+      g.fillStyle = locked ? (thin ? 'rgba(44,38,34,0.5)' : 'rgba(44,38,34,0.9)') : (thin ? 'rgba(29,22,17,0.55)' : 'rgba(29,22,17,0.92)');
+      g.fillRect(bx, by, tw, bh); g.fillStyle = locked ? '#8b98a1' : '#cf8549';
       g.fillRect(bx, by + bh - 1, tw, 2);
       g.textBaseline = 'middle';
       if(thin){ g.fillStyle = '#000'; lines.forEach((l, i) => g.fillText(l, bx + 8, by + 12 + i * 22, tw - 14)); }
-      g.fillStyle = locked ? '#b8c0c6' : '#fff6dc';
+      g.fillStyle = locked ? '#c9c0b6' : '#fff3e2';
       lines.forEach((l, i) => g.fillText(l, bx + 7, by + 11 + i * 22, tw - 14));
     }
   } else { TD.bubbleRect = null; tdBubbleHtml(null); }

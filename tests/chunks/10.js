@@ -134,11 +134,12 @@ const DEV_SAVE_KEY = 'gachaFactorySave.dev';
 
   // 1 + 2. the stylesheet: Korean text face, the size floor, the panel ending above the dock
   const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
-  check('UI1: the world-first view uses the Korean text face and a 13px floor', /body\.view-topdown\{--font-mono:var\(--font-body\); --fs-min:13px;/.test(css) && /--font-body:'Apple SD Gothic Neo'/.test(css));
+  // Task 24: the floor is 14px (was 13) and the Korean UI face comes first, the system Korean faces after it
+  check('UI1: the world-first view uses the Korean text face and a 14px floor', /body\.view-topdown\{--font-mono:var\(--font-body\); --fs-min:14px;/.test(css) && /--font-body:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;/.test(css));
   check('UI1: the classic page keeps its sizes (no floor outside the world-first view)', /:root\{[\s\S]*?--fs-min:0px;/.test(css));
   const bare = [...css.replace(/max\([^)]*\)/g, '').matchAll(/font-size:([0-9.]+)rem/g)].map((x) => +x[1]);
   check('UI1: no rem size under 14px is left without the floor', bare.length > 0 && bare.every((v) => v * 16 >= 14), bare.filter((v) => v * 16 < 14).join());
-  check('UI1: phones get a 14px floor and the sheet ends on the dock', /--fs-min:14px; --td-dock-h:calc\(50px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(css) && /height:calc\(72dvh - var\(--td-dock-h\)\)/.test(css));
+  check('UI1: phones get a 16px floor (Task 24, was 14) and the sheet ends on the dock (60px, Task 24)', /--fs-min:16px; --td-dock-h:calc\(60px \+ env\(safe-area-inset-bottom, 0px\)\)/.test(css) && /height:calc\(72dvh - var\(--td-dock-h\)\)/.test(css));
   check('UI1: on PC the open panel stops above the dock', /--td-dock-h:74px;/.test(css) && /td-panel-open \.tab-panel\.active, body\.view-topdown\.td-log-open #logSection\{bottom:var\(--td-dock-h\)/.test(css));
 })();
 

@@ -2,7 +2,9 @@
     --font-display:'Space Grotesk','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',system-ui,sans-serif; /* Task 82: fallbacks keep the look when Google Fonts can't load */
     --font-mono:'IBM Plex Mono','D2Coding','Noto Sans Mono CJK KR','Malgun Gothic',ui-monospace,monospace;
     /* UI pass 1: Korean text in the world-first view (the mono face has no Hangul, so it fell back to a wide fixed-width one) */
-    --font-body:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;
+    --font-body:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;
+    /* Task 24: a soft handwriting face for records and (later) villagers' words; the UI face if it never loads */
+    --font-hand:'Gaegu','IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;
     --fs-min:0px; /* the smallest text size; 0 keeps the classic page as it was, the world-first view sets it below */
     --td-dock-h:0px; /* the dock's height when a panel must stay clear of it (world-first view, below) */
     --bg: #14181c;
@@ -398,7 +400,7 @@
   #tdHud{display:none;}
   body.view-topdown #tdHud{display:block;}
   /* UI pass 1: readable Korean, numbers kept in even columns, nothing under 13px (14px on a phone, below) */
-  body.view-topdown{--font-mono:var(--font-body); --fs-min:13px; font-variant-numeric:tabular-nums;}
+  body.view-topdown{--font-mono:var(--font-body); --fs-min:14px; font-variant-numeric:tabular-nums;} /* Task 24: 14px floor (was 13) */
   body.view-topdown .wrap{position:fixed; inset:0; max-width:none; margin:0; pointer-events:none; z-index:2;}
   /* HUD: currencies and the next step, top left */
   body.view-topdown header{position:fixed; right:12px; bottom:70px; border:none; padding:0; margin:0; z-index:2;}
@@ -414,6 +416,7 @@
     background:rgba(18,22,26,0.88); border:1px solid rgba(255,255,255,0.14); border-radius:10px; z-index:4;}
   body.view-topdown .tab-btn, body.view-topdown .td-log-btn{width:auto; padding:8px 14px; border:1px solid var(--line); border-radius:6px; background:var(--panel-2); color:var(--text); font-family:var(--font-display); font-weight:700; font-size:max(0.85rem, var(--fs-min));}
   body.view-topdown .tab-btn.active{border-color:var(--line); color:var(--text);}
+  body.view-topdown.td-log-open .tab-btn.active{color:var(--dim); border-color:transparent; background:transparent;} /* the log is open, not that tab */
   body.view-topdown.td-panel-open .tab-btn.active, body.view-topdown.td-log-open .td-log-btn{background:var(--amber); border-color:var(--amber); color:#1a1208;}
   body:not(.view-topdown) .td-log-btn{display:none;}
   /* panels: the old tabs and the log, unchanged inside */
@@ -492,12 +495,159 @@
     body.view-topdown header{bottom:auto; top:104px; right:10px;}
     body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{top:auto; height:72vh; height:72dvh; width:100vw; border-left:none; border-top:1px solid var(--line); border-radius:12px 12px 0 0; padding:48px 12px 80px;}
     /* UI pass 1: the sheet keeps its top edge but ends on the full-width dock (its 50px + the home-bar inset), not under it */
-    body.view-topdown{--fs-min:14px; --td-dock-h:calc(50px + env(safe-area-inset-bottom, 0px));}
+    body.view-topdown{--fs-min:16px; --td-dock-h:calc(60px + env(safe-area-inset-bottom, 0px));} /* Task 24: 16px floor (was 14), 60px dock (icon over the name) */
     body.view-topdown .tabbar{height:var(--td-dock-h);}
     body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{height:calc(72dvh - var(--td-dock-h)); padding-bottom:20px; border-bottom:none; border-radius:12px 12px 0 0;}
     .td-close{top:auto; bottom:calc(72dvh - 44px);}
     body.view-topdown:not(.td-touch) .td-torch{bottom:70px;} /* Task 112: above the full-width dock */
     body.view-topdown:not(.td-touch) .td-decor.is-on{bottom:112px;} /* Task 120: above the torch button */
+  }
+
+  /* ---------------------------------------------------------------------------
+     Task 24: interface and type, first pass (world-first view only; ?view=classic keeps its look).
+     Warm wood panels, copper for what can be pressed, deep teal for what is on / done, one UI face
+     (IBM Plex Sans KR, system Korean faces if it never loads) at 14px and up (16px on phones),
+     and the same button, state, title, close and scroll rules for every panel.
+     --------------------------------------------------------------------------- */
+  body.view-topdown{
+    --font-display:var(--font-body);
+    --wood-0:#1d1611; --wood-1:#2a2018; --wood-2:#352920; --wood-3:#45352a; --wood-edge:#6b5038;
+    --copper:#cf8549; --copper-hi:#e8a46b; --copper-lo:#8a4f27; --teal-deep:#163c3a; --teal-on:#5fcab2;
+    --panel:var(--wood-1); --panel-2:var(--wood-2); --line:#5a4332; --text:#f4ead9; --dim:#c4b098;
+    --amber:var(--copper); --amber-dim:var(--copper-lo); --teal:var(--teal-on); --legend:#ecbb5a;
+    --hud-bg:rgba(29,22,17,0.9); --hud-edge:rgba(232,164,107,0.45);
+    --ico-mining:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h6v1h-6zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h2v1h-2zM5 2h2v1h-2zM9 2h2v1h-2zM0 3h2v1h-2zM5 3h2v1h-2zM10 3h2v1h-2zM0 4h1v1h-1zM5 4h2v1h-2zM11 4h1v1h-1zM5 5h2v1h-2zM5 6h2v1h-2zM5 7h2v1h-2zM5 8h2v1h-2zM5 9h2v1h-2zM5 10h2v1h-2z'/%3E%3C/svg%3E");
+    --ico-dev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M1 2h10v1h-10zM2 3h9v1h-9zM3 4h7v1h-7zM4 5h5v1h-5zM5 6h3v1h-3zM5 7h3v1h-3zM4 8h5v1h-5zM2 9h9v1h-9zM2 10h9v1h-9z'/%3E%3C/svg%3E");
+    --ico-workers:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h4v1h-4zM2 1h8v1h-8zM1 2h10v1h-10zM0 3h12v1h-12zM3 5h6v1h-6zM3 6h1v1h-1zM5 6h2v1h-2zM8 6h1v1h-1zM3 7h6v1h-6zM4 8h4v1h-4zM2 9h8v1h-8zM1 10h10v1h-10zM1 11h10v1h-10z'/%3E%3C/svg%3E");
+    --ico-research:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h6v1h-6zM4 1h4v1h-4zM4 2h1v1h-1zM7 2h1v1h-1zM4 3h1v1h-1zM7 3h1v1h-1zM3 4h1v1h-1zM8 4h1v1h-1zM2 5h1v1h-1zM9 5h1v1h-1zM1 6h1v1h-1zM10 6h1v1h-1zM0 7h1v1h-1zM2 7h8v1h-8zM11 7h1v1h-1zM0 8h1v1h-1zM2 8h8v1h-8zM11 8h1v1h-1zM0 9h1v1h-1zM2 9h8v1h-8zM11 9h1v1h-1zM1 10h10v1h-10z'/%3E%3C/svg%3E");
+    --ico-delivery:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h10v1h-10zM1 2h10v1h-10zM1 4h10v1h-10zM1 5h1v1h-1zM5 5h2v1h-2zM10 5h1v1h-1zM1 6h1v1h-1zM5 6h2v1h-2zM10 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM1 8h1v1h-1zM10 8h1v1h-1zM1 9h10v1h-10z'/%3E%3C/svg%3E");
+    --ico-village:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M5 0h2v1h-2zM4 1h4v1h-4zM3 2h6v1h-6zM2 3h8v1h-8zM1 4h10v1h-10zM0 5h12v1h-12zM2 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM5 7h2v1h-2zM9 7h1v1h-1zM2 8h1v1h-1zM5 8h2v1h-2zM9 8h1v1h-1zM2 9h1v1h-1zM5 9h2v1h-2zM9 9h1v1h-1zM2 10h8v1h-8z'/%3E%3C/svg%3E");
+    --ico-log:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h4v1h-4zM7 1h4v1h-4zM1 2h1v1h-1zM4 2h1v1h-1zM7 2h1v1h-1zM10 2h1v1h-1zM1 3h1v1h-1zM3 3h2v1h-2zM7 3h2v1h-2zM10 3h1v1h-1zM1 4h1v1h-1zM4 4h1v1h-1zM7 4h1v1h-1zM10 4h1v1h-1zM1 5h1v1h-1zM3 5h2v1h-2zM7 5h2v1h-2zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM1 7h1v1h-1zM4 7h1v1h-1zM7 7h1v1h-1zM10 7h1v1h-1zM1 8h4v1h-4zM7 8h4v1h-4zM5 9h2v1h-2z'/%3E%3C/svg%3E");
+    --ico-gold:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h4v1h-4zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h1v1h-1zM4 2h4v1h-4zM10 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM5 4h2v1h-2zM9 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM9 5h1v1h-1zM11 5h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM5 6h2v1h-2zM9 6h1v1h-1zM11 6h1v1h-1zM0 7h1v1h-1zM2 7h1v1h-1zM5 7h2v1h-2zM9 7h1v1h-1zM11 7h1v1h-1zM1 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM1 9h1v1h-1zM4 9h4v1h-4zM10 9h1v1h-1zM2 10h2v1h-2zM8 10h2v1h-2zM4 11h4v1h-4z'/%3E%3C/svg%3E");
+    --ico-ticket:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M0 2h12v1h-12zM0 3h3v1h-3zM5 3h7v1h-7zM0 4h1v1h-1zM2 4h1v1h-1zM5 4h6v1h-6zM3 5h9v1h-9zM3 6h9v1h-9zM0 7h1v1h-1zM2 7h1v1h-1zM5 7h6v1h-6zM0 8h3v1h-3zM5 8h7v1h-7zM0 9h12v1h-12z'/%3E%3C/svg%3E");
+    --ico-prestige:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M5 0h2v1h-2zM5 1h2v1h-2zM4 2h4v1h-4zM4 3h4v1h-4zM0 4h12v1h-12zM1 5h10v1h-10zM2 6h8v1h-8zM3 7h6v1h-6zM3 8h6v1h-6zM2 9h3v1h-3zM7 9h3v1h-3zM2 10h2v1h-2zM8 10h2v1h-2zM1 11h1v1h-1zM10 11h1v1h-1z'/%3E%3C/svg%3E");
+    color:var(--text);
+  }
+  body.view-topdown, body.view-topdown button, body.view-topdown select, body.view-topdown input{font-family:var(--font-body);}
+  body.view-topdown h1, body.view-topdown h2, body.view-topdown h3{font-family:var(--font-body); letter-spacing:0;}
+  /* type scale: body 15px (PC) / 16px (phone), titles above it, numbers in even columns */
+  body.view-topdown .tab-panel, body.view-topdown #logSection{font-size:max(0.94rem, var(--fs-min)); line-height:1.5;}
+  body.view-topdown .tab-panel section > h2, body.view-topdown #logSection > h2{font-size:max(1.02rem, var(--fs-min)); font-weight:700; color:var(--copper-hi);
+    margin:0 0 10px; padding-bottom:6px; border-bottom:1px solid rgba(232,164,107,0.25);}
+  body.view-topdown .tab-panel section > h2::before{content:''; width:6px; height:6px; background:var(--copper); transform:rotate(45deg); flex:none;}
+  body.view-topdown .rate, body.view-topdown .line .rate{color:var(--teal-on);}
+  body.view-topdown p.rate, body.view-topdown .tab-panel p{color:var(--dim);}
+  body.view-topdown .line .res-name, body.view-topdown .recipe .name{font-weight:700; font-size:max(1rem, var(--fs-min));}
+  body.view-topdown .line .res-amt, body.view-topdown .recipe .stock, body.view-topdown .cur .value, body.view-topdown .mult{font-variant-numeric:tabular-nums; font-weight:700;}
+
+  /* cards: one look for every panel's boxes */
+  body.view-topdown .line, body.view-topdown .recipe, body.view-topdown .worker-card, body.view-topdown .gacha-box, body.view-topdown .village-card, body.view-topdown .prestige-box{
+    background:linear-gradient(180deg, rgba(255,236,210,0.045), rgba(0,0,0,0) 40%), var(--wood-2);
+    border:1px solid var(--line); border-radius:8px; box-shadow:inset 0 1px 0 rgba(255,230,200,0.06);}
+  body.view-topdown .prestige-box{border-color:rgba(236,187,90,0.55);}
+  body.view-topdown .research-card.is-done, body.view-topdown .village-reward.is-earned{border-color:var(--teal-on); background:linear-gradient(180deg, rgba(95,202,178,0.1), rgba(0,0,0,0) 60%), var(--wood-2);}
+  body.view-topdown #log{background:var(--wood-0); border-color:var(--line); color:var(--text);
+    font-family:var(--font-hand); font-size:max(1.12rem, var(--fs-min)); line-height:1.45;} /* the log reads like a notebook */
+  body.view-topdown #log div{border-bottom-color:rgba(232,164,107,0.14);}
+
+  /* buttons: copper = can do it; wood outline = a quieter choice; dashed and pale = not now */
+  body.view-topdown button{min-height:36px; border-radius:6px; font-weight:500; font-size:max(0.9rem, var(--fs-min)); line-height:1.25;
+    background:linear-gradient(180deg, var(--copper-hi), var(--copper) 55%, #b86e37); color:#24160c; border:1px solid #f0b98a;
+    box-shadow:0 2px 0 var(--copper-lo); transition:background 0.12s, transform 0.06s;}
+  body.view-topdown button:hover:not(:disabled){background:linear-gradient(180deg, #f2b682, var(--copper-hi)); color:#1c1008;}
+  body.view-topdown button:active:not(:disabled){transform:translateY(1px); box-shadow:0 1px 0 var(--copper-lo);}
+  body.view-topdown button.ghost{background:var(--wood-3); color:var(--text); border:1px solid #8a6a4c; box-shadow:0 2px 0 rgba(0,0,0,0.35);}
+  body.view-topdown button.ghost:hover:not(:disabled){background:#56432f; color:#fff3e2;}
+  body.view-topdown button:disabled, body.view-topdown button.ghost:disabled{opacity:1; background:rgba(0,0,0,0.18); color:#9a8670; border:1px dashed #5c4836; box-shadow:none; cursor:not-allowed;}
+  body.view-topdown button:focus-visible, body.view-topdown select:focus-visible, body.view-topdown input:focus-visible{outline:2px solid var(--teal-on); outline-offset:2px;}
+  body.view-topdown select, body.view-topdown input[type=number], body.view-topdown .worker-card select, body.view-topdown .line .row select{
+    min-height:36px; background:var(--wood-0); color:var(--text); border:1px solid #7a5c42; border-radius:6px; font-size:max(0.9rem, var(--fs-min));}
+  body.view-topdown input[type=checkbox]{accent-color:var(--teal-on); width:18px; height:18px;}
+  body.view-topdown .village-garden-kinds button.is-selected, body.view-topdown .village-garden-cell.is-moving{outline:2px solid var(--teal-on); outline-offset:1px;}
+
+  /* panels: a wood board with a copper rim, its name on top, a clear close button, a calm scrollbar */
+  body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{
+    background:linear-gradient(180deg, rgba(255,236,210,0.05), rgba(0,0,0,0) 120px), repeating-linear-gradient(0deg, rgba(0,0,0,0) 0 37px, rgba(0,0,0,0.07) 37px 38px), var(--wood-1);
+    border-left:2px solid var(--wood-edge); box-shadow:inset 1px 0 0 rgba(232,164,107,0.35), -8px 0 24px rgba(0,0,0,0.35);
+    padding-top:64px; scrollbar-width:thin; scrollbar-color:var(--copper-lo) transparent; scroll-padding-bottom:24px;}
+  body.view-topdown.td-panel-open .tab-panel.active::before, body.view-topdown.td-log-open #logSection::before{
+    content:attr(data-panel-title); position:absolute; left:16px; top:18px; font-size:max(1.25rem, var(--fs-min)); font-weight:700; color:var(--text);
+    padding-left:28px; line-height:28px;}
+  body.view-topdown.td-panel-open .tab-panel.active::after, body.view-topdown.td-log-open #logSection::after{
+    content:''; position:absolute; left:16px; top:22px; width:20px; height:20px; background:var(--copper-hi);
+    -webkit-mask:var(--panel-icon) center / contain no-repeat; mask:var(--panel-icon) center / contain no-repeat;}
+  body.view-topdown .td-close{min-width:44px; min-height:44px; padding:8px 14px; border-radius:22px; font-size:max(0.94rem, var(--fs-min)); font-weight:700;
+    background:var(--wood-3); color:var(--text); border:1px solid var(--copper); box-shadow:0 2px 0 rgba(0,0,0,0.4);}
+  body.view-topdown .td-close:hover{background:var(--copper); color:#1c1008;}
+
+  /* the dock: one wood bar, every button the same size with a pixel icon over (phone) or before (PC) its name */
+  body.view-topdown .tabbar{background:linear-gradient(180deg, var(--wood-2), var(--wood-1)); border:1px solid var(--wood-edge); box-shadow:inset 0 1px 0 rgba(232,164,107,0.35), 0 4px 16px rgba(0,0,0,0.35);}
+  body.view-topdown .tab-btn, body.view-topdown .td-log-btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:76px; min-height:40px; padding:8px 12px;
+    background:transparent; border:1px solid transparent; box-shadow:none; color:var(--dim); font-weight:700; font-size:max(0.9rem, var(--fs-min)); white-space:nowrap;}
+  body.view-topdown .tab-btn::before, body.view-topdown .td-log-btn::before{content:''; width:16px; height:16px; flex:none; background:currentColor;
+    -webkit-mask:var(--ico) center / contain no-repeat; mask:var(--ico) center / contain no-repeat; image-rendering:pixelated;}
+  body.view-topdown .tab-btn:hover:not(.active){background:rgba(255,236,210,0.07); color:var(--text);}
+  body.view-topdown .tab-btn.active{color:var(--copper-hi); border-color:rgba(232,164,107,0.35); background:rgba(0,0,0,0.18);}
+  body.view-topdown.td-log-open .tab-btn.active{color:var(--dim); border-color:transparent; background:transparent;} /* the log is open, not that tab */
+  body.view-topdown.td-panel-open .tab-btn.active, body.view-topdown.td-log-open .td-log-btn{background:linear-gradient(180deg, var(--copper-hi), var(--copper)); border-color:#f0b98a; color:#1c1008; box-shadow:0 2px 0 var(--copper-lo);}
+  body.view-topdown .tab-btn[data-tab="mining"]{--ico:var(--ico-mining);}
+  body.view-topdown .tab-btn[data-tab="dev"]{--ico:var(--ico-dev);}
+  body.view-topdown .tab-btn[data-tab="workers"]{--ico:var(--ico-workers);}
+  body.view-topdown .tab-btn[data-tab="research"]{--ico:var(--ico-research);}
+  body.view-topdown .tab-btn[data-tab="delivery"]{--ico:var(--ico-delivery);}
+  body.view-topdown .tab-btn[data-tab="village"]{--ico:var(--ico-village);}
+  body.view-topdown .td-log-btn{--ico:var(--ico-log);}
+  /* the open panel's title carries the same icon (a copper mask over the title's left edge) */
+  body.view-topdown #tab-mining{--panel-icon:var(--ico-mining);} body.view-topdown #tab-dev{--panel-icon:var(--ico-dev);}
+  body.view-topdown #tab-workers{--panel-icon:var(--ico-workers);} body.view-topdown #tab-research{--panel-icon:var(--ico-research);}
+  body.view-topdown #tab-delivery{--panel-icon:var(--ico-delivery);} body.view-topdown #tab-village{--panel-icon:var(--ico-village);}
+  body.view-topdown #logSection{--panel-icon:var(--ico-log);}
+
+  /* the top HUD: one compact plate per value, an icon before the number, the name small beside it */
+  body.view-topdown .currencies{gap:6px;}
+  body.view-topdown .cur{display:flex; align-items:center; gap:7px; padding:5px 10px 5px 8px; background:var(--hud-bg); border:1px solid var(--hud-edge); border-radius:8px; box-shadow:0 2px 0 rgba(0,0,0,0.35); backdrop-filter:none;}
+  body.view-topdown .cur::before{content:''; width:18px; height:18px; flex:none; background:var(--copper-hi); -webkit-mask:var(--ico-gold) center / contain no-repeat; mask:var(--ico-gold) center / contain no-repeat;}
+  body.view-topdown .cur.ticket::before{background:var(--teal-on); -webkit-mask-image:var(--ico-ticket); mask-image:var(--ico-ticket);}
+  body.view-topdown .cur.prestige::before{background:var(--legend); -webkit-mask-image:var(--ico-prestige); mask-image:var(--ico-prestige);}
+  body.view-topdown .cur .label{order:2; color:var(--dim); font-size:max(0.8rem, var(--fs-min));}
+  body.view-topdown .cur .value{order:1; font-size:max(1.05rem, var(--fs-min)); color:var(--copper-hi); text-shadow:0 1px 0 #000;}
+  body.view-topdown .cur.ticket .value{color:var(--teal-on);} body.view-topdown .cur.prestige .value{color:var(--legend);}
+  body.view-topdown .next-hint{background:var(--hud-bg); border:1px solid var(--hud-edge); border-left:3px solid var(--copper); border-radius:8px; color:var(--text); box-shadow:0 2px 0 rgba(0,0,0,0.35);}
+  body.view-topdown .next-hint::before{content:'다음 할 일'; display:block; color:var(--copper-hi); font-weight:700; font-size:max(0.8rem, var(--fs-min));}
+  #tdMinimap{border:2px solid var(--wood-edge, #6b5038); box-shadow:0 0 0 1px rgba(232,164,107,0.45), 0 2px 0 rgba(0,0,0,0.4); border-radius:8px;}
+  body.td-touch .td-action{background:radial-gradient(circle at 50% 35%, #e8a46b, #cf8549 60%, #a65f2c); border:3px solid #f6d3a8; color:#1c1008; box-shadow:0 3px 0 #6e3d1c, 0 0 0 3px rgba(29,22,17,0.55); font-size:max(1.05rem, var(--fs-min));}
+  body.td-touch .td-action.is-idle{opacity:1; background:var(--wood-3); border-color:#8a6a4c; color:var(--dim); box-shadow:0 3px 0 rgba(0,0,0,0.4);}
+  body.view-topdown .td-torch, body.view-topdown .td-decor.is-on{background:var(--hud-bg); border:1px solid var(--hud-edge); color:var(--copper-hi); box-shadow:0 2px 0 rgba(0,0,0,0.35); font-size:max(0.86rem, var(--fs-min));}
+  body.view-topdown .td-decor.is-on{color:#cfeec3; border-color:rgba(160,220,140,0.55);}
+  body.td-touch .td-stick{background:rgba(29,22,17,0.35); border-color:rgba(232,164,107,0.4);}
+  /* the interaction bubble as a page element (Task 23) in the same colours as the canvas one (render.js) */
+  .td-bubble{background:rgba(29,22,17,0.92); border-bottom-color:var(--copper, #cf8549); color:#fff3e2;}
+  .td-bubble.is-thin{background:rgba(29,22,17,0.55);}
+  .td-bubble.is-locked{background:rgba(44,38,34,0.9); color:#c9c0b6;}
+
+  /* Task 24 on phones (upright, and on their side): 16px text, a taller dock with the icon over the name,
+     the values' names left to their icons, a two-line hint that opens on a tap */
+  @media (max-width: 760px), (max-height: 500px) and (orientation: landscape){
+    body.view-topdown{--fs-min:16px;}
+    body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex:1 1 0; min-width:0; min-height:44px; flex-direction:column; gap:2px; padding:4px 2px;
+      font-size:max(0.8rem, var(--fs-min)); line-height:1.1;}
+    body.view-topdown .tab-btn::before, body.view-topdown .td-log-btn::before{width:18px; height:18px;}
+    body.view-topdown .currencies{gap:4px; max-width:calc(100vw - 118px);} /* clear of the minimap (88px + 10px) */
+    body.view-topdown .cur{padding:3px 7px 3px 6px; gap:5px;}
+    body.view-topdown .cur::before{width:15px; height:15px;}
+    body.view-topdown .cur .value{font-size:var(--fs-min);}
+    body.view-topdown .cur .label{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+    body.view-topdown .next-hint{-webkit-line-clamp:2; max-height:calc(2.9em + 12px); padding:6px 10px 0; border-bottom:6px solid transparent; background-clip:padding-box;
+      box-shadow:0 0 0 1px var(--hud-edge), 0 2px 0 rgba(0,0,0,0.35); border-top:0; border-right:0; cursor:pointer;} /* the clear bottom border keeps a third line out of sight */
+    body.view-topdown .next-hint::before{display:inline; margin-right:6px;}
+    body.view-topdown .next-hint.is-open{-webkit-line-clamp:unset; display:block; max-height:none;}
+    body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{padding-top:60px; border-left:none; border-top:2px solid var(--wood-edge); box-shadow:inset 0 1px 0 rgba(232,164,107,0.35), 0 -8px 24px rgba(0,0,0,0.35);}
+    body.view-topdown button{min-height:44px;}
+  }
+  @media (max-height: 500px) and (orientation: landscape){
+    body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex-direction:row; gap:6px; min-height:36px;}
+    body.view-topdown .tabbar{height:calc(50px + env(safe-area-inset-bottom, 0px));}
+    body.view-topdown{--td-dock-h:calc(50px + env(safe-area-inset-bottom, 0px));}
   }
 
 /* Task 114~117: the village panel (마을 탭) */

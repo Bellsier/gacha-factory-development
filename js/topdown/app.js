@@ -180,6 +180,13 @@ function tdInit(){
     logBtn.onclick = () => { const open = body.classList.contains('td-log-open'); tdClosePanels(); if(!open) body.classList.add('td-log-open'); };
     tabbar.appendChild(logBtn);
   }
+  // Task 24: each panel shows its tab's name as a title (CSS draws it with the tab's icon)
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => { const p = document.getElementById('tab-' + b.dataset.tab); if(p) p.setAttribute('data-panel-title', b.textContent.trim()); });
+  const logSection = document.getElementById('logSection');
+  if(logSection) logSection.setAttribute('data-panel-title', '기록');
+  // Task 24: on a phone the next-step hint shows two lines; a tap opens the rest (and closes it again)
+  const hint = document.getElementById('nextHint');
+  if(hint) hint.addEventListener('click', () => hint.classList.toggle('is-open'));
   // a tab button opens its panel; pressing the open tab again closes it
   document.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest ? e.target.closest('.tab-btn') : null;
@@ -195,8 +202,10 @@ function tdInit(){
   tdBindStick(document.getElementById('tdStick'), document.querySelector('#tdStick .td-knob'));
   // E / Space acts, Escape closes panels (never while typing in a field)
   document.addEventListener('keydown', (e) => {
-    if(e.repeat || playerTypingTarget(e.target)) return;
+    if(e.repeat) return;
+    // Task 24: Escape closes the panel even from a field in it (the field only keeps the letters)
     if(e.key === 'Escape' && (tdPanelOpen() || body.classList.contains('td-log-open'))){ tdClosePanels(); return; }
+    if(playerTypingTarget(e.target)) return;
     const onButton = e.target && e.target.tagName === 'BUTTON';
     if(e.key === 'e' || e.key === 'E' || (e.key === ' ' && !onButton)){
       if(e.key === ' ') e.preventDefault();
@@ -207,7 +216,11 @@ function tdInit(){
     if((e.key === 'q' || e.key === 'Q') && tdGardenButtonMode() === 'cycle') tdGardenButtonNow('cycle'); // ...or choose the next kind
   });
   // clicking the world puts the keyboard back on the world (out of any panel field)
-  canvas.addEventListener('pointerdown', () => { if(document.activeElement && document.activeElement !== body && document.activeElement.blur) document.activeElement.blur(); });
+  canvas.addEventListener('pointerdown', () => {
+    if(document.activeElement && document.activeElement !== body && document.activeElement.blur) document.activeElement.blur();
+    // Task 24: on a phone, a tap on the world above an open panel closes it (the way back without aiming for ✕)
+    if(TD.touch && (tdPanelOpen() || body.classList.contains('td-log-open'))) tdClosePanels();
+  });
   if(!TD.ctx) return true; // no 2D canvas (tests): the layout is set up, nothing is drawn
   TD.sheet = tdBuildSpriteSheet();
   TD.running = true;

@@ -231,3 +231,59 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   const after = computes; win.villageRoads();
   check('Task23: choosing the spot leaves the cached roads as they were (no extra layout afterwards)', computes === after, JSON.stringify({ after, now: computes }));
 })();
+
+// =============================================================================
+// Task 24: interface and type, first pass. Panel titles, the phone hint that opens on a tap, a tap on
+// the world closing a panel on a phone, the font chain with its fallbacks, one icon per dock button.
+// =============================================================================
+(function test_T24_panelTitles() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document;
+  const tabs = [...doc.querySelectorAll('.tab-btn[data-tab]')];
+  const titled = tabs.every((b) => doc.getElementById('tab-' + b.dataset.tab).getAttribute('data-panel-title') === b.textContent.trim());
+  check('Task24: every panel carries its tab\'s name as its title (and the log is 기록)', tabs.length === 6 && titled && doc.getElementById('logSection').getAttribute('data-panel-title') === '기록');
+  check('Task24: the tab buttons keep their names (no icon text added)', tabs.map((b) => b.textContent).join() === '채굴,개발,인부,연구,납품,마을' && doc.querySelector('.td-log-btn').textContent === '기록');
+})();
+
+(function test_T24_hintTapAndWorldTap() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document, body = doc.body;
+  const hint = doc.getElementById('nextHint');
+  hint.click(); const opened = hint.classList.contains('is-open');
+  hint.click();
+  check('Task24: a tap on the next-step hint opens it, another closes it', opened && !hint.classList.contains('is-open'));
+  const canvas = doc.getElementById('tdCanvas');
+  const tap = () => canvas.dispatchEvent(new win.Event('pointerdown', { bubbles: true }));
+  win.TD.touch = false; win.tdOpenTab('dev'); tap();
+  const pcStays = win.tdPanelOpen();
+  win.TD.touch = true; tap();
+  const phoneCloses = !win.tdPanelOpen();
+  doc.querySelector('.td-log-btn').click(); const logOpen = body.classList.contains('td-log-open'); tap();
+  check('Task24: on a PC a click on the world leaves the panel open (it only takes the keyboard back)', pcStays);
+  check('Task24: on a phone a tap on the world closes the open panel, and the log too', phoneCloses && logOpen && !body.classList.contains('td-log-open'));
+})();
+
+(function test_T24_fontsAndIcons() {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'style.css'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  check('Task24: the UI and handwriting faces load without holding the page (async stylesheet, swap)',
+    /<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2\?family=IBM\+Plex\+Sans\+KR:wght@400;500;700&family=Gaegu:wght@400;700&display=swap" media="print" onload="this\.media='all'">/.test(html));
+  check('Task24: the handwriting face falls back to the UI face and the system Korean faces', /--font-hand:'Gaegu','IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;/.test(css));
+  const icons = ['mining', 'dev', 'workers', 'research', 'delivery', 'village', 'log', 'gold', 'ticket', 'prestige'];
+  check('Task24: every dock button and HUD value has its pixel icon', icons.every((k) => new RegExp('--ico-' + k + ':url\\("data:image/svg\\+xml,').test(css))
+    && ['mining', 'dev', 'workers', 'research', 'delivery', 'village'].every((k) => css.includes('.tab-btn[data-tab="' + k + '"]{--ico:var(--ico-' + k + ');}')) && css.includes('.td-log-btn{--ico:var(--ico-log);}'));
+  check('Task24: phones (upright and on their side) get the 16px floor', /@media \(max-width: 760px\), \(max-height: 500px\) and \(orientation: landscape\)\{\s*body\.view-topdown\{--fs-min:16px;\}/.test(css));
+  check('Task24: the classic page keeps its faces (the new faces only in the world-first view)', /body\.view-topdown\{\s*--font-display:var\(--font-body\);/.test(css) && /--font-display:'Space Grotesk'/.test(css));
+})();
+
+(function test_T24_escFromField() {
+  // Escape closes the panel even while a field in it has the keyboard; letters typed there still never walk or act
+  const win = newDom(makeMemoryStorage()).window, doc = win.document;
+  win.tdOpenTab('dev');
+  const field = doc.createElement('input'); field.type = 'number'; doc.getElementById('tab-dev').appendChild(field); field.focus();
+  const p = win.state.world.player, at = [p.x, p.y];
+  field.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'e', bubbles: true }));
+  field.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'w', bubbles: true })); win.tickPlayer();
+  const still = win.tdPanelOpen() && p.x === at[0] && p.y === at[1];
+  field.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  check('Task24: E and W typed into a panel field neither act nor walk', still);
+  check('Task24: Escape from a panel field closes the panel', !win.tdPanelOpen());
+})();

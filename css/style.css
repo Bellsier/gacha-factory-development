@@ -540,6 +540,10 @@
   body.view-topdown .line .res-name, body.view-topdown .recipe .name{font-weight:700; font-size:max(1rem, var(--fs-min));}
   body.view-topdown .line .res-amt, body.view-topdown .recipe .stock, body.view-topdown .cur .value, body.view-topdown .mult{font-variant-numeric:tabular-nums; font-weight:700;}
 
+  /* card grids widen with the text (em, not px), so large numbers at a large text size stay inside */
+  body.view-topdown .lines{grid-template-columns:repeat(auto-fit, minmax(min(100%, 12.5em), 1fr));}
+  body.view-topdown .recipes{grid-template-columns:repeat(auto-fit, minmax(min(100%, 14em), 1fr));}
+  body.view-topdown .line .res-amt, body.view-topdown .recipe .stock{overflow-wrap:anywhere;}
   /* cards: one look for every panel's boxes */
   body.view-topdown .line, body.view-topdown .recipe, body.view-topdown .worker-card, body.view-topdown .gacha-box, body.view-topdown .village-card, body.view-topdown .prestige-box{
     background:linear-gradient(180deg, rgba(255,236,210,0.045), rgba(0,0,0,0) 40%), var(--wood-2);
@@ -587,8 +591,7 @@
   body.view-topdown .tab-btn::before, body.view-topdown .td-log-btn::before{content:''; width:16px; height:16px; flex:none; background:currentColor;
     -webkit-mask:var(--ico) center / contain no-repeat; mask:var(--ico) center / contain no-repeat; image-rendering:pixelated;}
   body.view-topdown .tab-btn:hover:not(.active){background:rgba(255,236,210,0.07); color:var(--text);}
-  body.view-topdown .tab-btn.active{color:var(--copper-hi); border-color:rgba(232,164,107,0.35); background:rgba(0,0,0,0.18);}
-  body.view-topdown.td-log-open .tab-btn.active{color:var(--dim); border-color:transparent; background:transparent;} /* the log is open, not that tab */
+  body.view-topdown .tab-btn.active{color:var(--dim); border-color:transparent; background:transparent;} /* selected only while its panel is open (below) */
   body.view-topdown.td-panel-open .tab-btn.active, body.view-topdown.td-log-open .td-log-btn{background:linear-gradient(180deg, var(--copper-hi), var(--copper)); border-color:#f0b98a; color:#1c1008; box-shadow:0 2px 0 var(--copper-lo);}
   body.view-topdown .tab-btn[data-tab="mining"]{--ico:var(--ico-mining);}
   body.view-topdown .tab-btn[data-tab="dev"]{--ico:var(--ico-dev);}

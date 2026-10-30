@@ -455,6 +455,32 @@
     background:rgba(22,28,32,0.86); color:#d9f0d0; border:1px solid rgba(160,220,140,0.5); font-size:max(0.8rem, var(--fs-min));}
   body.td-touch .td-decor.is-on{right:16px; bottom:248px; padding:8px 10px; font-size:max(0.74rem, var(--fs-min)); border-radius:18px; max-width:120px; line-height:1.25;}
   body.td-panel-open .td-decor, body.td-log-open .td-decor, body.td-inside .td-decor{display:none !important;}
+  /* Task 23: the interaction bubble as a page element while the canvas is drawn at a lowered resolution
+     (render.js tdBubbleHtml: same place, size and look as the canvas one) */
+  .td-bubble{position:fixed; z-index:1; pointer-events:none; box-sizing:border-box; padding:0 7px; white-space:pre; overflow:hidden; line-height:22px;
+    background:rgba(22,28,32,0.9); border-bottom:2px solid #ffd27a; color:#fff6dc;}
+  .td-bubble.is-locked{background:rgba(40,36,34,0.88); border-bottom-color:#8b98a1; color:#b8c0c6;}
+  .td-bubble.is-thin{background:rgba(22,28,32,0.5); text-shadow:1px 1px 0 #000;}
+  .td-bubble.is-locked.is-thin{background:rgba(40,36,34,0.5);}
+  body.td-panel-open .td-bubble, body.td-log-open .td-bubble{display:none;}
+  /* Task 23: the next-step hint fades while the bubble or the player is under it (render.js tdHintClear) */
+  body.view-topdown .next-hint{transition:opacity 0.2s;}
+  body.view-topdown.td-hint-under .next-hint{opacity:0.15; pointer-events:none;}
+  body.view-topdown.td-hint-near .next-hint{opacity:0.5;}
+  /* Task 23: a phone on its side (low and wide): the dock is the full-width bar as on a phone held upright,
+     the hint narrower and at most two lines */
+  @media (max-height: 500px) and (orientation: landscape){
+    body.view-topdown .tabbar{left:0; right:0; bottom:0; transform:none; border-radius:0; border-width:1px 0 0; gap:4px; padding:6px max(6px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));}
+    body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex:1; padding:7px 2px; white-space:nowrap;}
+    body.view-topdown{--td-dock-h:calc(46px + env(safe-area-inset-bottom, 0px));}
+    body.view-topdown .tabbar{height:var(--td-dock-h); box-sizing:border-box;}
+    #tdMinimap{width:88px; height:88px;}
+    body.view-topdown .next-hint{max-width:min(380px, 46vw); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+    body.td-touch .td-stick{bottom:62px;}
+    body.td-touch .td-action{bottom:70px;}
+    body.td-touch .td-torch{bottom:166px;}
+    body.td-touch .td-decor.is-on{bottom:214px;}
+  }
   @media (max-width: 760px){
     body.view-topdown .tabbar{left:0; right:0; bottom:0; transform:none; border-radius:0; border-width:1px 0 0; gap:4px; padding:6px 6px calc(6px + env(safe-area-inset-bottom));}
     body.view-topdown .tab-btn, body.view-topdown .td-log-btn{flex:1; padding:9px 2px; font-size:max(0.78rem, var(--fs-min));}

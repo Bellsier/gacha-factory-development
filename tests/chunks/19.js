@@ -44,3 +44,42 @@
     check('Task22: divisor 2: 585 x 1266 canvas pixels drawn at ratio 1.5, the view still 390 x 844 at zoom 2', JSON.stringify(half) === '[585,1266,1.5,2,390,844,2]', JSON.stringify(half));
   } finally { TD.canvas = real; }
 })();
+
+// The 256 test world, seed 1682025673 / generator v2: a gap in the rock one cell wide north of
+// (-19.23, 21.56). Task 20's walk got stuck here: 0.1 off the gap's centre, walking north stopped dead.
+function slipWorld() {
+  const p = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'save_v1_midgame.json'), 'utf8'));
+  Object.assign(p.run.world, { seed: 1682025673, size: 256, generatorVersion: 2, chunkEditsVersion: 1, chunkEdits: {} });
+  const s = makeMemoryStorage(); s.setItem('gachaFactorySave.worldgen256.v1', JSON.stringify(p));
+  const win = newDom(s, { url: 'https://example.test/?worldgen=256', saveKey: 'gachaFactorySave.worldgen256.v1', fullWorld: true }).window;
+  win.worldEnsureRect({ minX: -24, maxX: -14, minY: 16, maxY: 26 });
+  return win;
+}
+(function test_rockCornerSlip() {
+  const win = slipWorld(), p = win.state.world.player;
+  Object.assign(p, { x: -19.23, y: 21.56 });
+  const startOk = win.playerCanStand(p.x, p.y);
+  let bad = 0, maxSide = 0;
+  win.setPlayerHeld('up', true);
+  for (let i = 0; i < 12; i++) { const x0 = p.x; win.tickPlayer(); if (!win.playerCanStand(p.x, p.y)) bad++; maxSide = Math.max(maxSide, Math.abs(p.x - x0)); }
+  win.clearPlayerHeld();
+  check('Task22: walking north 0.1 off a one-cell gap in the rock, the player slips into it and walks through', startOk && p.y < 20.2, JSON.stringify({ x: p.x, y: p.y }));
+  check('Task22: ...on standable ground all the way, side steps no larger than CORNER_SLIP (0.18)', bad === 0 && maxSide <= 0.18 + 1e-9, JSON.stringify({ bad, maxSide }));
+})();
+
+(function test_rockSlipNeverThrough() {
+  // random walking round the gap and the rock next to it: never off standable ground, never a jump
+  const win = slipWorld(), p = win.state.world.player;
+  let r = 22; const rnd = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; };
+  const dirs = [['up'], ['down'], ['left'], ['right'], ['up', 'left'], ['up', 'right'], ['down', 'left'], ['down', 'right']];
+  Object.assign(p, { x: -19.23, y: 21.56 });
+  let bad = 0, jumps = 0;
+  for (let i = 0; i < 3000; i++) {
+    if (i % 8 === 0) { win.clearPlayerHeld(); dirs[Math.floor(rnd() * 8)].forEach((d) => win.setPlayerHeld(d, true)); }
+    const x0 = p.x, y0 = p.y; win.tickPlayer();
+    if (!win.playerCanStand(p.x, p.y)) bad++;
+    if (Math.hypot(p.x - x0, p.y - y0) > 0.3 * Math.SQRT2 + 0.18 + 1e-9) jumps++;
+  }
+  win.clearPlayerHeld();
+  check('Task22: 3000 random steps round the rock gap: never on rock, never more than a step (plus the slip)', bad === 0 && jumps === 0, JSON.stringify({ bad, jumps }));
+})();

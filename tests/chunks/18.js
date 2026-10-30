@@ -76,10 +76,28 @@ const CLOCK_MID = fs.readFileSync(path.join(__dirname, 'fixtures', 'save_v1_midg
   const a = clockWin(CLOCK_MID), b = clockWin(CLOCK_MID);
   [a.win, b.win].forEach((w) => { Object.assign(w.state.world.player, { x: 2, y: 3 }); w.onPlayerKey({ key: 'ArrowDown', preventDefault() {}, target: w.document.body }, true); });
   for (let i = 0; i < 10; i++) a.win.tickLoop();
-  b.win.tickClock(0); // one tick, then 9 more in three late calls
-  for (const t of [300, 600, 900]) b.win.tickClock(t);
+  const t0 = b.win.performance.now() + 1; // after the press
+  b.win.tickClock(t0); // one tick, then 9 more in three late calls
+  for (const t of [300, 600, 900]) b.win.tickClock(t0 + t);
   const pa = a.win.state.world.player, pb = b.win.state.world.player;
   check('Task21: the player walks the same distance in game time whether the ticks come one by one or caught up', b.counts.steps === 10 && Math.abs(pa.y - pb.y) < 1e-9 && pa.y > 3.5, JSON.stringify({ steps: b.counts.steps, a: pa.y, b: pb.y }));
+})();
+
+(function test_clock_pressNotStretchedBack() {
+  // a key pressed just before a late call moves the player only for the made-up ticks after the press
+  const { win, counts } = clockWin(CLOCK_MID);
+  Object.assign(win.state.world.player, { x: 2, y: 3 });
+  const one = (() => { const w = clockWin(CLOCK_MID).win; Object.assign(w.state.world.player, { x: 2, y: 3 }); w.onPlayerKey({ key: 'ArrowDown', preventDefault() {}, target: w.document.body }, true); w.tickLoop(); return w.state.world.player.y - 3; })();
+  const start = win.performance.now() - 1000;
+  win.tickClock(start);
+  win.onPlayerKey({ key: 'ArrowDown', preventDefault() {}, target: win.document.body }, true);
+  const pressed = win.performance.now();
+  counts.steps = 0;
+  const ran = win.tickClock(pressed + 100); // 1 s owed (capped): 4 ticks at pressed-200, -100, 0, +100
+  const moved = win.state.world.player.y - 3;
+  check('Task21: of 4 made-up ticks only those from the press on move the player (2 of 4)', ran === 4 && counts.steps === 4 && Math.abs(moved - 2 * one) < 1e-9, JSON.stringify({ ran, moved, one }));
+  const y0 = win.state.world.player.y; win.tickLoop(); const step = win.state.world.player.y - y0;
+  check('Task21: a tick called directly (not made up) moves the player as before', step > 0.2, JSON.stringify({ step, one })); // (a little less than a full step here: it reaches something in the way)
 })();
 
 (function test_workersSlowFrames() {
@@ -94,4 +112,22 @@ const CLOCK_MID = fs.readFileSync(path.join(__dirname, 'fixtures', 'save_v1_midg
   check('Task21: a 200 ms frame walks the workers like two 100 ms frames', at(a) === at(b));
   check('Task21: a 5 s stall walks them only 250 ms (as a 250 ms frame), never a jump', at(d) === at(c));
   check('Task21: the walking speed is unchanged (1.6 units a second)', a.TD_WORKER.WALK_SPEED === 1.6 && a.TD_WORKER.FRAME_MAX_MS === 250);
+})();
+
+(function test_clock_fromFrames() {
+  // the view's frame (tdFrame) runs the clock too, but only while the interval runs
+  const { win } = clockWin(CLOCK_MID);
+  let calls = 0;
+  const real = win.tickClock;
+  win.tickClock = function () { calls++; return real.apply(this, arguments); };
+  win.TD.running = true;
+  win.requestAnimationFrame = () => 0;
+  win.tdFrame(1000);
+  const stopped = calls;
+  win.tickClockInterval(); // the interval ran just now
+  const afterInterval = calls;
+  win.tdFrame(1100);
+  win.TD.running = false;
+  check('Task21: with the interval stopped (tests, tools) a frame does not run the game clock', stopped === 0, String(stopped));
+  check('Task21: while the interval runs, each frame of the view runs the game clock too', afterInterval === 1 && calls === 2, JSON.stringify({ afterInterval, calls }));
 })();

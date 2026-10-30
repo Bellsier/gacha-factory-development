@@ -14,10 +14,15 @@ let tickTimer, ticketTimer, autoSaveTimer;
 // real time says are due, at most TICK_CLOCK.MAX_PER_CALL of them, and updates the screen once.
 // Time owed beyond TICK_CLOCK.MAX_BACKLOG_MS (a long stall) is dropped, never replayed. While the
 // tab is hidden the browser slows the interval down and each call stays one tick, as before, and
-// the clock starts afresh when the tab comes back: nothing is fast-forwarded.
+// the clock starts afresh when the tab comes back: nothing is fast-forwarded. The top-down view's
+// frames (render.js tdFrame) call the clock too (tickClockFrame), so the ticks that are due come
+// with each frame rather than in bursts — but only while the interval is running: stopping
+// tickTimer (as the tools and tests do) still stops the game.
 // ---------------------------------------------------------------------------
 const TICK_CLOCK = { MAX_PER_CALL: 4, MAX_BACKLOG_MS: 1000 };
-let tickClockLast = null, tickClockOwed = 0;
+let tickClockLast = null, tickClockOwed = 0, tickClockIntervalAt = -Infinity;
+// While the clock makes up ticks: the moment (performance.now()) each one stands for; otherwise null.
+let tickClockTickAt = null;
 function tickClock(now){
   const t = now === undefined ? performance.now() : now;
   if(tickClockLast === null || (typeof document !== 'undefined' && document.hidden)){
@@ -30,9 +35,24 @@ function tickClock(now){
   const n = Math.min(TICK_CLOCK.MAX_PER_CALL, Math.floor(tickClockOwed / TICK_MS));
   if(n < 1) return 0; // called a little early: the tick waits for the next call
   tickClockOwed -= n * TICK_MS;
-  for(let i = 1; i < n; i++) tickStep();
-  tickLoop();
+  // the ticks stand for the last n * TICK_MS of real time; the player's walk only counts from when
+  // the key was pressed (player.js), so a short press on a slow device is not stretched over them
+  try {
+    for(let i = 1; i <= n; i++){
+      tickClockTickAt = t - (n - i) * TICK_MS;
+      if(i < n) tickStep(); else tickLoop();
+    }
+  } finally { tickClockTickAt = null; }
   return n;
+}
+// The interval's call: marks the clock as running, then ticks.
+function tickClockInterval(){
+  tickClockIntervalAt = performance.now();
+  return tickClock();
+}
+// A frame's call: ticks only while the interval has run in the last second.
+function tickClockFrame(){
+  return performance.now() - tickClockIntervalAt < 1000 ? tickClock() : 0;
 }
 
 // Named (rather than an anonymous startup IIFE) purely so it reads like any
@@ -71,7 +91,7 @@ function boot(){
   worldTestControls();
   log(loaded.ok ? '이전 진행 상황을 불러왔습니다.' : '공방 가동을 시작합니다. 채굴장을 눌러 자원을 모으세요.');
 
-  tickTimer = setInterval(() => tickClock(), TICK_MS);
+  tickTimer = setInterval(tickClockInterval, TICK_MS);
   ticketTimer = setInterval(ticketTrickle, BALANCE.gacha.TICKET_TRICKLE_MS);
   autoSaveTimer = setInterval(saveGame, 10000);
   document.addEventListener('visibilitychange', ()=>{

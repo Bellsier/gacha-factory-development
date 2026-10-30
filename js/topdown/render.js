@@ -387,6 +387,65 @@ function tdRectsOverlap(a, b, gap){
 }
 
 // How high (sprite pixels) the interaction bubble sits above a target's point: above its picture.
+// Task 23: is a walking worker under the bubble (screen rects, the worker's 16 x 22 sprite)?
+function tdBubbleCoversWorker(b, cam, w, h, zoom){
+  const sim = TD.workerSim;
+  if(!b || !sim || !sim.byId) return false;
+  for(const id in sim.byId){
+    const s = sim.byId[id], p = topdownToScreen(s.x, s.y, cam, w, h, zoom);
+    if(tdRectsOverlap(b, { x: p.x - 8 * zoom, y: p.y - 22 * zoom, w: 16 * zoom, h: 22 * zoom }, 0)) return true;
+  }
+  return false;
+}
+
+// Task 23: while the canvas is drawn at a lowered resolution (TD.view.div > 1) the bubble is a
+// page element at the same place and size, so its text stays sharp. null hides it.
+function tdBubbleHtml(lines, r, locked, thin, font){
+  let el = TD.bubbleEl;
+  if(!lines){ if(el && !el.hidden) el.hidden = true; return; }
+  if(!el){ el = TD.bubbleEl = document.createElement('div'); el.className = 'td-bubble'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); }
+  const key = lines.join('\n') + '|' + r.x + ',' + r.y + ',' + Math.round(r.w) + '|' + (locked ? 1 : 0) + (thin ? 1 : 0) + '|' + font;
+  if(el.hidden) el.hidden = false;
+  if(el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.textContent = lines.join('\n');
+  el.className = 'td-bubble' + (locked ? ' is-locked' : '') + (thin ? ' is-thin' : '');
+  Object.assign(el.style, { left: r.x + 'px', top: r.y + 'px', width: Math.round(r.w) + 'px', height: r.h + 'px', font });
+}
+
+// Task 23: screen boxes of the buildings with a door (cabin, huts, village facilities, house), from
+// their sprite sizes (the door is the bottom centre). Only those near the player are listed.
+const TD_DOOR_SPRITES = { base: [64, 58], workshop: [44, 40], appraiser: [44, 40], museum: [60, 48], house: [84, 73] };
+function tdDoorRects(cam, w, h, zoom){
+  const p = state.world.player, out = [];
+  const add = (x, y, size) => {
+    if(Math.abs(x - p.x) > 8 || Math.abs(y - p.y) > 8) return;
+    const sp = topdownToScreen(x, y, cam, w, h, zoom);
+    out.push({ x: sp.x - size[0] * zoom / 2, y: sp.y - size[1] * zoom, w: size[0] * zoom, h: size[1] * zoom });
+  };
+  if(state.world.base) add(state.world.base.x, state.world.base.y, TD_DOOR_SPRITES.base);
+  state.world.workshops.forEach(ws => { if(ws) add(ws.x, ws.y, TD_DOOR_SPRITES.workshop); });
+  const v = state.village;
+  if(v && v.sites) Object.keys(v.sites).forEach(k => { const st = v.sites[k]; if(st && TD_DOOR_SPRITES[k]) add(st.x, st.y, TD_DOOR_SPRITES[k]); });
+  const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(vd) add(vd.house.x, vd.house.y, TD_DOOR_SPRITES.house);
+  return out;
+}
+
+// Task 23: the next-step hint (top left) gets out of the way: almost clear while the interaction bubble
+// or the player is under it, half clear while a building with a door is. Its box is read again twice a
+// second at most.
+function tdHintClear(bubble, doors){
+  const now = performance.now(), hint = typeof document !== 'undefined' && document.getElementById('nextHint');
+  if(!hint) return;
+  if(!TD.hintBox || now - TD.hintBox.at > 500){ const b = hint.getBoundingClientRect(); TD.hintBox = { at: now, r: { x: b.left, y: b.top, w: b.width, h: b.height } }; }
+  const r = TD.hintBox.r, pr = TD.playerRect, cl = document.body.classList;
+  const under = r.w > 0 && !!((bubble && tdRectsOverlap(bubble, r, 4)) || (pr && tdRectsOverlap(pr, r, 4)));
+  const near = !under && r.w > 0 && !!doors && doors.some(d => tdRectsOverlap(d, r, 0));
+  if(cl.contains('td-hint-under') !== under) cl.toggle('td-hint-under', under);
+  if(cl.contains('td-hint-near') !== near) cl.toggle('td-hint-near', near);
+}
+
 function tdBubbleLift(target){
   if(!target) return 34;
   if(target.type === 'base') return 64;
@@ -521,12 +580,22 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
       if(by < 6) by = Math.round(pr.y + pr.h + 8);
     }
     TD.bubbleRect = { x: bx, y: by, w: tw, h: bh };
-    g.fillStyle = TD.target.action === 'locked' ? 'rgba(40,36,34,0.88)' : 'rgba(22,28,32,0.9)';
-    g.fillRect(bx, by, tw, bh); g.fillStyle = TD.target.action === 'locked' ? '#8b98a1' : '#ffd27a';
-    g.fillRect(bx, by + bh - 1, tw, 2);
-    g.fillStyle = TD.target.action === 'locked' ? '#b8c0c6' : '#fff6dc'; g.textBaseline = 'middle';
-    lines.forEach((l, i) => g.fillText(l, bx + 7, by + 11 + i * 22, tw - 14));
-  } else TD.bubbleRect = null;
+    // Task 23: over a walking worker the bubble is see-through (it stays put: no jumping about)
+    const thin = tdBubbleCoversWorker(TD.bubbleRect, cam, w, h, zoom);
+    const locked = TD.target.action === 'locked';
+    if(TD.view.div > 1) tdBubbleHtml(lines, TD.bubbleRect, locked, thin, g.font); // Task 23: sharp text on a lowered resolution
+    else {
+      tdBubbleHtml(null);
+      g.fillStyle = locked ? (thin ? 'rgba(40,36,34,0.5)' : 'rgba(40,36,34,0.88)') : (thin ? 'rgba(22,28,32,0.5)' : 'rgba(22,28,32,0.9)');
+      g.fillRect(bx, by, tw, bh); g.fillStyle = locked ? '#8b98a1' : '#ffd27a';
+      g.fillRect(bx, by + bh - 1, tw, 2);
+      g.textBaseline = 'middle';
+      if(thin){ g.fillStyle = '#000'; lines.forEach((l, i) => g.fillText(l, bx + 8, by + 12 + i * 22, tw - 14)); }
+      g.fillStyle = locked ? '#b8c0c6' : '#fff6dc';
+      lines.forEach((l, i) => g.fillText(l, bx + 7, by + 11 + i * 22, tw - 14));
+    }
+  } else { TD.bubbleRect = null; tdBubbleHtml(null); }
+  tdHintClear(scene === 'world' ? TD.bubbleRect : null, scene === 'world' ? tdDoorRects(cam, w, h, zoom) : null);
   // floating texts (+1 철광석 ...)
   TD.floats = TD.floats.filter(f => now - f.t0 < TD_FLOAT.MS);
   const bubble = TD.bubbleRect, t = TD.target;

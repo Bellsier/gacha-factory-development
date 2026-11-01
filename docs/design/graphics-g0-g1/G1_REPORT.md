@@ -1,6 +1,7 @@
 # G1 캐릭터 개선 시안 보고 (2026-11-01)
 
-- **범위:** 시안 제작까지만. 게임 기본 그래픽으로 적용하지 않았습니다.
+- **범위(작성 당시):** 시안 제작까지만.
+- **이후(2026-11-01):** 승인되어 `js/topdown/sprites.js` `tdPlayerSprite`에 그대로 적용했습니다(classic·v2 공통). 아래 "현재"는 적용 전 그림입니다.
 - **변경하지 않은 것:** 게임 코드(`develop` `26cee0b`, `git status` 깨끗함), 청사진, 저장. PR도 만들지 않았습니다.
 - **시안 위치:** `g1-proposal/proposal.js`(`tdPlayerSpriteG1`, `tdPlayerSpriteG1V2`)
   - 게임의 `tdPlayerSprite`를 복사해 다리·팔·걷기 프레임만 고쳤습니다.

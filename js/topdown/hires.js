@@ -243,7 +243,7 @@ function tdP15Legs(px, W, dir, s){
 }
 function tdPlayerSprite15(dir, frame){
   const R = 1.5, W = 24, H = 33, C = TD_PLAYER_COLORS, b = (frame === 1 || frame === 3) ? 1 : 0, s = frame === 1 ? 1 : frame === 3 ? -1 : 0, bob = b * 2;
-  const legCols = ['pants', 'pantsDark', 'boot', 'bootDark'].map(k => C[k]);
+  const legCols = ['pants', 'pantsDark', 'boot', 'bootDark'].map(k => C[k]).concat(Object.values(TD_PLAYER_FAR_LEG));
   // the body from the 1x drawing: no head (rows above the collar), no legs, no shadow; un-bobbed, then bobbed by `bob`
   const body = tdPlayerSprite(dir, frame).rects.filter(([x, y, w, h, c]) => !/^rgba/.test(c) && y - b + h > 9 && !legCols.includes(c) && !(c === C.furShade && y >= 17))
     .map(([x, y, w, h, c]) => [x, y - b, w, h, c]);

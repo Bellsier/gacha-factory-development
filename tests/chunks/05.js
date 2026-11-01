@@ -163,7 +163,9 @@ function tdKey(win, target, key) {
   check('Character: the backpack and bedroll show from behind and the side, not from the front',
     colours(all[1][0]).has(C.pack) && colours(all[1][0]).has(C.roll) && colours(all[3][0]).has(C.pack) && !colours(all[0][0]).has(C.roll));
   // every frame stands on the same ground line (the boots' lowest row), so walking never makes the feet jump
-  const ground = (sp) => Math.max(...sp.rects.filter((r) => r[4] === C.boot || r[4] === C.bootDark).map((r) => r[1] + r[3]));
+  // (G1, 2026-11-01: the far leg in the side view wears the same boot a shade darker; it is the planted foot on some frames)
+  const bootCols = [C.boot, C.bootDark, win.TD_PLAYER_FAR_LEG.boot, win.TD_PLAYER_FAR_LEG.sole];
+  const ground = (sp) => Math.max(...sp.rects.filter((r) => bootCols.includes(r[4])).map((r) => r[1] + r[3]));
   check('Character: every direction and frame stands on the same ground line (bottom row 21, above the shadow edge)',
     all.every((row) => row.every((sp) => ground(sp) === 21)));
   check('Character: the walk cycle bobs the body a pixel on each step', all.every((row) => {

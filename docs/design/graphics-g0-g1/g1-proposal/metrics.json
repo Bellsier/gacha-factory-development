@@ -1,0 +1,234 @@
+{
+ "현재 classic": {
+  "down": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    140,
+    140,
+    143,
+    143
+   ],
+   "legDiff13": 34,
+   "legDiff01": 28,
+   "legRunsIdle": "3/2/2"
+  },
+  "up": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    108,
+    108,
+    108,
+    108
+   ],
+   "legDiff13": 28,
+   "legDiff01": 23,
+   "legRunsIdle": "2/2/2"
+  },
+  "right": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    129,
+    129,
+    118,
+    118
+   ],
+   "legDiff13": 22,
+   "legDiff01": 34,
+   "legRunsIdle": "1/1/1"
+  },
+  "left": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    129,
+    129,
+    118,
+    118
+   ],
+   "legDiff13": 22,
+   "legDiff01": 34,
+   "legRunsIdle": "1/1/1"
+  }
+ },
+ "시안 classic": {
+  "down": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    132,
+    132,
+    142,
+    142
+   ],
+   "legDiff13": 36,
+   "legDiff01": 22,
+   "legRunsIdle": "3/2/2"
+  },
+  "up": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    108,
+    108,
+    108,
+    108
+   ],
+   "legDiff13": 32,
+   "legDiff01": 25,
+   "legRunsIdle": "2/2/2"
+  },
+  "right": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    144,
+    144,
+    142,
+    142
+   ],
+   "legDiff13": 23,
+   "legDiff01": 47,
+   "legRunsIdle": "2/1/1"
+  },
+  "left": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    144,
+    144,
+    142,
+    142
+   ],
+   "legDiff13": 23,
+   "legDiff01": 47,
+   "legRunsIdle": "2/1/1"
+  }
+ },
+ "현재 v2": {
+  "down": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    144,
+    144,
+    149,
+    149
+   ],
+   "legDiff13": 36,
+   "legDiff01": 28,
+   "legRunsIdle": "3/2/2"
+  },
+  "up": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    124,
+    124,
+    124,
+    124
+   ],
+   "legDiff13": 30,
+   "legDiff01": 23,
+   "legRunsIdle": "2/2/2"
+  },
+  "right": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    142,
+    142,
+    134,
+    134
+   ],
+   "legDiff13": 28,
+   "legDiff01": 38,
+   "legRunsIdle": "1/1/1"
+  },
+  "left": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    142,
+    142,
+    134,
+    134
+   ],
+   "legDiff13": 28,
+   "legDiff01": 38,
+   "legRunsIdle": "1/1/1"
+  }
+ },
+ "시안 v2": {
+  "down": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    135,
+    135,
+    148,
+    148
+   ],
+   "legDiff13": 38,
+   "legDiff01": 22,
+   "legRunsIdle": "3/2/2"
+  },
+  "up": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    124,
+    124,
+    125,
+    125
+   ],
+   "legDiff13": 34,
+   "legDiff01": 25,
+   "legRunsIdle": "2/2/2"
+  },
+  "right": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    154,
+    154,
+    151,
+    151
+   ],
+   "legDiff13": 24,
+   "legDiff01": 47,
+   "legRunsIdle": "2/1/1"
+  },
+  "left": {
+   "size": "16x22",
+   "top": 0,
+   "bottom": 20,
+   "frameDiff": [
+    154,
+    154,
+    151,
+    151
+   ],
+   "legDiff13": 24,
+   "legDiff01": 47,
+   "legRunsIdle": "2/1/1"
+  }
+ }
+}

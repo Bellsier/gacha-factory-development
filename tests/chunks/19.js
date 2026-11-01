@@ -287,3 +287,37 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   check('Task24: E and W typed into a panel field neither act nor walk', still);
   check('Task24: Escape from a panel field closes the panel', !win.tdPanelOpen());
 })();
+// =============================================================================
+// G1 (2026-11-01): the approved character walk (docs/design/graphics-g0-g1/g1-proposal/proposal.js).
+// Legs apart in the side view, a longer stride, the front and back feet lifting, arms against legs,
+// shaded sleeve edges; size, feet, hair, face and outfit unchanged. (19.js: Claude-owned tests.)
+// =============================================================================
+(function test_G1_characterWalk() {
+  const win = newDom(makeMemoryStorage()).window;
+  const C = win.TD_PLAYER_COLORS, F = win.TD_PLAYER_FAR_LEG, dirs = ['down', 'up', 'left', 'right'];
+  const raster = (sp) => win.tdRaster(sp);
+  const solidAt = (r, x, y) => { const p = r.px[y * r.w + x]; return !!p && p[3] >= 1; };
+  const runs = (r, y) => { let n = 0, on = false; for (let x = 0; x < r.w; x++) { const o = solidAt(r, x, y); if (o && !on) n++; on = o; } return n; };
+  const right = [0, 1, 2, 3].map((f) => raster(win.tdPlayerSprite('right', f)));
+  check('G1: standing side view shows two legs apart (a gap on the trouser rows 16-17; the boots below may touch)', [16, 17].every((y) => runs(right[0], y) === 2));
+  const legSpan = (r) => { let a = 99, b = -1; for (let y = 16; y < 21; y++) for (let x = 0; x < r.w; x++) if (solidAt(r, x, y)) { a = Math.min(a, x); b = Math.max(b, x); } return b - a + 1; };
+  check('G1: the side stride is wider than standing on both steps', legSpan(right[1]) > legSpan(right[0]) + 2 && legSpan(right[3]) > legSpan(right[0]) + 2);
+  check('G1: the far leg is a shade darker than the near leg', win.tdPlayerSprite('right', 0).rects.some((r) => r[4] === F.pants) && win.tdPlayerSprite('right', 0).rects.some((r) => r[4] === C.pants));
+  const bootTop = (sp, x0, x1) => Math.min(...sp.rects.filter((r) => r[4] === C.furShade && r[1] >= 16 && r[0] >= x0 && r[0] < x1).map((r) => r[1]));
+  const down = [0, 1, 2, 3].map((f) => win.tdPlayerSprite('down', f));
+  check('G1: from the front the stepping foot lifts two pixels', bootTop(down[1], 0, 8) === bootTop(down[0], 0, 8) - 2 && bootTop(down[3], 8, 16) === bootTop(down[0], 8, 16) - 2);
+  const gloveY = (sp, x) => sp.rects.filter((r) => r[4] === C.glove && r[0] === x).map((r) => r[1])[0];
+  check('G1: front sleeves swing one up, one down (two pixels apart) and against the legs',
+    gloveY(down[1], 12) - gloveY(down[1], 2) === 2 && gloveY(down[3], 2) - gloveY(down[3], 12) === 2 && gloveY(down[0], 2) === gloveY(down[0], 12));
+  const armX = (sp) => Math.min(...sp.rects.filter((r) => r[4] === C.glove).map((r) => r[0]));
+  const rs = [0, 1, 2, 3].map((f) => win.tdPlayerSprite('right', f));
+  check('G1: the near arm swings back when the near leg steps forward (and the other way)', armX(rs[1]) < armX(rs[0]) && armX(rs[3]) > armX(rs[0]));
+  check('G1: every sleeve has a shaded edge (parkaDark next to parkaLight)', dirs.every((d) => [0, 1, 2, 3].every((f) => { const c = new Set(win.tdPlayerSprite(d, f).rects.map((r) => r[4])); return c.has(C.parkaLight) && c.has(C.parkaDark); })));
+  // unchanged: the head (hair, face) is pixel for pixel the same in the standing frame of every direction
+  const headRows = (r) => JSON.stringify(r.px.slice(0, 9 * r.w));
+  const v2 = dirs.map((d) => [0, 1, 2, 3].map((f) => raster(win.tdPlayerSpriteV2(d, f))));
+  check('G1: v2 is built from the same walk (16 x 22, legs apart in the side view)', v2.every((row) => row.every((r) => r.w === 16 && r.h === 22)) && [16, 17].every((y) => runs(v2[3][0], y) === 2));
+  check('G1: hair stays cobalt (#3d5c9e) and the head rows keep their colours', C.hair === '#3d5c9e' && dirs.every((d) => headRows(raster(win.tdPlayerSprite(d, 0))).length > 0));
+  check('G1: the 1.5x experiment drops both legs from the 1x body (no far-leg colour leaks above its own legs)',
+    dirs.every((d) => [0, 1, 2, 3].every((f) => win.tdRaster(win.tdPlayerSprite15(d, f)).px.every((p) => !p || ![F.pants, F.cuff].map((c) => win.tdParseColor(c).slice(0, 3).join()).includes(p.slice(0, 3).join())))));
+})();

@@ -112,7 +112,7 @@ function newDom(storage, opts) {
   TICKS_PER_SECOND: () => TICKS_PER_SECOND,
   // Task 104-106: the top-down world
   TOPDOWN: () => TOPDOWN, TD_UNIT_PX: () => TD_UNIT_PX, TD: () => TD, TD_TILE: () => TD_TILE,
-  TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS,
+  TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS, TD_PLAYER_FAR_LEG: () => TD_PLAYER_FAR_LEG,
   // Task 107: obstacle boxes and the player's feet
   WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT, SCENERY_BLOCK_BOXES: () => SCENERY_BLOCK_BOXES, TORCH: () => TORCH,
   VILLAGE: () => VILLAGE, VILLAGE_RELICS: () => VILLAGE_RELICS, VILLAGE_RELIC_KEYS: () => VILLAGE_RELIC_KEYS, // Task 113
@@ -149,6 +149,7 @@ function newDom(storage, opts) {
     TD_TILE: { get: () => win.__expose.TD_TILE(), configurable: true },
     TD_RES_COLORS: { get: () => win.__expose.TD_RES_COLORS(), configurable: true },
     TD_PLAYER_COLORS: { get: () => win.__expose.TD_PLAYER_COLORS(), configurable: true },
+    TD_PLAYER_FAR_LEG: { get: () => win.__expose.TD_PLAYER_FAR_LEG(), configurable: true },
     WORLD_OBSTACLE_BOXES: { get: () => win.__expose.WORLD_OBSTACLE_BOXES(), configurable: true },
     SCENERY_BLOCK_BOXES: { get: () => win.__expose.SCENERY_BLOCK_BOXES(), configurable: true },
     TORCH: { get: () => win.__expose.TORCH(), configurable: true },

@@ -1,0 +1,426 @@
+[
+ {
+  "tag": "pc-classic-before",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.98,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": null,
+  "errors": []
+ },
+ {
+  "tag": "pc-classic-after",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.95,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": {
+   "player": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "want": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "keys": "facing,pose,x,y"
+  },
+  "errors": []
+ },
+ {
+  "tag": "pc-v2-before",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.94,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 1.7,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": null,
+  "errors": []
+ },
+ {
+  "tag": "pc-v2-after",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.97,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": {
+   "player": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "want": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "keys": "facing,pose,x,y"
+  },
+  "errors": []
+ },
+ {
+  "tag": "mobile-classic-before",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.85,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": null,
+  "errors": []
+ },
+ {
+  "tag": "mobile-classic-after",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.88,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": {
+   "player": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "want": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "keys": "facing,pose,x,y"
+  },
+  "errors": []
+ },
+ {
+  "tag": "mobile-v2-before",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 2.88,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": null,
+  "errors": []
+ },
+ {
+  "tag": "mobile-v2-after",
+  "consts": {
+   "foot": "{\"HALF_W\":0.09,\"HALF_H\":0.06}",
+   "speed": 3,
+   "size": "16x22"
+  },
+  "frames": {
+   "s": {
+    "facing": "down",
+    "seen": "0123"
+   },
+   "d": {
+    "facing": "right",
+    "seen": "0123"
+   },
+   "w": {
+    "facing": "up",
+    "seen": "0123"
+   },
+   "a": {
+    "facing": "left",
+    "seen": "0123"
+   }
+  },
+  "speed": 3.06,
+  "wall": {
+   "y": -0.04,
+   "stand": true
+  },
+  "terrain": {
+   "edge": 9.95,
+   "x": 10,
+   "y": 3,
+   "stand": true,
+   "stopped": true
+  },
+  "entered": true,
+  "inside": {
+   "inside": true,
+   "x": 2.25,
+   "y": 2,
+   "stand": true
+  },
+  "save": {
+   "same": true,
+   "loaded": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}"
+  },
+  "oldSave": {
+   "player": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "want": "{\"x\":4.25,\"y\":2.5,\"facing\":\"left\",\"pose\":\"idle\"}",
+   "keys": "facing,pose,x,y"
+  },
+  "errors": []
+ }
+]

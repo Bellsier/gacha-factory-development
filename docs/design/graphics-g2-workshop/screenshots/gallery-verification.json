@@ -1,0 +1,98 @@
+[
+  {
+    "width": 1280,
+    "style": "classic",
+    "device": "pc",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "style": "classic",
+    "device": "pc",
+    "light": "dusk",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "style": "classic",
+    "device": "mobile",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "style": "v2",
+    "device": "pc",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "style": "v2",
+    "device": "pc",
+    "light": "dusk",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 1280,
+    "style": "v2",
+    "device": "mobile",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "style": "classic",
+    "device": "pc",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "style": "classic",
+    "device": "pc",
+    "light": "dusk",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "style": "classic",
+    "device": "mobile",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "style": "v2",
+    "device": "pc",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "style": "v2",
+    "device": "pc",
+    "light": "dusk",
+    "imagesLoaded": true,
+    "overflow": false
+  },
+  {
+    "width": 390,
+    "style": "v2",
+    "device": "mobile",
+    "light": "day",
+    "imagesLoaded": true,
+    "overflow": false
+  }
+]

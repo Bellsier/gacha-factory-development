@@ -235,7 +235,7 @@ function tdHouseSpriteV2(){
   [[G, 6, 77, 0.32], [G + 1, 5, 78, 0.22], [G + 2, 8, 75, 0.12]].forEach(([y, x0, x1, a]) => {
     for(let x = x0; x <= x1; x++){ const k = y * W + x; if(!r.px[k]) r.px[k] = [30, 26, 34, a]; }
   });
-  return tdUnraster(r);
+  return tdHouseDomesticSprite(tdUnraster(r));
 }
 
 // --- ground ----------------------------------------------------------------------

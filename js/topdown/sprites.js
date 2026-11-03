@@ -544,7 +544,46 @@ function tdHouseSprite(){
     P(x - 1, y + 12, 13, 3, '#8a6440'); P(x - 1, y + 12, 13, 1, '#a07a50');
     [[0, '#e06f8a'], [3, '#f0d060'], [6, '#e06f8a'], [9, '#f7c0cf']].forEach(([dx, c]) => { P(x + dx, y + 10, 2, 2, c); P(x + dx + 1, y + 11, 1, 1, '#4f8246'); });
   });
-  return P.done(false);
+  return tdHouseDomesticSprite(P.done(false));
+}
+
+// Approved G3 B: shared art pass, after each style builds its own materials.
+function tdHouseDomesticSprite(original){
+    const r = tdRaster(original), old = r.px.map(p => p && p.slice());
+    const mix = (x, y, c, t) => { const k=y*84+x; if(r.px[k]) r.px[k]=[...tdMix(r.px[k],tdParseColor(c),t).slice(0,3),r.px[k][3]]; };
+    const rect = (x,y,w,h,c) => { for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)r.px[yy*84+xx]=tdParseColor(c); };
+    // Low-frequency directional planes keep the original shingle/board texture.
+    for(let y=8;y<35;y++) for(let x=4;x<80;x++) {
+      const p=r.px[y*84+x]; if(!p || x>=57&&x<=67&&y<17) continue;
+      if(x<39) mix(x,y,'#b5c58a',.09);
+      if(x>53) mix(x,y,'#324b37',.13);
+    }
+    for(let y=41;y<65;y++)for(let x=12;x<72;x++) {
+      if(x>65)mix(x,y,'#79583e',.16);
+      else if(x<30)mix(x,y,'#f3dfb6',.08);
+    }
+    rect(12,40,19,1,'#9f7b51'); rect(53,40,19,1,'#8e6b47');
+    rect(10,64,20,1,'#c3a075'); rect(54,64,18,1,'#b18c63');
+    {
+      // Small domestic porch furnishings; the approach remains open.
+      rect(13,63,13,2,'#c69866');rect(14,65,2,4,'#5a3b28');rect(23,65,2,4,'#5a3b28');
+      rect(15,62,9,1,'#f0cd94');
+      [[28,64],[61,63]].forEach(([x,y])=>{
+        rect(x,y,5,5,'#a06443');rect(x-1,y,7,1,'#e6ad73');rect(x+1,y+1,1,3,'#c88857');
+        rect(x+2,y-4,1,4,'#4d7340');rect(x,y-3,3,2,'#88a657');rect(x+3,y-2,2,2,'#527940');
+      });
+      // Warm lintel and window-box edges reflect existing interior light.
+      rect(34,42,16,1,'#d5ae75');rect(14,58,13,1,'#b88c5a');rect(58,58,13,1,'#b88c5a');
+    }
+    // Literal protected pixels: door/frame, step, windows, lantern, shadow.
+    [[34,43,16,25],[31,68,22,2],[15,45,11,11],[59,45,11,11],[54,46,6,7],[0,70,84,3]].forEach(([x,y,w,h])=>{
+      for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++)r.px[yy*84+xx]=old[yy*84+xx];
+    });
+    // Keep the original wall/door drawing commands as well as their pixels.
+    // Only changed pixels need an opaque overlay; protected alpha shadows stay single-pass.
+    const delta = { w: r.w, h: r.h, px: r.px.map((p, i) =>
+      JSON.stringify(p) === JSON.stringify(old[i]) ? null : p) };
+    return { w: original.w, h: original.h, rects: original.rects.concat(tdUnraster(delta).rects) };
 }
 
 // --- Task 119: inside the player's house. The room picture (floor, walls,

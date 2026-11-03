@@ -1,0 +1,405 @@
+{
+  "base": "ab0ad8c464319bbaf2735e4a46998050878f17f0",
+  "browser": "154.0.8037.57",
+  "seed": 20261101,
+  "timeMs": 0,
+  "duskMs": 240000,
+  "cases": [
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "before",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "approved",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "final",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "before",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "approved",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "final",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "before",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "approved",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "final",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "before",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "approved",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "final",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    }
+  ]
+}

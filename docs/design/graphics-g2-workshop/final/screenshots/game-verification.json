@@ -1,0 +1,158 @@
+[
+  {
+    "device": "pc",
+    "style": "classic",
+    "oldSaveLoaded": {
+      "gold": 137,
+      "iron": 42,
+      "tickets": 7,
+      "version": 1,
+      "save": true,
+      "load": true
+    },
+    "newSaveReloaded": true,
+    "movement": [
+      {
+        "key": "d",
+        "delta": 0.6000000000000001
+      },
+      {
+        "key": "a",
+        "delta": -0.5999999999999996
+      },
+      {
+        "key": "s",
+        "delta": 0.8999999999999997
+      },
+      {
+        "key": "w",
+        "delta": -0.9000000000000001
+      }
+    ],
+    "wall": {
+      "stand": true,
+      "y": -0.03999023437500011,
+      "edge": -0.1
+    },
+    "interactionOpenedAndClosed": true,
+    "joystick": null,
+    "errors": []
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "oldSaveLoaded": {
+      "gold": 137,
+      "iron": 42,
+      "tickets": 7,
+      "version": 1,
+      "save": true,
+      "load": true
+    },
+    "newSaveReloaded": true,
+    "movement": [
+      {
+        "key": "d",
+        "delta": 0.8999999999999999
+      },
+      {
+        "key": "a",
+        "delta": -0.5999999999999996
+      },
+      {
+        "key": "s",
+        "delta": 0.8999999999999997
+      },
+      {
+        "key": "w",
+        "delta": -0.6000000000000001
+      }
+    ],
+    "wall": {
+      "stand": true,
+      "y": -0.03999023437500011,
+      "edge": -0.1
+    },
+    "interactionOpenedAndClosed": true,
+    "joystick": null,
+    "errors": []
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "oldSaveLoaded": {
+      "gold": 137,
+      "iron": 42,
+      "tickets": 7,
+      "version": 1,
+      "save": true,
+      "load": true
+    },
+    "newSaveReloaded": true,
+    "movement": [
+      {
+        "key": "d",
+        "delta": 0.8999999999999999
+      },
+      {
+        "key": "a",
+        "delta": -0.8999999999999995
+      },
+      {
+        "key": "s",
+        "delta": 0.8999999999999997
+      },
+      {
+        "key": "w",
+        "delta": -0.9000000000000001
+      }
+    ],
+    "wall": {
+      "stand": true,
+      "y": -0.03999023437500011,
+      "edge": -0.1
+    },
+    "interactionOpenedAndClosed": true,
+    "joystick": 1.1999999999999997,
+    "errors": []
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "oldSaveLoaded": {
+      "gold": 137,
+      "iron": 42,
+      "tickets": 7,
+      "version": 1,
+      "save": true,
+      "load": true
+    },
+    "newSaveReloaded": true,
+    "movement": [
+      {
+        "key": "d",
+        "delta": 0.8999999999999999
+      },
+      {
+        "key": "a",
+        "delta": -0.8999999999999995
+      },
+      {
+        "key": "s",
+        "delta": 0.8999999999999997
+      },
+      {
+        "key": "w",
+        "delta": -0.9000000000000001
+      }
+    ],
+    "wall": {
+      "stand": true,
+      "y": -0.03999023437500011,
+      "edge": -0.1
+    },
+    "interactionOpenedAndClosed": true,
+    "joystick": 1.1999999999999997,
+    "errors": []
+  }
+]

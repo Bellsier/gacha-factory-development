@@ -210,7 +210,7 @@ function tdWindow(P, x, y, w, h, cross, sill){
 
 // --- the workshop (공방): the miners' cabin, 64 x 58; the door is at the bottom centre
 // (ground row 54). Red shingle roof with the pickaxe-and-gem sign in its gable, plank
-// walls on a stone footing, a door the player's height, an ore crate and a pickaxe.
+// walls on a stone footing, a door the player's height, a workbench and material shelf.
 // The windows stay where their lights are (render: base x -0.24 / +0.26, y -0.3).
 function tdBaseSprite(){
   const P = tdPainter(64, 58), B = TD_BUILDING;
@@ -236,10 +236,44 @@ function tdBaseSprite(){
   tdDoor(P, 25, 32, 14, 20, false);
   P(26, 37, 12, 1, B.strap); P(26, 46, 12, 1, B.strap); P(35, 41, 2, 2, B.handle);
   P(23, 52, 18, 2, B.step); P(23, 52, 18, 1, B.stepTop);
-  // a pickaxe leaning by the door and a crate of ore by the wall
+  // Retain the existing small leaning tool above the new bench.
   P(19, 40, 6, 1, '#77777e'); P(19, 41, 1, 1, '#5d5d63'); P(24, 41, 1, 1, '#5d5d63'); P(22, 41, 1, 12, '#8a6440');
-  P(49, 46, 8, 8, '#9a7446'); P(49, 46, 8, 1, '#b8915c'); P(49, 50, 8, 1, '#7a5a36'); P(52, 46, 1, 8, '#7a5a36');
-  P(50, 45, 2, 1, '#b8704f'); P(53, 44, 2, 2, '#2c3034'); P(55, 45, 1, 1, '#e09a72');
+  // G2 approved B: artisan workbench and material shelf inside the existing envelope.
+  // Warm side-plane and worn boards; the structural envelope is unchanged.
+  P(54, 30, 2, 15, '#866342'); P(8, 30, 1, 19, '#c29a65');
+  P(9, 31, 14, 1, '#c7a16f'); P(40, 31, 15, 1, '#b58d59');
+  P(9, 48, 10, 1, '#98714b'); P(40, 48, 8, 1, '#98714b');
+  // Roof: a restrained top-left highlight and stepped right-side shade.
+  P(12, 5, 31, 1, '#ca795b'); P(11, 6, 30, 1, '#bd6b50');
+  P(8, 14, 13, 1, '#bf6d52'); P(6, 20, 16, 1, '#b9634b');
+  P(49, 14, 7, 1, '#854333'); P(48, 21, 11, 1, '#854333');
+  P(3, 25, 57, 1, '#a4523d');
+  // Window sills and lintel highlights do not displace the glowing glass.
+  P(10, 43, 13, 1, '#d0a66e'); P(42, 43, 13, 1, '#c59b63');
+  P(25, 31, 14, 1, '#d0a66e');
+  // Replace only lower side-wall furnishings; never paint over the door.
+  P(8, 44, 15, 6, '#a78053'); P(40, 44, 16, 6, '#98734c');
+  P(8, 50, 15, 4, '#827569'); P(40, 50, 18, 4, '#827569');
+  // Heavy timber workbench: illuminated top, dark apron, two grounded legs.
+  P(8, 47, 14, 2, '#634832'); P(8, 47, 14, 1, '#d0a16a');
+  P(9, 49, 2, 5, '#765237'); P(19, 49, 2, 5, '#60432f');
+  P(10, 50, 9, 1, '#98734c');
+  // Broad anvil head, narrow waist and foot; warm two-pixel lamp glass.
+  P(10, 43, 9, 1, '#c1c5c0'); P(10, 44, 9, 1, '#a0aaa9');
+  P(13, 45, 3, 1, '#4a5156'); P(12, 46, 6, 1, '#626c70');
+  P(19, 43, 1, 4, '#855635'); P(18, 43, 4, 1, '#8f979c');
+  P(9, 30, 1, 6, '#60432f'); P(8, 34, 3, 5, '#60432f'); P(9, 35, 2, 2, '#ffd27a'); P(9, 35, 2, 1, '#fff3b0');
+  // Two metal straps on the existing chimney, no oversized new machinery.
+  P(44, 3, 7, 1, '#aa7350'); P(44, 9, 7, 1, '#9b6547');
+  P(44, 2, 1, 9, '#c39566');
+  // Stock cubby with cut boards and two muted metal ingots.
+  P(42, 46, 14, 8, '#654a34'); P(43, 47, 12, 1, '#c39a63');
+  P(43, 49, 12, 1, '#aa8052'); P(43, 52, 12, 1, '#987044');
+  P(43, 44, 5, 2, '#8f979c'); P(49, 44, 5, 2, '#8f979c');
+  P(43, 44, 5, 1, '#c1c5c0'); P(49, 44, 5, 1, '#c1c5c0');
+  P(41, 45, 1, 9, '#ad8055'); P(55, 46, 1, 8, '#86613e');
+  // The shelf side plane meets the original step; preserve the entire entrance.
+  P(23, 52, 18, 2, B.step); P(23, 52, 18, 1, B.stepTop);
   return P.done(false);
 }
 

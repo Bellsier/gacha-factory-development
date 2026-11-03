@@ -1,0 +1,218 @@
+[
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      467,
+      128,
+      638,
+      272
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      467,
+      128,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      467,
+      128,
+      638,
+      272
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      467,
+      128,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      237,
+      723,
+      579,
+      1011
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      237,
+      723,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      237,
+      723,
+      579,
+      1011
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      237,
+      723,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      467,
+      128,
+      638,
+      272
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      467,
+      128,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      467,
+      128,
+      638,
+      272
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      467,
+      128,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  }
+]

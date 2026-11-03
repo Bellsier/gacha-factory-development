@@ -321,3 +321,21 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   check('G1: the 1.5x experiment drops both legs from the 1x body (no far-leg colour leaks above its own legs)',
     dirs.every((d) => [0, 1, 2, 3].every((f) => win.tdRaster(win.tdPlayerSprite15(d, f)).px.every((p) => !p || ![F.pants, F.cuff].map((c) => win.tdParseColor(c).slice(0, 3).join()).includes(p.slice(0, 3).join())))));
 })();
+
+// Approved G3 B: production art keeps the existing interactive/light pixels.
+(function test_G3_houseDomestic() {
+  const win = newDom(makeMemoryStorage()).window;
+  const crypto = require('node:crypto');
+  const regions = [[34,43,16,25],[31,68,22,2],[15,45,11,11],[59,45,11,11],[54,46,6,7],[0,70,84,3]];
+  const hashes = ['253af05df730864eda0a9a458d6d0f854234374ef73a6ca8c2582a0b1430cc13', 'ac96748cd3e33d64b3342a7f373e43cb47817767e5e2e8100ff73a65527a0c37'];
+  ['tdHouseSprite', 'tdHouseSpriteV2'].forEach((name, i) => {
+    const sprite = win[name](), r = win.tdRaster(sprite), protectedPixels = [];
+    for (const [x,y,w,h] of regions) for(let yy=y;yy<y+h;yy++) for(let xx=x;xx<x+w;xx++) protectedPixels.push(r.px[yy*84+xx]);
+    check('G3: '+name+' retains 84×73 and protected interaction/light/shadow pixels', r.w===84 && r.h===73 && crypto.createHash('sha256').update(JSON.stringify(protectedPixels)).digest('hex')===hashes[i]);
+    const at = (x,y) => r.px[y*84+x].slice(0,3).join();
+    check('G3: '+name+' has a bright continuous seat rim and dark separated legs', at(15,62)==='240,205,148' && at(23,62)==='240,205,148' && at(14,67)==='90,59,40' && at(23,67)==='90,59,40' && at(19,67)!==at(14,67));
+    check('G3: '+name+' has distinct terracotta rims and leafy crowns', [[28,64],[61,63]].every(([x,y])=>at(x,y)==='230,173,115' && at(x,y-3)==='136,166,87'));
+    check('G3: '+name+' stays inside integer sprite bounds', sprite.rects.every(([x,y,w,h])=>[x,y,w,h].every(Number.isInteger)&&x>=0&&y>=0&&x+w<=84&&y+h<=73));
+  });
+  win.close();
+})();

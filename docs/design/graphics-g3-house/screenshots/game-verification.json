@@ -1,0 +1,112 @@
+[
+  {
+    "style": "classic",
+    "checks": [
+      {
+        "art": "existing",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      },
+      {
+        "art": "A",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      },
+      {
+        "art": "B",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      },
+      {
+        "art": "C",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      }
+    ],
+    "save": true,
+    "version": 1,
+    "box": {
+      "minX": -0.5,
+      "maxX": 0.5,
+      "minY": -0.75,
+      "maxY": -0.1
+    },
+    "loaded": {
+      "gold": 137,
+      "iron": 42,
+      "tickets": 7,
+      "version": 1
+    }
+  },
+  {
+    "style": "v2",
+    "checks": [
+      {
+        "art": "existing",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      },
+      {
+        "art": "A",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      },
+      {
+        "art": "B",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      },
+      {
+        "art": "C",
+        "target": "house",
+        "enter": true,
+        "inside": true,
+        "exit": true,
+        "roomUnchanged": true,
+        "exitDoor": true
+      }
+    ],
+    "save": true,
+    "version": 1,
+    "box": {
+      "minX": -0.5,
+      "maxX": 0.5,
+      "minY": -0.75,
+      "maxY": -0.1
+    },
+    "loaded": {
+      "gold": 137,
+      "iron": 42,
+      "tickets": 7,
+      "version": 1
+    }
+  }
+]

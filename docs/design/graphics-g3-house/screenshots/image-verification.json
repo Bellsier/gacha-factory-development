@@ -1,0 +1,290 @@
+[
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      440,
+      89,
+      668,
+      260
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      440,
+      89,
+      668,
+      272
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      440,
+      80,
+      668,
+      269
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      443,
+      89,
+      665,
+      260
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      443,
+      89,
+      665,
+      272
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      443,
+      80,
+      665,
+      269
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      183,
+      645,
+      639,
+      987
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      183,
+      645,
+      639,
+      1011
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      183,
+      630,
+      639,
+      1005
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      189,
+      645,
+      633,
+      987
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      189,
+      645,
+      633,
+      1011
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      189,
+      630,
+      633,
+      1005
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      440,
+      89,
+      668,
+      260
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      440,
+      89,
+      668,
+      272
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      440,
+      80,
+      668,
+      269
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      443,
+      89,
+      665,
+      260
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      443,
+      89,
+      665,
+      272
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      443,
+      80,
+      665,
+      269
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "classic",
+    "art": "A",
+    "changedBox": [
+      183,
+      645,
+      639,
+      987
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "classic",
+    "art": "B",
+    "changedBox": [
+      183,
+      645,
+      639,
+      1011
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "classic",
+    "art": "C",
+    "changedBox": [
+      183,
+      630,
+      639,
+      1005
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "v2",
+    "art": "A",
+    "changedBox": [
+      189,
+      645,
+      633,
+      987
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "v2",
+    "art": "B",
+    "changedBox": [
+      189,
+      645,
+      633,
+      1011
+    ],
+    "outsideHouseChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "v2",
+    "art": "C",
+    "changedBox": [
+      189,
+      630,
+      633,
+      1005
+    ],
+    "outsideHouseChanges": false
+  }
+]

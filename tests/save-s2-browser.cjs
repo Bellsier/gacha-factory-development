@@ -195,6 +195,13 @@ const server = http.createServer(async (req, res) => {
       assert.equal(await p.evaluate(()=>localStorage.getItem('gachaFactorySave')),before);
       await isolated.close();console.log('PASS S2 protection:',mode);
     }
+    const missing=await browser.newContext();await missing.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+    await missing.route('**/js/save-runtime.js',r=>r.fulfill({status:404,body:''}));
+    await missing.addInitScript(raw=>localStorage.setItem('gachaFactorySave',raw),legacyRaw);
+    const broken=await missing.newPage();await broken.goto(origin);
+    assert.equal(await broken.evaluate(()=>saveGame()),false,'missing S2 module must not activate legacy writes');
+    assert.equal(await broken.evaluate(()=>localStorage.getItem('gachaFactorySave')),legacyRaw);
+    await missing.close();console.log('PASS S2 protection: missing runtime module fails closed without legacy writes');
     const trial=await browser.newContext();await trial.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
     await trial.addInitScript(raw=>localStorage.setItem('gachaFactorySave',raw),legacyRaw);
     const tp=await trial.newPage();await tp.goto(origin+'/?worldgen=256');

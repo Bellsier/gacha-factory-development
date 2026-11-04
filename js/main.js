@@ -102,5 +102,7 @@ function boot(){
   window.addEventListener('beforeunload', ()=>{ saveGame(); });
 }
 // Browser entry is async S2. Standalone script evaluators retain the legacy codec boot.
-if(typeof S2Runtime!=='undefined' && document.currentScript && !worldTestMode()) S2Runtime.start();
-else boot();
+if(document.currentScript && !worldTestMode()){
+  if(typeof S2Runtime!=='undefined')S2Runtime.start();
+  else {saveBlocked=true;renderAll();setSaveStatus('저장 모듈을 불러오지 못했습니다. 새로고침해 주세요. 원래 저장은 유지됩니다.');}
+}else boot();

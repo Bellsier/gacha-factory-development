@@ -31,6 +31,7 @@ PASS S2 migration: concurrent boot creates one town, legacy bytes/dev sentinel p
 PASS S2 protection: future
 PASS S2 protection: corrupt
 PASS S2 protection: unavailable
+PASS S2 protection: missing runtime module fails closed without legacy writes
 PASS S2 trial: unchanged isolated legacy policy and saveVersion1
 PASS S2 distribution: actual generated single HTML boots, mines, crafts, sells and commits saveVersion1
 PASS S2 mobile: explicit auto/manual labels and five slots

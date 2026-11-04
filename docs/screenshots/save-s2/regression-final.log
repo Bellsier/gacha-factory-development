@@ -1221,7 +1221,7 @@ Not implemented: HTMLCanvasElement's getContext() method: without installing the
 [PASS] Task63: selling works
 [PASS] Task63: expansion works
 [PASS] Task63: stage shows every mine
-[PASS] Task63: progress and layout survive save/load — [["mine_start_iron",0,-1,"iron",1,1,"secured"],["mine_start_coal",4,-2,"coal",1,1,"secured"],["mine_ring_near_1",2,-3,"coal",1,1,"unsecured"],["mine_ring_near_2",4,3,"coal",1,1,"unsecured"],["mine_ring_near_3",2,2,"coal",1,1,"unsecured"],["mine_ring_mid_1",-2,-4,"coal",1,1,"unsecured"],["mine_ring_mid_2",-2,-2,"iron",1,1,"unsecured"],["mine_ring_mid_3",-1,-6,"coal",1,1,"unsecured"],["mine_ring_mid_4",7,3,"mana",2,1,"unsecured"],["mine_ring_far_1",-3,8,"rareMetal",3,1,"unsecured"],["mine_ring_far_2",9,-6,"crystal",2,1,"unsecured"],["mine_ring_far_3",-1,-8,"mana",2,1,"unsecured"],["mine_ring_outer_1",10,8,"rareMetal",3,1,"unsecured"],["mine_ring_outer_2",8,-10,"rareMetal",3,1,"unsecured"],["mine_manaVein_mana",6,0,"mana",2,1,"unsecured"],["mine_manaVein_crystal",2,4,"crystal",2,1,"unsecured"]] vs [["mine_start_iron",0,-1,"iron",1,1,"secured"],["mine_start_coal",4,-2,"coal",1,1,"secured"],["mine_ring_near_1",2,-3,"coal",1,1,"unsecured"],["mine_ring_near_2",4,3,"coal",1,1,"unsecured"],["mine_ring_near_3",2,2,"coal",1,1,"unsecured"],["mine_ring_mid_1",-2,-4,"coal",1,1,"unsecured"],["mine_ring_mid_2",-2,-2,"iron",1,1,"unsecured"],["mine_ring_mid_3",-1,-6,"coal",1,1,"unsecured"],["mine_ring_mid_4",7,3,"mana",2,1,"unsecured"],["mine_ring_far_1",-3,8,"rareMetal",3,1,"unsecured"],["mine_ring_far_2",9,-6,"crystal",2,1,"unsecured"],["mine_ring_far_3",-1,-8,"mana",2,1,"unsecured"],["mine_ring_outer_1",10,8,"rareMetal",3,1,"unsecured"],["mine_ring_outer_2",8,-10,"rareMetal",3,1,"unsecured"],["mine_manaVein_mana",6,0,"mana",2,1,"unsecured"],["mine_manaVein_crystal",2,4,"crystal",2,1,"unsecured"]]
+[PASS] Task63: progress and layout survive save/load — [["mine_start_iron",4,1,"iron",1,1,"secured"],["mine_start_coal",1,2,"coal",1,1,"secured"],["mine_ring_near_1",4,-2,"iron",1,1,"unsecured"],["mine_ring_near_2",-1,2,"coal",1,1,"unsecured"],["mine_ring_near_3",4,3,"iron",1,1,"unsecured"],["mine_ring_mid_1",8,3,"mana",2,1,"unsecured"],["mine_ring_mid_2",8,-3,"coal",1,1,"unsecured"],["mine_ring_mid_3",-3,-3,"coal",1,1,"unsecured"],["mine_ring_mid_4",0,6,"coal",1,1,"unsecured"],["mine_ring_far_1",8,6,"crystal",2,1,"unsecured"],["mine_ring_far_2",2,-7,"crystal",2,1,"unsecured"],["mine_ring_far_3",6,-8,"rareMetal",3,1,"unsecured"],["mine_ring_outer_1",9,10,"rareMetal",3,1,"unsecured"],["mine_ring_outer_2",8,-9,"relic",3,1,"unsecured"],["mine_manaVein_mana",6,0,"mana",2,1,"unsecured"],["mine_manaVein_crystal",2,4,"crystal",2,1,"unsecured"]] vs [["mine_start_iron",4,1,"iron",1,1,"secured"],["mine_start_coal",1,2,"coal",1,1,"secured"],["mine_ring_near_1",4,-2,"iron",1,1,"unsecured"],["mine_ring_near_2",-1,2,"coal",1,1,"unsecured"],["mine_ring_near_3",4,3,"iron",1,1,"unsecured"],["mine_ring_mid_1",8,3,"mana",2,1,"unsecured"],["mine_ring_mid_2",8,-3,"coal",1,1,"unsecured"],["mine_ring_mid_3",-3,-3,"coal",1,1,"unsecured"],["mine_ring_mid_4",0,6,"coal",1,1,"unsecured"],["mine_ring_far_1",8,6,"crystal",2,1,"unsecured"],["mine_ring_far_2",2,-7,"crystal",2,1,"unsecured"],["mine_ring_far_3",6,-8,"rareMetal",3,1,"unsecured"],["mine_ring_outer_1",9,10,"rareMetal",3,1,"unsecured"],["mine_ring_outer_2",8,-9,"relic",3,1,"unsecured"],["mine_manaVein_mana",6,0,"mana",2,1,"unsecured"],["mine_manaVein_crystal",2,4,"crystal",2,1,"unsecured"]]
 [PASS] Task63: a new run (prestige) builds a valid generated world
 [PASS] Task64: ring counts shrink outward (reference table)
 [PASS] Task64: rings are contiguous from the starter distance outward
@@ -2679,14 +2679,14 @@ Not implemented: HTMLCanvasElement's getContext() method: without installing the
 [PASS] Perf: fmt gives the same text as before for small, large, fractional and huge numbers
 [PASS] Perf: fmt of a non-number still gives what it gave (NaN) — NaN
 [PASS] Perf: the shown numbers still read as before (a resource count with thousands separators)
-[PASS] Perf: the stand grid round the workshop matches playerCanStand at every point (new game) — {"diff":0,"stand":17644,"n":19881}
-[PASS] Perf: ...and over a wide area with the tunnel open (scenery, the land beyond) — {"diff":0,"stand":8526,"n":22311}
+[PASS] Perf: the stand grid round the workshop matches playerCanStand at every point (new game) — {"diff":0,"stand":17661,"n":19881}
+[PASS] Perf: ...and over a wide area with the tunnel open (scenery, the land beyond) — {"diff":0,"stand":8536,"n":22311}
 [PASS] Perf: the village sites and plaza are placed exactly where they were before (6 worlds)
 [PASS] Perf: for every attribute the tick reads, each value maps to the element querySelector finds
 [PASS] Perf: after a change, every shared amount and product stock on screen shows the new value
 [PASS] Perf: after the recipe cards are rebuilt the new cards get the numbers (nothing stale)
 [PASS] Perf: with two elements for one key only the first in the page is updated (as before)
-[PASS] Perf: in the 256 test world the stand grid matches playerCanStand, also where no chunk was loaded yet — {"inTestWorld":true,"sameWorld":true,"diff":0,"stand":24438,"n":27323}
+[PASS] Perf: in the 256 test world the stand grid matches playerCanStand, also where no chunk was loaded yet — {"inTestWorld":true,"sameWorld":true,"diff":0,"stand":24172,"n":27323}
 [PASS] Save isolation: a good normal save loads in the normal game
 [PASS] Save isolation: the normal game saves under its own key only
 [PASS] Save isolation: a good trial save loads in the test world (its own progress, a 256 world)
@@ -2781,9 +2781,9 @@ Not implemented: HTMLCanvasElement's getContext() method: without installing the
 [PASS] Task23: the label names what the hut makes, or that it has no recipe — 제작소 1 Lv.1 · 석탄 벽돌
 [PASS] Task23: a target is always within the old reach (1.15), and something is offered wherever the cabin or a hut is in reach — 0
 [PASS] Task23: walking past the doors the target goes hut 1 -> hut 2, never the cabin or nothing — {"seen":["workshop_mv9rakqxmdw4jn","workshop_mv9rakqxu87oo7"],"x":2.4,"y":-0.7}
-[PASS] Task23: all eight huts are still built, each on its own cell — ["1,0","1,1","0,-2","0,-1","0,2","2,2","4,2","-1,-3"]
-[PASS] Task23: no new hut right behind the cabin — ["1,0","1,1","0,-2","0,-1","0,2","2,2","4,2","-1,-3"]
-[PASS] Task23: no two huts door to door side by side — ["1,0","1,1","0,-2","0,-1","0,2","2,2","4,2","-1,-3"]
+[PASS] Task23: all eight huts are still built, each on its own cell — ["3,-1","1,-2","3,-2","4,1","4,2","-1,-3","1,-3","3,-3"]
+[PASS] Task23: no new hut right behind the cabin — ["3,-1","1,-2","3,-2","4,1","4,2","-1,-3","1,-3","3,-3"]
+[PASS] Task23: no two huts door to door side by side — ["3,-1","1,-2","3,-2","4,1","4,2","-1,-3","1,-3","3,-3"]
 [PASS] Task23: they stay near the cabin (within 4 cells)
 [PASS] Task23: loading keeps the packed huts in place — [["workshop_mv9rakqxmdw4jn",1,-1],["workshop_mv9rakqxu87oo7",2,-1]]
 [PASS] Task23: the next hut is not beside them door to door — {"x":1,"y":0}

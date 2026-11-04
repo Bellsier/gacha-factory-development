@@ -42,29 +42,33 @@ class SaveEngine {
     if(v.revision!==s.revision)throw SaveEngine.error('CONFLICT');
     this.session(v,await t.get('autos',v.id));return v;
   }
-  session(v,a) { this.valid(a);if(a.id!==v.id||a.snapshot.villageId!==v.id||a.revision!==v.revision)throw SaveEngine.error('INVALID_SAVE');return {id:v.id,epoch:v.epoch,revision:v.revision,name:v.name,snapshot:a.snapshot}; }
+  session(v,a) { this.valid(a);if(a.id!==v.id||a.snapshot.villageId!==v.id||a.revision!==v.revision)throw SaveEngine.error('INVALID_SAVE');return {id:v.id,epoch:v.epoch,revision:v.revision,name:v.name,owner:v.owner,presence:v.presence||null,snapshot:a.snapshot}; }
   async release(t,v) { if(v){v.owner=null;v.epoch++;await t.put('villages',v);} }
   async insert(t,p,name,source,owned=true) {
     const id=SaveEngine.id(),snapshot=this.snapshot(p,id,name);
-    const v={id,name,createdAt:Date.now(),savedAt:p.savedAt,revision:1,epoch:owned?1:0,owner:owned?this.owner:null,source:source||null};
+    const v={id,name,createdAt:Date.now(),savedAt:p.savedAt,revision:1,epoch:owned?1:0,owner:owned?this.owner:null,presence:owned?this.presenceProtocol||null:null,source:source||null};
     // add, never put: an ID collision must not overwrite an existing village.
     await t.add('villages',v);const a={id,revision:1,snapshot};await t.add('autos',a);return this.session(v,a);
   }
+  async recent(t,id){await t.put('migrations',{id:'s2:recent',kind:'preference',villageId:id,playedAt:Date.now()});}
   async create(p,name,current=null) {
-    this.payload(p);return this.tx(['villages','autos'],true,async t=>{
-      const old=await this.guard(t,current);const s=await this.insert(t,p,name);await this.release(t,old);return s;
+    this.payload(p);return this.tx(['villages','autos','migrations'],true,async t=>{
+      const old=await this.guard(t,current);const s=await this.insert(t,p,name);await this.release(t,old);await this.recent(t,s.id);return s;
     });
   }
   async read(id) {return this.tx(['villages','autos'],false,async t=>{const v=await t.get('villages',id);if(!v)throw SaveEngine.error('MISSING');return this.session(v,await t.get('autos',id));});}
-  async list() {return this.tx(['villages','manual'],false,async t=>({villages:await t.all('villages'),manual:await t.all('manual')}));}
-  async claim(id,takeover=false,current=null,expected=null) {
-    return this.tx(['villages','autos'],true,async t=>{
+  async list() {return this.tx(['villages','manual','migrations'],false,async t=>{const villages=await t.all('villages'),recent=await t.get('migrations','s2:recent');return {villages,manual:await t.all('manual'),recent:villages.some(v=>v.id===recent?.villageId)?recent.villageId:null};});}
+  async claim(id,takeover=false,current=null,expected=null,recoveryOwner=null) {
+    return this.tx(['villages','autos','migrations'],true,async t=>{
       const old=await this.guard(t,current),v=await t.get('villages',id);
-      if(!v)throw SaveEngine.error('MISSING');if(v.owner&&v.owner!==this.owner&&!takeover)throw SaveEngine.error('OWNED');
+      if(!v)throw SaveEngine.error('MISSING');
+      const recovered=recoveryOwner&&v.owner===recoveryOwner&&v.epoch===expected?.epoch&&v.presence==='web-lock-v1';
+      if(recoveryOwner&&!recovered)throw SaveEngine.error('CONFLICT');
+      if(v.owner&&v.owner!==this.owner&&!takeover&&!recovered)throw SaveEngine.error('OWNED');
       const a=await t.get('autos',id);this.session(v,a);
       if(expected&&(a.revision!==expected.revision||a.snapshot.id!==expected.snapshot.id))throw SaveEngine.error('CONFLICT');
       if(old&&old.id!==id)await this.release(t,old);
-      v.owner=this.owner;v.epoch++;await t.put('villages',v);return this.session(v,a);
+      v.owner=this.owner;v.presence=this.presenceProtocol||null;v.epoch++;await t.put('villages',v);await this.recent(t,v.id);return this.session(v,a);
     });
   }
   async authority(s) {return this.tx(['villages'],false,async t=>{const v=await t.get('villages',s.id);return !!v&&v.owner===this.owner&&v.epoch===s.epoch;});}
@@ -85,12 +89,12 @@ class SaveEngine {
     });
   }
   async restore(current,n,expected,snapshotId) {
-    this.slot(n);return this.tx(['villages','autos','manual'],true,async t=>{
+    this.slot(n);return this.tx(['villages','autos','manual','migrations'],true,async t=>{
       const old=await this.guard(t,current),row=await t.get('manual',n);this.valid(row);
       if(row.revision!==expected||row.snapshot.id!==snapshotId)throw SaveEngine.error('CONFLICT');
       const p=this.payload(row.snapshot.payload);p.savedAt=Date.now();
       const s=await this.insert(t,p,row.snapshot.name+' · 복원 사본',{villageId:row.snapshot.villageId,snapshotId,slot:n});
-      await this.release(t,old);return s;
+      await this.release(t,old);await this.recent(t,s.id);return s;
     });
   }
   async removeVillage(id,revision,epoch) {

@@ -15,7 +15,8 @@ const server = http.createServer(async (req, res) => {
 });
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
-  const browser = await chromium.launch({headless:true, ...(process.env.CHROMIUM ? {executablePath:process.env.CHROMIUM,args:['--no-sandbox']} : {})});
+  const launchOptions={headless:true, ...(process.env.CHROMIUM ? {executablePath:process.env.CHROMIUM,args:['--no-sandbox']} : {})};
+  const browser = await chromium.launch(launchOptions);
   try {
     const context = await browser.newContext();
     await context.route('https://fonts.googleapis.com/**', r => r.fulfill({status:200,body:''}));
@@ -136,6 +137,37 @@ const server = http.createServer(async (req, res) => {
     });assert.equal(canceled,true,'a queued save losing authority cancels the pending transition');
     assert.equal(await page.evaluate(id=>S2Runtime.resume(id,true),restored.id),true);
     console.log('PASS S2 transition: pending autosave ownership failure cancels switch');
+    const recent=await page.evaluate(()=>S2Runtime.engine.list().then(l=>l.recent));
+    assert.equal(recent,restored.id,'last activated village is persisted');
+    await page.reload();await page.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    await page.waitForFunction(()=>document.querySelector('[data-s2-recent]')&&!document.querySelector('[data-s2-recent]').disabled);
+    let unexpected=0;page.on('dialog',()=>unexpected++);
+    await page.locator('[data-s2-recent]').click();
+    await page.waitForFunction(id=>S2Runtime.session?.id===id,restored.id);
+    assert.equal(unexpected,0,'reload continuation must not ask for dead owner takeover');
+    console.log('PASS S2 UX: persisted recent village and one-click reload recovery');
+    // An active owner must still require confirmation, including a background tab.
+    const live=await context.newPage();await live.goto(origin);
+    await live.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    let confirmations=0;live.on('dialog',d=>{confirmations++;d.dismiss();});
+    assert.equal(await live.evaluate(id=>S2Runtime.resume(id),restored.id),false);
+    assert.equal(confirmations,1);assert.equal(await page.evaluate(()=>S2Runtime.engine.authority(S2Runtime.session)),true);
+    live.removeAllListeners('dialog');live.on('dialog',d=>{confirmations++;d.accept();});
+    assert.equal(await live.evaluate(id=>S2Runtime.resume(id),restored.id),true);
+    assert.equal(confirmations,2);await page.waitForFunction(()=>!S2Runtime.session);
+    await live.close();
+    // Closing a document (as in browser restart) releases its lock; the next
+    // document may safely recover its committed state without a dialog.
+    const reopened=await context.newPage();let restartDialogs=0;reopened.on('dialog',d=>{restartDialogs++;d.dismiss();});
+    await reopened.goto(origin);await reopened.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    assert.equal(await reopened.evaluate(id=>S2Runtime.resume(id),restored.id),true);assert.equal(restartDialogs,0);
+    await reopened.close();assert.equal(await page.evaluate(id=>S2Runtime.resume(id),restored.id),true);
+    console.log('PASS S2 UX: live owner confirmation/cancel/handoff and closed-document recovery');
+    const fallback=await context.newPage();await fallback.addInitScript(()=>Object.defineProperty(navigator,'locks',{value:undefined}));
+    let fallbackDialogs=0;fallback.on('dialog',d=>{fallbackDialogs++;d.dismiss();});
+    await fallback.goto(origin);await fallback.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    assert.equal(await fallback.evaluate(id=>S2Runtime.resume(id),restored.id),false);assert.equal(fallbackDialogs,1);
+    await fallback.close();console.log('PASS S2 UX: unsupported liveness API retains takeover confirmation');
     const peer=await context.newPage();
     await peer.goto(origin);await peer.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
     assert.equal(await peer.evaluate(()=>S2Runtime.canPlay()),false);
@@ -163,6 +195,8 @@ const server = http.createServer(async (req, res) => {
     assert.equal(await peer.evaluate(()=>S2Runtime.session===null&&!S2Runtime.canPlay()),true);
     assert.equal(await peer.locator('#s2Menu').isVisible(),true);
     assert.equal(await peer.evaluate(()=>S2Runtime.engine.list().then(l=>l.manual.length)),1);
+    assert.equal(await peer.locator('[data-s2-recent]').isDisabled(),true);
+    assert.equal(await peer.evaluate(()=>S2Runtime.engine.list().then(l=>l.recent)),null,'deleted recent village is not a stale continue target');
     console.log('PASS S2 runtime: reload/recovery and active deletion return safely to village picker');
     const legacyPayload=await page.evaluate(()=>S2Runtime.payload());legacyPayload.run.gold=321;
     const legacyRaw=JSON.stringify(legacyPayload);
@@ -215,6 +249,23 @@ const server = http.createServer(async (req, res) => {
     const built=await single.evaluate(async()=>{clearInterval(tickTimer);clearInterval(ticketTimer);mineResource('iron');mineResource('iron');mineResource('coal');startCraft(recipeByKey('steel'));sellAll(recipeByKey('steel'));const saved=await saveGame();const snapshot=(await S2Runtime.engine.read(S2Runtime.session.id)).snapshot;return {gold:state.gold,saved,version:snapshot.payload.saveVersion,savedGold:snapshot.payload.run.gold,drawn:document.getElementById('goldVal').textContent!==''&&!!document.querySelector('[data-mine="iron"]')};});
     assert.deepEqual(built,{gold:5,saved:true,version:1,savedGold:5,drawn:true});
     await singleContext.close();console.log('PASS S2 distribution: actual generated single HTML boots, mines, crafts, sells and commits saveVersion1');
+    // Actual browser-process restart with a disposable persistent profile.
+    const profile=await fs.mkdtemp(path.join(require('node:os').tmpdir(),'s2-restart-'));
+    let persistent;
+    try{
+      persistent=await chromium.launchPersistentContext(profile,launchOptions);
+      await persistent.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+      const first=await persistent.newPage();await first.goto(origin);await first.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.session);
+      const remembered=await first.evaluate(async()=>{state.gold=678;await saveGame();return S2Runtime.session.id;});
+      await persistent.close();persistent=null;
+      persistent=await chromium.launchPersistentContext(profile,launchOptions);
+      await persistent.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+      const again=await persistent.newPage();let restartConfirm=0;again.on('dialog',d=>{restartConfirm++;d.dismiss();});
+      await again.goto(origin);await again.waitForFunction(()=>document.querySelector('[data-s2-recent]')&&!document.querySelector('[data-s2-recent]').disabled);
+      await again.locator('[data-s2-recent]').click();await again.waitForFunction(id=>S2Runtime.session?.id===id,remembered);
+      assert.equal(await again.evaluate(()=>state.gold),678);assert.equal(restartConfirm,0);
+      console.log('PASS S2 UX: actual browser-process restart preserves recent village and resumes without confirmation');
+    }finally{if(persistent)await persistent.close();await fs.rm(profile,{recursive:true,force:true});}
     const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
     await mobile.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
     const phone=await mobile.newPage();await phone.goto(origin);await phone.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.session);
@@ -222,6 +273,12 @@ const server = http.createServer(async (req, res) => {
     assert.equal(await phone.getByRole('heading',{name:'자동 저장 · 마을별 1개'}).isVisible(),true);
     await phone.waitForFunction(()=>document.querySelectorAll('[data-s2-manuals] .s2-row').length===5);
     assert.equal(await phone.locator('[data-s2-manuals] .s2-row').count(),5);
+    await phone.locator('[data-s2-manual-section] summary').tap();
+    assert.equal(await phone.getByRole('button',{name:'여기에 저장',exact:true}).first().isVisible(),true);
+    await phone.locator('[data-s2-auto-section] summary').tap();
+    assert.equal(await phone.locator('[data-s2-autos]').isVisible(),false);
+    await phone.locator('[data-s2-auto-section] summary').tap();
+    console.log('PASS S2 UX: mobile auto/manual sections collapse independently');
     await fs.mkdir(path.join(root,'work/s2'),{recursive:true});await phone.screenshot({path:path.join(root,'work/s2/mobile-save-menu.png'),fullPage:true});
     await mobile.close();assert.deepEqual(errors,[]);await peer.close();
     console.log('PASS S2 mobile: explicit auto/manual labels and five slots');

@@ -15,7 +15,7 @@ const S2Runtime = {
   fresh(){return this.payload(freshRunState(),JSON.parse(this.initialPermanent));},
   enqueue(fn){const job=this.tail.then(fn);this.tail=job.catch(()=>{});return job;},
   fail(error){
-    const labels={OWNERSHIP:'다른 탭이 저장 권한을 가져갔습니다. 최신 저장으로 권한을 회복해 주세요.',OWNED:'다른 탭 또는 이전 세션이 소유 중입니다. 권한 인계를 선택해 주세요.',CONFLICT:'저장이 변경됐습니다. 목록을 새로 확인해 주세요.',INVALID_SAVE:'손상되었거나 지원하지 않는 저장입니다. 원본은 유지됩니다.',MISSING:'마을이 삭제됐습니다. 다른 마을을 선택해 주세요.',LEGACY_CHANGED:'기존 저장이 변경됐습니다. 다시 확인해 주세요.',UNAVAILABLE:'브라우저 저장소를 사용할 수 없습니다. 기존 저장은 유지됩니다.'};
+    const labels={CANCELED:'이어하기를 취소했습니다.',OWNERSHIP:'다른 탭이 저장 권한을 가져갔습니다. 최신 저장으로 권한을 회복해 주세요.',OWNED:'다른 탭 또는 이전 세션이 소유 중입니다. 권한 인계를 선택해 주세요.',CONFLICT:'저장이 변경됐습니다. 목록을 새로 확인해 주세요.',INVALID_SAVE:'손상되었거나 지원하지 않는 저장입니다. 원본은 유지됩니다.',MISSING:'마을이 삭제됐습니다. 다른 마을을 선택해 주세요.',LEGACY_CHANGED:'기존 저장이 변경됐습니다. 다시 확인해 주세요.',UNAVAILABLE:'브라우저 저장소를 사용할 수 없습니다. 기존 저장은 유지됩니다.'};
     this.message=labels[error.code]||'저장 실패: 저장 공간 또는 브라우저 권한을 확인해 주세요. 이전 저장은 유지됩니다.';
     if(['OWNERSHIP','MISSING'].includes(error.code)){this.session=null;this.generation++;this.menuOpen=true;this.clearInput();}
     this.status();return false;
@@ -62,7 +62,30 @@ const S2Runtime = {
     });
   },
   newVillage(name){return this.transition(current=>this.engine.create(this.fresh(),name||'새 마을',current));},
-  resume(id,takeover=false){return this.transition(async current=>{const candidate=await this.engine.read(id);this.decode(candidate.snapshot.payload);return this.engine.claim(id,takeover,current,candidate);});},
+  async startPresence(){
+    if(!navigator.locks)return;
+    // Owner liveness is a document-lifetime lock, never a heartbeat timeout.
+    await new Promise((resolve,reject)=>{
+      this.presenceTask=navigator.locks.request(SAVE_BASE_KEY+'.s2.owner.'+this.engine.owner,async()=>{
+        this.engine.presenceProtocol='web-lock-v1';resolve();
+        await new Promise(release=>{this.releasePresence=release;});
+      }).catch(reject);
+    });
+  },
+  resume(id,takeover=false){return this.transition(async current=>{
+    const candidate=await this.engine.read(id);this.decode(candidate.snapshot.payload);
+    const claim=(force=false,recover=null)=>this.engine.claim(id,force,current,candidate,recover);
+    if(takeover||!candidate.owner||candidate.owner===this.engine.owner)return claim(takeover);
+    const confirmLive=()=>{
+      if(!confirm('다른 탭이 사용 중이거나 권한 상태를 확인할 수 없습니다. 저장 권한을 인계하고 마지막 저장부터 이어 할까요? 저장되지 않은 진행은 가져오지 않습니다.'))throw SaveEngine.error('CANCELED');
+      return claim(true);
+    };
+    if(candidate.presence==='web-lock-v1'&&navigator.locks){
+      // Hold this old-owner lock through the fenced IDB claim (no check/use gap).
+      return navigator.locks.request(SAVE_BASE_KEY+'.s2.owner.'+candidate.owner,{ifAvailable:true},lock=>lock?claim(false,candidate.owner):confirmLive());
+    }
+    return confirmLive();
+  });},
   restore(row){return this.transition(async current=>{this.decode(row.snapshot.payload);return this.engine.restore(current,row.id,row.revision,row.snapshot.id);});},
   manual(slot,expected){
     if(!this.session||this.transitioning)return Promise.resolve(false);
@@ -102,7 +125,7 @@ const S2Runtime = {
   async start(){
     this.started=true;this.initialPermanent=JSON.stringify(permanent);this.mount();this.menuOpen=true;this.status();
     try{
-      this.engine=await SaveEngine.open(SAVE_BASE_KEY);
+      this.engine=await SaveEngine.open(SAVE_BASE_KEY);await this.startPresence();
       const history=await this.engine.history(SAVE_BASE_KEY),raw=localStorage.getItem(SAVE_BASE_KEY);
       let migrated=null;
       if(raw!==null&&!history.length)migrated=await this.importLegacy();
@@ -125,7 +148,9 @@ const S2Runtime = {
   mount(){
     const button=document.createElement('button');button.id='s2Open';button.type='button';button.textContent='저장 · 마을';button.onclick=()=>{this.menuOpen=true;this.clearInput();this.renderMenu();this.status();this.root.querySelector('[data-s2-close]').focus();};document.body.appendChild(button);
     const status=document.createElement('div');status.id='s2Status';status.setAttribute('role','status');document.body.appendChild(status);
-    const root=document.createElement('section');root.id='s2Menu';root.tabIndex=-1;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','저장과 마을 관리');root.innerHTML='<div class="s2-paper"><h2>저장과 마을</h2><p data-s2-current></p><p data-s2-message role="status"></p><button type="button" data-s2-close>플레이로 돌아가기</button><label>새 마을 이름 <input data-s2-name maxlength="40" value="새 마을"></label><button type="button" data-s2-new>새 마을 만들기</button><p>다른 마을과 수동 저장은 유지됩니다.</p><button type="button" data-s2-import>기존 저장을 별도 마을로 가져오기</button><h3>자동 저장 · 마을별 1개</h3><div data-s2-autos></div><h3>수동 저장 · 전체 공용 5개</h3><div data-s2-manuals></div></div>';document.body.appendChild(root);this.root=root;
+    const root=document.createElement('section');root.id='s2Menu';root.tabIndex=-1;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','저장과 마을 관리');root.innerHTML='<div class="s2-paper"><h2>저장과 마을</h2><p data-s2-current></p><p data-s2-message role="status"></p><button type="button" data-s2-recent disabled>최근 마을 이어하기</button><p data-s2-recent-label></p><button type="button" data-s2-close>플레이로 돌아가기</button><label>새 마을 이름 <input data-s2-name maxlength="40" value="새 마을"></label><button type="button" data-s2-new>새 마을 만들기</button><p>다른 마을과 수동 저장은 유지됩니다.</p><button type="button" data-s2-import>기존 저장을 별도 마을로 가져오기</button><details data-s2-auto-section open><summary><h3>자동 저장 · 마을별 1개</h3></summary><div data-s2-autos></div></details><details data-s2-manual-section open><summary><h3>수동 저장 · 전체 공용 5개</h3></summary><div data-s2-manuals></div></details></div>';document.body.appendChild(root);this.root=root;
+    if(typeof matchMedia==='function'&&matchMedia('(max-width:600px)').matches)root.querySelector('[data-s2-manual-section]').open=false;
+    root.querySelector('[data-s2-recent]').onclick=()=>{if(this.recentId)this.resume(this.recentId);};
     root.querySelector('[data-s2-close]').onclick=()=>{if(this.session){this.menuOpen=false;this.status();button.focus();}};
     root.querySelector('[data-s2-new]').onclick=()=>this.newVillage(root.querySelector('[data-s2-name]').value.trim()||'새 마을');
     root.querySelector('[data-s2-import]').onclick=()=>{
@@ -138,7 +163,7 @@ const S2Runtime = {
       if(root.contains(e.target)||button.contains(e.target)){
         if(e.type==='keydown'&&e.key==='Escape'&&this.session){this.menuOpen=false;this.status();button.focus();e.preventDefault();}
         if(e.type==='keydown'&&e.key==='Tab'){
-          const elements=[...root.querySelectorAll('button:not(:disabled),input')].filter(x=>!x.hidden),first=elements[0],last=elements.at(-1);
+          const elements=[...root.querySelectorAll('button:not(:disabled),input,summary')].filter(x=>!x.hidden&&x.getClientRects().length),first=elements[0],last=elements.at(-1);
           if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
         }
         // Prevent letter shortcuts in the game from handling dialog keys.
@@ -155,12 +180,15 @@ const S2Runtime = {
     this.root.querySelector('[data-s2-import]').disabled=!this.engine||this.transitioning;
     if(!this.engine){if(this.menuOpen)this.root.focus();return;}
     try{
-      const data=await this.engine.list();
+      const data=await this.engine.list();this.recentId=data.recent;
+      const recent=data.villages.find(v=>v.id===data.recent);
+      this.root.querySelector('[data-s2-recent]').disabled=!recent||this.transitioning;
+      this.root.querySelector('[data-s2-recent-label]').textContent=recent?'최근 플레이: '+recent.name:'최근 마을 없음';
       const stamp=n=>new Date(n).toLocaleString('ko-KR');
       const add=(host,text,buttons)=>{const row=document.createElement('div');row.className='s2-row';const label=document.createElement('p');label.textContent=text;row.appendChild(label);for(const [name,fn,disabled]of buttons){const b=document.createElement('button');b.type='button';b.textContent=name;b.disabled=!!disabled||this.transitioning;b.onclick=fn;row.appendChild(b);}host.appendChild(row);};
       const autos=this.root.querySelector('[data-s2-autos]');autos.textContent='';
-      for(const v of data.villages){add(autos,(v.id===this.session?.id?'현재 플레이 · ':'')+v.name+' · 자동 저장 '+stamp(v.savedAt)+(v.source?' · 복원 사본':''),[
-        ['이어하기',()=>this.resume(v.id)],['권한 회복·인계 후 이어하기',()=>{if(confirm('다른 탭의 저장 권한을 해제하고 마지막 저장부터 이어 합니다. 저장되지 않은 진행은 가져오지 않습니다.'))this.resume(v.id,true);}],
+      for(const v of data.villages){add(autos,(v.id===this.session?.id?'현재 플레이 · ':'')+(v.id===data.recent?'최근 마을 · ':'')+v.name+' · 자동 저장 '+stamp(v.savedAt)+(v.source?' · 복원 사본':''),[
+        ['이어하기',()=>this.resume(v.id)],
         ['마을 삭제',()=>{if(confirm(v.name+'의 자동 저장을 삭제합니다. 저장하지 않은 진행은 사라지며 수동 저장은 유지됩니다.'))this.removeVillage(v);}]
       ]);}
       const manuals=this.root.querySelector('[data-s2-manuals]');manuals.textContent='';

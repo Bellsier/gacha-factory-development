@@ -221,4 +221,4 @@ const server = http.createServer(async (req, res) => {
     await context.close();
     console.log('S2 browser tests passed');
   } finally { await browser.close(); await new Promise(r => server.close(r)); }
-})().catch(e => { console.error(e); server.close(); process.exitCode=1; });
+})().catch(e => { console.error(e); console.log('::error::'+String(e.stack||e).replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A')); server.close(); process.exitCode=1; });

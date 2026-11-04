@@ -32,3 +32,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test game page in Chromium
         run: node tests/browser-smoke.cjs
+      - name: Test isolated S2 save transactions and UI
+        run: npm run test:saves

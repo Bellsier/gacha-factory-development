@@ -1,0 +1,103 @@
+tests/browser-smoke.cjs:13:37 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    11 │   try {
+    12 │     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  > 13 │     const file = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));
+       │                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    14 │     if (file !== root && !file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
+    15 │     const body = await fs.readFile(file);
+  
+  i Unsafe fix: Use a template literal.
+  
+    11 11 │     try {
+    12 12 │       const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    13    │ - ····const·file·=·path.resolve(root,·'.'·+·(pathname·===·'/'·?·'/index.html'·:·pathname));
+       13 │ + ····const·file·=·path.resolve(root,·`.${pathname·===·'/'·?·'/index.html'·:·pathname}`);
+    14 14 │       if (file !== root && !file.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
+    15 15 │       const body = await fs.readFile(file);
+  
+
+tests/browser-smoke.cjs:27:17 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Template literals are preferred over string concatenation.
+  
+    25 │     browser = await chromium.launch({ headless: true });
+    26 │     const page = await browser.newPage();
+  > 27 │     const url = 'http://127.0.0.1:' + server.address().port;
+       │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    28 │     await page.goto(url, { waitUntil: 'domcontentloaded' });
+    29 │     assert.match(await page.title(), /채굴 공방/);
+  
+  i Unsafe fix: Use a template literal.
+  
+    25 25 │       browser = await chromium.launch({ headless: true });
+    26 26 │       const page = await browser.newPage();
+    27    │ - ····const·url·=·'http://127.0.0.1:'·+·server.address().port;
+       27 │ + ····const·url·=·`http://127.0.0.1:${server.address().port}`;
+    28 28 │       await page.goto(url, { waitUntil: 'domcontentloaded' });
+    29 29 │       assert.match(await page.title(), /채굴 공방/);
+  
+
+biome.json:6:7 lint/suspicious/useBiomeIgnoreFolder  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Incorrect usage of ignore a folder found.
+  
+    4 │     "includes": [
+    5 │       "**",
+  > 6 │       "!tests/chunks/**",
+      │       ^^^^^^^^^^^^^^^^^^
+    7 │       "!js/**",
+    8 │       "!css/**",
+  
+  i Since version 2.2.0, ignoring folders doesn't require the use the trailing /**. This is a bug that affects version prior v2.2.0.
+  
+  i Safe fix: If you want to ignore a folder, use the following pattern instead: !tests/chunks.
+  
+    6 │ ······"!tests/chunks/**",
+      │                     ---  
+
+biome.json:7:7 lint/suspicious/useBiomeIgnoreFolder  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Incorrect usage of ignore a folder found.
+  
+    5 │       "**",
+    6 │       "!tests/chunks/**",
+  > 7 │       "!js/**",
+      │       ^^^^^^^^
+    8 │       "!css/**",
+    9 │       "!index.html"
+  
+  i Since version 2.2.0, ignoring folders doesn't require the use the trailing /**. This is a bug that affects version prior v2.2.0.
+  
+  i Safe fix: If you want to ignore a folder, use the following pattern instead: !js.
+  
+    7 │ ······"!js/**",
+      │           ---  
+
+biome.json:8:7 lint/suspicious/useBiomeIgnoreFolder  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Incorrect usage of ignore a folder found.
+  
+     6 │       "!tests/chunks/**",
+     7 │       "!js/**",
+   > 8 │       "!css/**",
+       │       ^^^^^^^^^
+     9 │       "!index.html"
+    10 │     ]
+  
+  i Since version 2.2.0, ignoring folders doesn't require the use the trailing /**. This is a bug that affects version prior v2.2.0.
+  
+  i Safe fix: If you want to ignore a folder, use the following pattern instead: !css.
+  
+    8 │ ······"!css/**",
+      │            ---  
+
+Checked 3 files in 8ms. No fixes applied.
+Found 3 warnings.
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

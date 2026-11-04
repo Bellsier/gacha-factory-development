@@ -1,0 +1,224 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const http = require('node:http');
+const path = require('node:path');
+const { chromium } = require('playwright');
+const root = path.resolve(__dirname, '..');
+const server = http.createServer(async (req, res) => {
+  if(req.url==='/s2-single.html'){res.setHeader('Content-Type','text/html');return res.end(require('../tools/build-dist.js').buildSingleHtml(root));}
+  const name = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+  const file = path.resolve(root, '.' + (name === '/' ? '/index.html' : name));
+  if (!file.startsWith(root + path.sep)) return res.writeHead(403).end();
+  try { res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript' : file.endsWith('.css') ? 'text/css' : 'text/html'); res.end(await fs.readFile(file)); }
+  catch { res.writeHead(404).end(); }
+});
+(async () => {
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  const browser = await chromium.launch({headless:true, ...(process.env.CHROMIUM ? {executablePath:process.env.CHROMIUM,args:['--no-sandbox']} : {})});
+  try {
+    const context = await browser.newContext();
+    await context.route('https://fonts.googleapis.com/**', r => r.fulfill({status:200,body:''}));
+    const page = await context.newPage();
+    await page.goto('http://127.0.0.1:' + server.address().port);
+    assert.equal(await page.evaluate(() => typeof SaveEngine), 'function', 'S2 engine must exist in production');
+    await page.waitForFunction(()=>typeof S2Runtime!=='undefined' && S2Runtime.session);
+    assert.equal(await page.evaluate(()=>{
+      const before=state.gold,p=S2Runtime.payload();state.gold=999;const copied=p.run.gold===before;state.gold=before;return copied;
+    }),true,'queued saves capture an independent payload');
+    const results = await page.evaluate(async () => {
+      const e = await SaveEngine.open('isolated-engine-tests');
+      const other = await SaveEngine.open('isolated-engine-tests');
+      const payload = n => ({saveVersion:1,savedAt:Date.now(),run:{gold:n},permanent:{tickets:7}});
+      const out = [];
+      const test = (name, ok) => { if(!ok) throw Error(name); out.push(name); };
+      const rejects = async (fn, code) => {try{await fn();return false;}catch(x){return x.code===code;}};
+      const a = await e.create(payload(1),'A');
+      test('request/transaction complete precedes success', (await e.list()).villages.length===1);
+      await e.manual(a,payload(2),1,0);
+      const source = (await e.list()).manual[0];
+      test('stale manual revision cannot overwrite',await rejects(()=>e.manual(a,payload(99),1,0),'CONFLICT'));
+      const a2 = await e.save(a,payload(3));
+      const b = await e.restore(a2,1,source.revision,source.snapshot.id);
+      test('restore new identity',a.id!==b.id);
+      test('manual and original auto preserved', (await e.read(a.id)).snapshot.payload.run.gold===3 && (await e.list()).manual[0].snapshot.payload.run.gold===2);
+      test('old session fenced after restore',await rejects(()=>e.save(a2,payload(99)),'OWNERSHIP'));
+      test('same-town second tab blocked',await rejects(()=>other.claim(b.id),'OWNED'));
+      const taken = await other.claim(b.id,true);
+      test('takeover reloads committed snapshot',taken.snapshot.payload.run.gold===2);
+      test('takeover fences autosave and manual', await rejects(()=>e.save(b,payload(99)),'OWNERSHIP') && await rejects(()=>e.manual(b,payload(99),2,0),'OWNERSHIP'));
+      test('restore also rejects a stale current writer',await rejects(()=>e.restore(b,1,source.revision,source.snapshot.id),'OWNERSHIP'));
+      const before = JSON.stringify(await other.read(b.id));
+      const rawTx = other.db.transaction.bind(other.db);
+      other.db.transaction = (...args) => {
+        const tx=rawTx(...args);
+        if(args[1]==='readwrite'){
+          const store=tx.objectStore('autos'),put=store.put.bind(store);
+          store.put=(...xs)=>{const req=put(...xs);req.addEventListener('success',()=>tx.abort());return req;};
+          const obj=tx.objectStore.bind(tx);tx.objectStore=n=>n==='autos'?store:obj(n);
+        }
+        return tx;
+      };
+      let aborted=false;try{await other.save(taken,payload(100));}catch{aborted=true;}
+      other.db.transaction=rawTx;
+      test('abort after successful request never succeeds and preserves old data',aborted && JSON.stringify(await other.read(b.id))===before);
+      const original=e.db.transaction.bind(e.db);
+      e.db.transaction=(...args)=>{const tx=original(...args);if(args[1]==='readwrite'){const st=tx.objectStore('autos'),add=st.add.bind(st);st.add=(...xs)=>{const r=add(...xs);r.addEventListener('success',()=>tx.abort());return r;};const obj=tx.objectStore.bind(tx);tx.objectStore=n=>n==='autos'?st:obj(n);}return tx;};
+      let migrationAborted=false;try{await e.migrate('quota-key','raw abort',payload(5));}catch{migrationAborted=true;}
+      e.db.transaction=original;
+      test('failed migration is atomic and retryable',migrationAborted&&(await e.history('quota-key')).length===0);
+      const retry=await e.migrate('quota-key','raw abort',payload(5));
+      test('retry commits exactly one migration',(await e.history('quota-key')).length===1&&!!retry.id);
+      const dev=await SaveEngine.open('isolated-engine-tests.dev');test('namespace isolation',(await dev.list()).villages.length===0);dev.close();
+      const legacy='legacy exact raw';
+      const migrated=await e.migrate('legacyKey',legacy,payload(4));
+      const again=await other.migrate('legacyKey',legacy,payload(4));
+      test('migration idempotent across tabs',migrated.id===again.id);
+      const mt=await e.claim(migrated.id);
+      await e.removeVillage(mt.id,mt.revision,mt.epoch);
+      test('deleted migrated town does not resurrect',(await e.migrate('legacyKey',legacy,payload(4))).deleted===true);
+      const slot3=await other.manual(taken,payload(5),3,0);
+      await other.removeManual(3,slot3.revision,slot3.snapshot.id);
+      const empty=(await other.list()).manual.find(r=>r.id===3);
+      await other.manual(taken,payload(6),3,empty?.revision||0);
+      test('deleted/recreated manual slot rejects an old confirmation',await rejects(()=>other.manual(taken,payload(99),3,slot3.revision),'CONFLICT'));
+      for(const n of [2,4,5])await other.manual(taken,payload(n),n,0);
+      const all=JSON.stringify((await e.list()).manual);
+      await other.create(payload(0),'new with five manuals');
+      test('five filled manuals survive new game',JSON.stringify((await e.list()).manual)===all);
+      test('sixth manual slot is rejected',await rejects(()=>other.manual(taken,payload(9),6,0),'SLOT'));
+      const slots=JSON.stringify((await e.list()).manual);
+      await other.removeVillage(taken.id,taken.revision,taken.epoch);
+      test('deleting village preserves manuals',JSON.stringify((await e.list()).manual)===slots);
+      test('late save cannot recreate deleted village',await rejects(()=>other.save(taken,payload(99)),'MISSING'));
+      const corruptSession=await e.claim(a.id);
+      await e.tx(['autos'],true,async t=>{const row=await t.get('autos',a.id);row.snapshot.format=2;await t.put('autos',row);});
+      test('unknown autosave envelope cannot be overwritten',await rejects(()=>e.save(corruptSession,payload(99)),'INVALID_SAVE'));
+      e.close();other.close();return out;
+    });
+    results.forEach(x=>console.log('PASS S2 engine:',x));
+    page.on('dialog',d=>d.accept());
+    const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    const origin='http://127.0.0.1:'+server.address().port;
+    assert.equal(await page.evaluate(()=>{
+      const saved=structuredClone(S2Runtime.session);saved.snapshot.payload.run.world.player.x=3.25;saved.snapshot.payload.run.world.player.y=1.25;
+      VILLAGE_HOME_SCENE.inside=true;S2Runtime.apply(saved);return state.world.player.x===3.25&&state.world.player.y===1.25;
+    }),true,'switching from interior preserves target saved position');
+    await page.keyboard.down('w');
+    await page.locator('#s2Open').click();await page.keyboard.up('w');
+    await page.locator('[data-s2-close]').click();
+    assert.equal(await page.evaluate(()=>playerHeld.up),false,'modal clears held movement');
+    await page.evaluate(()=>{state.gold=50;});
+    await page.locator('#s2Open').click();
+    await page.getByRole('button',{name:'여기에 저장',exact:true}).first().click();
+    await page.waitForFunction(()=>document.querySelector('[data-s2-manuals]').textContent.includes('첫 마을'));
+    const aId=await page.evaluate(()=>S2Runtime.session.id);
+    await page.evaluate(()=>{state.gold=100;});
+    await page.locator('[data-s2-name]').fill('두 번째 마을');
+    await page.locator('[data-s2-new]').click();
+    await page.waitForFunction(()=>S2Runtime.session?.name==='두 번째 마을'&&!S2Runtime.transitioning);
+    const bId=await page.evaluate(()=>S2Runtime.session.id);
+    assert.notEqual(aId,bId);
+    assert.equal(await page.evaluate(id=>S2Runtime.engine.read(id).then(s=>s.snapshot.payload.run.gold),aId),100);
+    await page.locator('#s2Open').click();
+    await page.getByRole('button',{name:'사본으로 이어하기',exact:true}).first().click();
+    await page.waitForFunction(()=>S2Runtime.session?.name.includes('복원 사본')&&!S2Runtime.transitioning);
+    const restored=await page.evaluate(()=>({id:S2Runtime.session.id,gold:state.gold}));
+    assert.equal(restored.gold,50);assert.notEqual(restored.id,aId);
+    assert.equal(await page.evaluate(()=>S2Runtime.engine.list().then(l=>l.manual[0].snapshot.payload.run.gold)),50);
+    console.log('PASS S2 UI: manual snapshot, new town, restore-copy and original autosave preservation');
+    const canceled=await page.evaluate(async()=>{
+      const count=(await S2Runtime.engine.list()).villages.length,save=S2Runtime.engine.save.bind(S2Runtime.engine);
+      let fail=true;S2Runtime.engine.save=async(...args)=>{if(fail){fail=false;throw SaveEngine.error('OWNERSHIP');}return save(...args);};
+      const queued=S2Runtime.autosave(),change=S2Runtime.newVillage('must not exist');
+      const [saved,switched]=await Promise.all([queued,change]);S2Runtime.engine.save=save;
+      return !saved&&!switched&&(await S2Runtime.engine.list()).villages.length===count;
+    });assert.equal(canceled,true,'a queued save losing authority cancels the pending transition');
+    assert.equal(await page.evaluate(id=>S2Runtime.resume(id,true),restored.id),true);
+    console.log('PASS S2 transition: pending autosave ownership failure cancels switch');
+    const peer=await context.newPage();
+    await peer.goto(origin);await peer.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    assert.equal(await peer.evaluate(()=>S2Runtime.canPlay()),false);
+    assert.equal(await peer.evaluate(id=>S2Runtime.resume(id,true),restored.id),true);
+    await page.waitForFunction(()=>!S2Runtime.session);
+    assert.equal(await page.evaluate(()=>S2Runtime.autosave()),false);
+    assert.match(await page.locator('#s2Status').textContent(),/権|권한/);
+    // A failed write must neither claim success nor destroy the previous snapshot.
+    const unchanged=await peer.evaluate(async()=>{
+      const s=S2Runtime.session,before=JSON.stringify(await S2Runtime.engine.read(s.id));
+      const tx=S2Runtime.engine.tx.bind(S2Runtime.engine);
+      S2Runtime.engine.tx=async(names,write,fn)=>{if(write)throw new DOMException('isolated quota fault','QuotaExceededError');return tx(names,write,fn);};
+      state.gold=987;const ok=await S2Runtime.autosave();
+      S2Runtime.engine.tx=tx;
+      return !ok&&before===JSON.stringify(await S2Runtime.engine.read(s.id))&&S2Runtime.message.includes('실패');
+    });assert.equal(unchanged,true);
+    console.log('PASS S2 runtime: takeover fences old tab; quota fault preserves committed save');
+    const lastId=await peer.evaluate(()=>S2Runtime.session.id);
+    await peer.reload();await peer.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    assert.equal(await peer.evaluate(id=>S2Runtime.resume(id,true),lastId),true);
+    assert.equal(await peer.evaluate(()=>state.gold),50,'reload restores committed state, not failed save');
+    await peer.evaluate(async()=>{
+      const s=S2Runtime.session;const row=(await S2Runtime.engine.list()).villages.find(v=>v.id===s.id);await S2Runtime.removeVillage(row);
+    });
+    assert.equal(await peer.evaluate(()=>S2Runtime.session===null&&!S2Runtime.canPlay()),true);
+    assert.equal(await peer.locator('#s2Menu').isVisible(),true);
+    assert.equal(await peer.evaluate(()=>S2Runtime.engine.list().then(l=>l.manual.length)),1);
+    console.log('PASS S2 runtime: reload/recovery and active deletion return safely to village picker');
+    const legacyPayload=await page.evaluate(()=>S2Runtime.payload());legacyPayload.run.gold=321;
+    const legacyRaw=JSON.stringify(legacyPayload);
+    const migrationContext=await browser.newContext();
+    await migrationContext.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+    await migrationContext.addInitScript(raw=>{if(localStorage.getItem('seeded')===null){localStorage.setItem('gachaFactorySave',raw);localStorage.setItem('gachaFactorySave.dev','dev sentinel');localStorage.setItem('seeded','1');}},legacyRaw);
+    const [m1,m2]=await Promise.all([migrationContext.newPage(),migrationContext.newPage()]);
+    await Promise.all([m1.goto(origin),m2.goto(origin)]);
+    await Promise.all([m1.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine),m2.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine)]);
+    await m1.waitForFunction(async()=>S2Runtime.engine&&(await S2Runtime.engine.list()).villages.length===1);
+    assert.equal(await m1.evaluate(()=>localStorage.getItem('gachaFactorySave')),legacyRaw);
+    assert.equal(await m1.evaluate(()=>localStorage.getItem('gachaFactorySave.dev')),'dev sentinel');
+    assert.equal(await m1.evaluate(()=>S2Runtime.engine.list().then(l=>l.villages.length)),1);
+    await m1.evaluate(()=>{const p=JSON.parse(localStorage.getItem('gachaFactorySave'));p.run.gold=444;localStorage.setItem('gachaFactorySave',JSON.stringify(p));});
+    await m1.reload();await m1.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.engine);
+    await m1.waitForFunction(()=>S2Runtime.message.includes('구버전'));
+    assert.equal(await m1.evaluate(()=>S2Runtime.engine.list().then(l=>l.villages.length)),1);
+    console.log('PASS S2 migration: concurrent boot creates one town, legacy bytes/dev sentinel preserved, changed legacy not auto-imported');
+    await migrationContext.close();
+    for(const mode of ['future','corrupt','unavailable']){
+      const isolated=await browser.newContext();const p=await isolated.newPage();
+      await isolated.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+      const raw=mode==='corrupt'?'broken raw':mode==='future'?'null':legacyRaw;
+      await isolated.addInitScript(({mode,raw})=>{localStorage.setItem('gachaFactorySave',mode==='future'?JSON.stringify({saveVersion:99,run:{}}):raw);if(mode==='unavailable')Object.defineProperty(window,'indexedDB',{value:undefined});},{mode,raw});
+      await p.goto(origin);await p.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.started&&S2Runtime.message!=='저장 준비 중');
+      const before=await p.evaluate(()=>localStorage.getItem('gachaFactorySave'));
+      if(mode==='corrupt')assert.match(await p.locator('[data-s2-message]').textContent(),/손상|지원/);
+      assert.equal(await p.evaluate(()=>S2Runtime.canPlay()),false);
+      assert.equal(await p.evaluate(()=>saveGame()),false);
+      assert.equal(await p.evaluate(()=>localStorage.getItem('gachaFactorySave')),before);
+      await isolated.close();console.log('PASS S2 protection:',mode);
+    }
+    const trial=await browser.newContext();await trial.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+    await trial.addInitScript(raw=>localStorage.setItem('gachaFactorySave',raw),legacyRaw);
+    const tp=await trial.newPage();await tp.goto(origin+'/?worldgen=256');
+    await tp.waitForFunction(()=>typeof TD!=='undefined'&&TD.sheet);
+    const trialResult=await tp.evaluate(()=>({started:S2Runtime.started,saved:saveGame(),source:localStorage.getItem('gachaFactorySave'),trial:JSON.parse(localStorage.getItem(SAVE_KEY)).saveVersion}));
+    assert.equal(trialResult.started,false);assert.equal(trialResult.saved,true);assert.equal(trialResult.source,legacyRaw);assert.equal(trialResult.trial,1);
+    await trial.close();console.log('PASS S2 trial: unchanged isolated legacy policy and saveVersion1');
+    const singleContext=await browser.newContext();await singleContext.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+    const single=await singleContext.newPage();await single.goto(origin+'/s2-single.html');
+    await single.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.session);
+    const built=await single.evaluate(async()=>{clearInterval(tickTimer);clearInterval(ticketTimer);mineResource('iron');mineResource('iron');mineResource('coal');startCraft(recipeByKey('steel'));sellAll(recipeByKey('steel'));const saved=await saveGame();const snapshot=(await S2Runtime.engine.read(S2Runtime.session.id)).snapshot;return {gold:state.gold,saved,version:snapshot.payload.saveVersion,savedGold:snapshot.payload.run.gold,drawn:document.getElementById('goldVal').textContent!==''&&!!document.querySelector('[data-mine="iron"]')};});
+    assert.deepEqual(built,{gold:5,saved:true,version:1,savedGold:5,drawn:true});
+    await singleContext.close();console.log('PASS S2 distribution: actual generated single HTML boots, mines, crafts, sells and commits saveVersion1');
+    const mobile=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
+    await mobile.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));
+    const phone=await mobile.newPage();await phone.goto(origin);await phone.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.session);
+    await phone.locator('#s2Open').tap();
+    assert.equal(await phone.getByRole('heading',{name:'자동 저장 · 마을별 1개'}).isVisible(),true);
+    assert.equal(await phone.locator('[data-s2-manuals] .s2-row').count(),5);
+    await fs.mkdir(path.join(root,'work/s2'),{recursive:true});await phone.screenshot({path:path.join(root,'work/s2/mobile-save-menu.png'),fullPage:true});
+    await mobile.close();assert.deepEqual(errors,[]);await peer.close();
+    console.log('PASS S2 mobile: explicit auto/manual labels and five slots');
+    await page.screenshot({path:path.join(root,'work/s2/desktop-save-menu.png'),fullPage:true});
+    await context.close();
+    console.log('S2 browser tests passed');
+  } finally { await browser.close(); await new Promise(r => server.close(r)); }
+})().catch(e => { console.error(e); server.close(); process.exitCode=1; });

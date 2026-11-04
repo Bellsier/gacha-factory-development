@@ -1,0 +1,37 @@
+
+> gacha-factory-prototype@1.0.0 test:saves
+> node tests/save-s2-browser.cjs
+
+PASS S2 engine: request/transaction complete precedes success
+PASS S2 engine: stale manual revision cannot overwrite
+PASS S2 engine: restore new identity
+PASS S2 engine: manual and original auto preserved
+PASS S2 engine: old session fenced after restore
+PASS S2 engine: same-town second tab blocked
+PASS S2 engine: takeover reloads committed snapshot
+PASS S2 engine: takeover fences autosave and manual
+PASS S2 engine: restore also rejects a stale current writer
+PASS S2 engine: abort after successful request never succeeds and preserves old data
+PASS S2 engine: failed migration is atomic and retryable
+PASS S2 engine: retry commits exactly one migration
+PASS S2 engine: namespace isolation
+PASS S2 engine: migration idempotent across tabs
+PASS S2 engine: deleted migrated town does not resurrect
+PASS S2 engine: deleted/recreated manual slot rejects an old confirmation
+PASS S2 engine: five filled manuals survive new game
+PASS S2 engine: sixth manual slot is rejected
+PASS S2 engine: deleting village preserves manuals
+PASS S2 engine: late save cannot recreate deleted village
+PASS S2 engine: unknown autosave envelope cannot be overwritten
+PASS S2 UI: manual snapshot, new town, restore-copy and original autosave preservation
+PASS S2 transition: pending autosave ownership failure cancels switch
+PASS S2 runtime: takeover fences old tab; quota fault preserves committed save
+PASS S2 runtime: reload/recovery and active deletion return safely to village picker
+PASS S2 migration: concurrent boot creates one town, legacy bytes/dev sentinel preserved, changed legacy not auto-imported
+PASS S2 protection: future
+PASS S2 protection: corrupt
+PASS S2 protection: unavailable
+PASS S2 trial: unchanged isolated legacy policy and saveVersion1
+PASS S2 distribution: actual generated single HTML boots, mines, crafts, sells and commits saveVersion1
+PASS S2 mobile: explicit auto/manual labels and five slots
+S2 browser tests passed

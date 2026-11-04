@@ -24,6 +24,7 @@ let tickClockLast = null, tickClockOwed = 0, tickClockIntervalAt = -Infinity;
 // While the clock makes up ticks: the moment (performance.now()) each one stands for; otherwise null.
 let tickClockTickAt = null;
 function tickClock(now){
+  if(typeof S2Runtime!=='undefined'&&S2Runtime.started&&!S2Runtime.canPlay())return 0;
   const t = now === undefined ? performance.now() : now;
   if(tickClockLast === null || (typeof document !== 'undefined' && document.hidden)){
     tickClockLast = t; tickClockOwed = 0;
@@ -100,4 +101,6 @@ function boot(){
   });
   window.addEventListener('beforeunload', ()=>{ saveGame(); });
 }
-boot();
+// Browser entry is async S2. Standalone script evaluators retain the legacy codec boot.
+if(typeof S2Runtime!=='undefined' && document.currentScript && !worldTestMode()) S2Runtime.start();
+else boot();

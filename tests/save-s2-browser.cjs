@@ -213,6 +213,7 @@ const server = http.createServer(async (req, res) => {
     const phone=await mobile.newPage();await phone.goto(origin);await phone.waitForFunction(()=>typeof S2Runtime!=='undefined'&&S2Runtime.session);
     await phone.locator('#s2Open').tap();
     assert.equal(await phone.getByRole('heading',{name:'자동 저장 · 마을별 1개'}).isVisible(),true);
+    await phone.waitForFunction(()=>document.querySelectorAll('[data-s2-manuals] .s2-row').length===5);
     assert.equal(await phone.locator('[data-s2-manuals] .s2-row').count(),5);
     await fs.mkdir(path.join(root,'work/s2'),{recursive:true});await phone.screenshot({path:path.join(root,'work/s2/mobile-save-menu.png'),fullPage:true});
     await mobile.close();assert.deepEqual(errors,[]);await peer.close();

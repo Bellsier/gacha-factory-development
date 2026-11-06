@@ -49,7 +49,10 @@ const fixture={saveVersion:1,savedAt:123,run:{gold:321},permanent:{tickets:7}};
 await faulty.addInitScript(payload=>{if(!sessionStorage.getItem('bootFault')){sessionStorage.setItem('bootFault','1');localStorage.setItem('gachaFactorySave',JSON.stringify(payload));Object.defineProperty(window,'indexedDB',{value:undefined});}},fixture);
 const bad=await faulty.newPage();await bad.goto(origin);await bad.waitForFunction(()=>GameBootstrap.state==='error');
 const raw=await bad.evaluate(()=>localStorage.getItem('gachaFactorySave'));assert.equal(await bad.evaluate(()=>saveGame()),false);
-await bad.screenshot({path:path.join(root,'work/bootstrap/storage-error.png')});await bad.locator('#gameBootRetry').click();await bad.waitForFunction(()=>GameBootstrap.state==='ready');
+await bad.screenshot({path:path.join(root,'work/bootstrap/storage-error.png')});
+await bad.evaluate(()=>{window.backgroundKey=false;document.addEventListener('keydown',()=>window.backgroundKey=true);});
+await bad.locator('#gameBootRetry').focus();await bad.keyboard.press('t');assert.equal(await bad.evaluate(()=>window.backgroundKey),false,'retry focus must not leak shortcuts to hidden game');
+await bad.locator('#gameBootRetry').press('Enter');await bad.waitForFunction(()=>GameBootstrap.state==='ready');
 assert.equal(await bad.evaluate(()=>localStorage.getItem('gachaFactorySave')),raw);assert.equal(await bad.evaluate(()=>state.gold),321);await faulty.close();
 console.log('PASS bootstrap: unavailable storage fails safely, retry retains original bytes and restored progress');
 // No endless spinner and no late-success reveal after the finite watchdog.

@@ -45,6 +45,11 @@ window.GameBootstrap=(()=>{
   document.addEventListener('DOMContentLoaded',()=>{dom=true;if(state==='error')showError();else reveal();});
   window.addEventListener('error',e=>{if(state==='loading'&&(e instanceof ErrorEvent||e.target?.tagName==='SCRIPT'))fail();},true);
   window.addEventListener('unhandledrejection',()=>{if(state==='loading')fail();});
+  for(const type of ['keydown','keyup'])document.addEventListener(type,e=>{
+    if(state==='ready')return;
+    e.stopImmediatePropagation();
+    if(e.key!=='Tab'&&!e.target.closest?.('#gameBootRetry'))e.preventDefault();
+  },true);
   return {ready(){app=true;reveal();},styleReady(){css=true;reveal();},fail,get state(){return state;}};
 })();
 </script>

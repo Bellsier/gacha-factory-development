@@ -40,7 +40,7 @@ function gameFiles(root) {
 function buildSingleHtml(root) {
   const read = (rel) => fs.readFileSync(path.join(root, rel), 'utf8');
   let html = read('index.html');
-  html = html.replace(/<link rel="stylesheet" href="(css\/[^"]+)">/g, (m, href) => '<style>\n' + read(href) + '\n</style>');
+  html = html.replace(/<link rel="stylesheet" href="(css\/[^"]+)"[^>]*>/g, (m, href) => '<style>\n' + read(href) + '\n</style><script>if(window.GameBootstrap)GameBootstrap.styleReady();</script>');
   html = html.replace(/<script src="(js\/[^"]+)"><\/script>/g, (m, src) => {
     const code = read(src);
     if (/<\/script/i.test(code)) throw new Error(src + ' contains "</script" and cannot be inlined');

@@ -111,7 +111,7 @@ jobs:
         run: |
           mkdir -p work/playthrough
           if [[ -f tests/playthrough/ci-summary.cjs ]] && command -v node >/dev/null; then
-            node tests/playthrough/ci-summary.cjs >> "$GITHUB_STEP_SUMMARY"
+            node tests/playthrough/ci-summary.cjs | tee -a "$GITHUB_STEP_SUMMARY"
           else
             printf '# 채굴 공방 QA — 검증 미완료\n\n체크아웃 또는 Node 준비 실패. Actions 로그를 확인해 주세요.\n' > work/playthrough/summary.md
             printf '{"success":false,"runStatus":"setup-failed","scenarios":[]}\n' > work/playthrough/summary.json
@@ -123,5 +123,17 @@ jobs:
         with:
           name: playthrough-${{ matrix.viewport }}-${{ github.event.pull_request.head.sha || github.sha }}
           path: work/playthrough/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playthrough-results-${{ matrix.viewport }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            work/playthrough/summary.json
+            work/playthrough/summary.md
+            work/playthrough/evidence-index.json
+            work/playthrough/setup.json
+            work/playthrough/runtime.txt
           if-no-files-found: error
           retention-days: 14

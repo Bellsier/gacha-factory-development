@@ -24,7 +24,9 @@ module.exports = defineConfig({
     browserName: 'chromium',
     locale: 'ko-KR',
     timezoneId: 'Asia/Seoul',
-    trace: 'on',
+    // PNG stages and video preserve the visuals. Avoid a second continuous
+    // screencast and duplicate PNG attachments inside every trace archive.
+    trace: { mode: 'on', snapshots: true, sources: true, screenshots: false, attachments: false },
     video: process.env.QA_VIDEO === 'off' ? 'off' : 'on',
     screenshot: 'only-on-failure',
     actionTimeout: 10_000,

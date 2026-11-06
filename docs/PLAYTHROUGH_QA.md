@@ -35,7 +35,9 @@ npm run test:playthrough -- fresh-play.spec.cjs
 
 ## 증거와 실패 처리
 
-`work/playthrough/`에 HTML 보고서, `playwright.json`, 한국어 `summary.md`, 기계 판독 `summary.json`, 단계별 PNG, 실패 PNG, `journey.json`(준비 내역·마지막 성공 단계·관찰 상태·가독성 측정), `browser-errors.json`, 모든 테스트 trace.zip과 영상 webm을 남긴다. CI의 `playthrough-pc-*`, `playthrough-mobile-*` artifacts를 내려받아 HTML 보고서와 `npx playwright show-trace <trace.zip>`으로 확인할 수 있다. 재시도는 0회이며 실패 이후에도 다른 독립 테스트/환경을 실행한다. 실패·timeout·pageerror·console.error·예고하지 않은 확인창은 테스트/CI 실패로 처리한다.
+`work/playthrough/`에 HTML 보고서, `playwright.json`, 한국어 `summary.md`, 기계 판독 `summary.json`, 단계별 PNG, 실패 PNG, `journey.json`(준비 내역·마지막 성공 단계·관찰 상태·가독성 측정), `browser-errors.json`, 모든 테스트 trace.zip과 영상 webm을 남긴다. trace는 동작·DOM snapshot·소스를 유지하며, 영상과 겹치는 연속 화면 및 PNG 첨부의 trace 내 중복 사본은 끈다. 단계별 원본 PNG와 영상은 유지한다.
+
+CI의 `playthrough-pc-*`, `playthrough-mobile-*` artifacts를 내려받아 HTML 보고서와 `npx playwright show-trace <trace.zip>`으로 확인할 수 있다. 작은 `playthrough-results-{환경}-*`에는 한국어 결과와 관찰 데이터, 실제 PNG/trace/video 파일의 경로·크기·개수를 기록한 `evidence-index.json`이 들어 있어 전체 영상을 받기 전에 진행 결과를 확인할 수 있다. 재시도는 0회이며 실패 이후에도 다른 독립 테스트/환경을 실행한다. 실패·timeout·pageerror·console.error·예고하지 않은 확인창은 테스트/CI 실패로 처리한다.
 
 작은 터치 영역(<44px), 화면 밖 넘침, 텍스트 잘림, 다른 UI에 덮인 버튼은 위치·측정값·스크린샷을 가진 결함 후보로 기록한다. 기능 E2E 통과와 UX 결함 부재는 같은 뜻이 아니다. 측정 후보를 실제 스크린샷과 함께 검토하고 확정한 문제만 별도 보고한다. 보고 항목은 심각도(치명적/주요/경미/UX 개선), 재현 절차, 기대/실제, 증거, 추정 원인, 권장 수정이다.
 

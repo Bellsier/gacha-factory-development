@@ -5,6 +5,25 @@ const path = require('node:path');
 function finalize(output, setup) {
   fs.mkdirSync(output, { recursive: true });
   fs.writeFileSync(path.join(output, 'setup.json'), JSON.stringify(setup, null, 2) + '\n');
+  const files = [];
+  const scan = dir => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === 'attachments' || entry.name.startsWith('.')) continue;
+      const file = path.join(dir, entry.name);
+      if (entry.isDirectory()) scan(file);
+      else {
+        const kind = entry.name.endsWith('.webm') ? 'video' : entry.name === 'trace.zip' ? 'trace' : entry.name.endsWith('.png') ? 'screenshot' : null;
+        if (kind) files.push({ path: path.relative(output, file), kind, bytes: fs.statSync(file).size });
+      }
+    }
+  };
+  scan(path.join(output, 'evidence'));
+  fs.writeFileSync(path.join(output, 'evidence-index.json'), JSON.stringify({
+    sourceSha: setup.sourceSha,
+    counts: Object.fromEntries(['screenshot', 'trace', 'video'].map(kind => [kind, files.filter(f => f.kind === kind && f.bytes > 0).length])),
+    files,
+  }, null, 2) + '\n');
   const complete = ['summary.json', 'summary.md'].every(name => fs.existsSync(path.join(output, name)));
   if (!complete) {
     for (const name of ['summary.json', 'summary.md']) {
@@ -27,5 +46,7 @@ if (require.main === module) {
     play: process.env.QA_PLAY_STATUS,
   });
   process.stdout.write(fs.readFileSync(path.join(output, 'summary.md'), 'utf8'));
+  const index = JSON.parse(fs.readFileSync(path.join(output, 'evidence-index.json'), 'utf8'));
+  process.stdout.write(`\n증거 파일: 단계/실패 PNG ${index.counts.screenshot}개 · trace ${index.counts.trace}개 · 영상 ${index.counts.video}개. evidence-index.json에 실제 경로와 크기를 기록했습니다.\n`);
   if (!complete) process.exitCode = 1;
 }

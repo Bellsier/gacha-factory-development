@@ -10,9 +10,12 @@
     "test:stage3:browser": "node tests/worldgen-stage3-browser.cjs",
     "bench:stage3": "node tools/measure-worldgen-stage3.cjs",
     "test:saves": "node tests/save-s2-browser.cjs",
-    "test:bootstrap": "node tests/bootstrap-browser.cjs"
+    "test:bootstrap": "node tests/bootstrap-browser.cjs",
+    "test:playthrough": "playwright test -c tests/playthrough.config.cjs",
+    "test:playthrough:reporter": "node tests/playthrough/reporting.test.cjs"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "jsdom": "^30.0.1"
   }
 }

@@ -1,0 +1,13 @@
+
+> gacha-factory-prototype@1.0.0 test:bootstrap
+> node tests/bootstrap-browser.cjs
+
+PASS bootstrap: first HTML hides unfinished UI during slow scripts and reveals complete game
+PASS bootstrap: reload/revisit waits for village list and hides default world behind ready picker
+PASS bootstrap: failed list initialization shows safe retry and reload preserves the recent village
+PASS bootstrap: slow mobile IndexedDB startup reveals only the complete scene
+PASS bootstrap: unavailable storage fails safely, retry retains original bytes and restored progress
+PASS bootstrap: finite timeout offers retry and late completion cannot reveal a failed startup
+PASS bootstrap: head-phase failure offers retry before DOMContentLoaded despite a stalled script
+PASS bootstrap: stylesheet failure keeps critical error UI usable
+PASS bootstrap: missing startup module offers retry without legacy-write fallback

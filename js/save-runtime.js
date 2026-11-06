@@ -3,7 +3,7 @@
 const S2Runtime = {
   started:false,engine:null,session:null,generation:0,transitioning:false,menuOpen:false,tail:Promise.resolve(),message:'저장 준비 중',lastTime:null,displayName:'선택한 마을 없음',legacyRaw:null,
   clearInput(){clearPlayerHeld();tickClockLast=null;tickClockOwed=0;document.getElementById('tdStick')?.dispatchEvent(new Event('pointercancel'));},
-  canPlay(){return !!this.session&&!this.transitioning&&!this.menuOpen;},
+  canPlay(){return (typeof GameBootstrap==='undefined'||GameBootstrap.state==='ready')&&!!this.session&&!this.transitioning&&!this.menuOpen;},
   payload(run=state,perm=permanent){return {saveVersion:CURRENT_SAVE_VERSION,savedAt:Date.now(),run:JSON.parse(JSON.stringify(serializeRunForSave(run))),permanent:JSON.parse(JSON.stringify(perm))};},
   decode(payload){
     if(!isPlainObject(payload)||!Number.isFinite(payload.saveVersion)||payload.saveVersion<0||payload.saveVersion>CURRENT_SAVE_VERSION||!isPlainObject(payload.run))throw SaveEngine.error('INVALID_SAVE');
@@ -21,6 +21,7 @@ const S2Runtime = {
     this.status();return false;
   },
   status(){
+    if(typeof GameBootstrap!=='undefined')document.documentElement.toggleAttribute('data-game-picker',!this.session);
     const status=document.getElementById('s2Status');
     const time=this.lastTime!==null?new Date(this.lastTime).toLocaleString('ko-KR'):'아직 저장 없음';
     if(status)status.textContent='현재: '+this.displayName+' · 마지막 자동 저장: '+time+' · '+this.message;
@@ -38,12 +39,13 @@ const S2Runtime = {
     villageObstacleCache=null;villageRoadCache=null;WORLD_INDEX.built=null;
     if(typeof TD!=='undefined'){TD.groundKey=null;TD.tracker={};if(typeof tdWorkerSimReset==='function')tdWorkerSimReset();}
     tickClockLast=null;tickClockOwed=0;renderAll();
+    if(typeof GameBootstrap!=='undefined'&&GameBootstrap.state==='ready'&&typeof TD!=='undefined'&&TD.sheet&&typeof tdRender==='function')tdRender(performance.now());
     this.message='저장됨';this.menuOpen=false;this.status();
     this.notify();
   },
   async flush(){if(this.session){const saved=await this.engine.save(this.session,this.payload());this.session=saved;this.lastTime=saved.snapshot.savedAt;this.message='자동 저장됨';this.status();}},
   autosave(){
-    if(!this.started||!this.session||this.transitioning)return Promise.resolve(false);
+    if((typeof GameBootstrap!=='undefined'&&GameBootstrap.state==='error')||!this.started||!this.session||this.transitioning)return Promise.resolve(false);
     const generation=this.generation,payload=this.payload(),id=this.session.id;
     return this.enqueue(async()=>{
       if(generation!==this.generation||this.session?.id!==id)return false;
@@ -133,8 +135,8 @@ const S2Runtime = {
       const list=await this.engine.list();
       if(migrated&&!migrated.deleted){const saved=await this.engine.read(migrated.id);this.decode(saved.snapshot.payload);this.apply(await this.engine.claim(migrated.id,false,null,saved));}
       else if(!list.villages.length&&!history.length&&raw===null){this.apply(await this.engine.create(this.fresh(),'첫 마을'));}
-      else {this.message=this.message==='저장 준비 중'?'마을을 선택해 주세요. 이전 세션은 권한 회복으로 이어 할 수 있습니다.':this.message;await this.renderMenu();}
-    }catch(e){this.fail(e);await this.renderMenu();}
+      else {this.message=this.message==='저장 준비 중'?'마을을 선택해 주세요. 이전 세션은 권한 회복으로 이어 할 수 있습니다.':this.message;if(!await this.renderMenu())throw SaveEngine.error('VIEW_INIT');}
+    }catch(e){this.fail(e);if(typeof GameBootstrap!=='undefined')GameBootstrap.fail();await this.renderMenu();return;}
     // Loading/verification precedes timers. All simulation paths consult canPlay().
     tickTimer=setInterval(()=>{if(this.canPlay())tickClockInterval();},TICK_MS);
     ticketTimer=setInterval(()=>{if(this.canPlay())ticketTrickle();},BALANCE.gacha.TICKET_TRICKLE_MS);
@@ -143,7 +145,7 @@ const S2Runtime = {
     document.addEventListener('visibilitychange',()=>{if(document.hidden)this.autosave();else this.checkAuthority();tickClockLast=null;});
     window.addEventListener('pagehide',()=>this.autosave());
     if(typeof BroadcastChannel!=='undefined'){this.channel=new BroadcastChannel(SAVE_BASE_KEY+'.s2');this.channel.onmessage=()=>{this.checkAuthority();if(this.menuOpen)this.renderMenu();};}
-    this.status();
+    this.status();if(typeof GameBootstrap!=='undefined')GameBootstrap.ready();
   },
   mount(){
     const button=document.createElement('button');button.id='s2Open';button.type='button';button.textContent='저장 · 마을';button.onclick=()=>{this.menuOpen=true;this.clearInput();this.renderMenu();this.status();this.root.querySelector('[data-s2-close]').focus();};document.body.appendChild(button);
@@ -159,6 +161,7 @@ const S2Runtime = {
     };
     // Capture gates cover game keyboard/touch actions during modal/loading/ownership loss.
     for(const type of ['keydown','keyup','click','pointerdown','pointermove','pointerup'])document.addEventListener(type,e=>{
+      if(e.target.closest?.('#gameBootstrap'))return;
       if(this.canPlay())return;
       if(root.contains(e.target)||button.contains(e.target)){
         if(e.type==='keydown'&&e.key==='Escape'&&this.session){this.menuOpen=false;this.status();button.focus();e.preventDefault();}
@@ -174,11 +177,11 @@ const S2Runtime = {
     
   },
   async renderMenu(){
-    if(!this.root)return;this.status();
+    if(!this.root)return false;this.status();
     const close=this.root.querySelector('[data-s2-close]');close.disabled=!this.session||this.transitioning;
     this.root.querySelector('[data-s2-new]').disabled=!this.engine||this.transitioning;
     this.root.querySelector('[data-s2-import]').disabled=!this.engine||this.transitioning;
-    if(!this.engine){if(this.menuOpen)this.root.focus();return;}
+    if(!this.engine){if(this.menuOpen)this.root.focus();return false;}
     try{
       const data=await this.engine.list();this.recentId=data.recent;
       const recent=data.villages.find(v=>v.id===data.recent);
@@ -199,7 +202,8 @@ const S2Runtime = {
           ['수동 저장 삭제',()=>{if(confirm('수동 슬롯 '+n+'을 비웁니다. 마을 자동 저장은 유지됩니다.'))this.removeManual(row);}]
         ]:[])
       ]);}
-    }catch(e){this.fail(e);}
+    }catch(e){this.fail(e);return false;}
     if(this.menuOpen&&(!this.root.contains(document.activeElement)||document.activeElement.disabled))(this.root.querySelector('button:not(:disabled),input')||this.root).focus();
+    return true;
   }
 };

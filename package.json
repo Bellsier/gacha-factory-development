@@ -9,7 +9,8 @@
     "test:navigation": "node tests/run-chunks.cjs 21",
     "test:stage3:browser": "node tests/worldgen-stage3-browser.cjs",
     "bench:stage3": "node tools/measure-worldgen-stage3.cjs",
-    "test:saves": "node tests/save-s2-browser.cjs"
+    "test:saves": "node tests/save-s2-browser.cjs",
+    "test:bootstrap": "node tests/bootstrap-browser.cjs"
   },
   "devDependencies": {
     "jsdom": "^30.0.1"

@@ -34,3 +34,5 @@ jobs:
         run: node tests/browser-smoke.cjs
       - name: Test isolated S2 save transactions and UI
         run: npm run test:saves
+      - name: Test initial bootstrap visibility and recovery
+        run: npm run test:bootstrap

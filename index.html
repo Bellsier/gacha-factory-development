@@ -1,18 +1,66 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-game-boot>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>채굴 공방 — 프로토타입</title>
+<!-- Critical bootstrap UI must paint without downloaded CSS, fonts or game JS. -->
+<style>
+html{background:#eadfc5}
+html[data-game-boot] body>:not(#gameBootstrap),html[data-game-picker] body>:not(#s2Menu):not(#gameBootstrap){visibility:hidden!important;pointer-events:none!important}
+#gameBootstrap{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;box-sizing:border-box;padding:24px;background:#eadfc5;color:#493b2c;font:16px/1.7 system-ui,sans-serif;text-align:center}
+#gameBootstrap[hidden]{display:none}
+#gameBootstrap .boot-card{max-width:420px;padding:32px 28px;border:2px solid #b49a70;background:#f6edd6;box-shadow:5px 5px 0 #cdb68f}
+#gameBootstrap h1{font-size:28px;letter-spacing:2px;margin:20px 0 8px;color:#493b2c}
+#gameBootstrap p{margin:8px 0}
+#gameBootstrap .boot-house{display:block;position:relative;width:56px;height:32px;margin:20px auto 8px;background:#c89b63;border:4px solid #765536;box-sizing:border-box;image-rendering:pixelated;box-shadow:0 4px 0 #af9d82}
+#gameBootstrap .boot-house:before{content:'';position:absolute;width:64px;height:16px;left:-8px;top:-20px;background:repeating-linear-gradient(0deg,#4e7246 0 4px,#668951 4px 8px);box-shadow:0 -4px 0 #8a9b66}
+#gameBootstrap .boot-house:after{content:'';position:absolute;width:12px;height:12px;left:7px;top:6px;background:#f5d384;box-shadow:24px 0 0 #f5d384}
+#gameBootstrap button{min-height:44px;margin-top:16px;padding:10px 24px;border:2px solid #8e704a;background:#e6c78f;color:#493b2c;font:inherit;cursor:pointer}
+#gameBootstrap button:focus-visible{outline:3px solid #426d71;outline-offset:4px}
+html[data-game-picker] #s2Menu{background:#eadfc5}
+</style>
+<script>
+// Presentation gate only: no storage reads, writes, ownership or reset logic.
+window.GameBootstrap=(()=>{
+  let app=false,css=false,dom=false,state='loading',message='',errorObserver=null;
+  const frame=fn=>(window.requestAnimationFrame||window.setTimeout)(fn);
+  const root=()=>document?.getElementById('gameBootstrap');
+  function showError(){
+    const r=root(),p=document?.getElementById('gameBootMessage'),retry=document?.getElementById('gameBootRetry');
+    if(!r||!p||!retry){
+      if(!errorObserver&&document?.documentElement){errorObserver=new MutationObserver(showError);errorObserver.observe(document.documentElement,{childList:true,subtree:true});}
+      return;
+    }
+    errorObserver?.disconnect();errorObserver=null;
+    r.hidden=false;r.setAttribute('aria-busy','false');p.textContent=message;p.setAttribute('role','alert');retry.hidden=false;
+  }
+  function fail(text){if(state==='ready')return;state='error';message=text||'마을 준비를 마치지 못했어요. 기존 저장을 지우지 않고 다시 시도할 수 있어요.';clearTimeout(watchdog);showError();}
+  function reveal(){
+    if(!app||!css||!dom||state!=='loading')return;
+    try{if(typeof TD!=='undefined'&&TD.sheet&&typeof tdRender==='function')tdRender(performance.now());}catch{fail();return;}
+    frame(()=>{if(state!=='loading')return;state='ready';clearTimeout(watchdog);document.documentElement.removeAttribute('data-game-boot');const r=root();if(r){r.hidden=true;r.setAttribute('aria-busy','false');}});
+  }
+  const watchdog=setTimeout(()=>fail('마을 준비가 지연되고 있어요. 연결 상태를 확인한 뒤 다시 시도해 주세요. 기존 저장은 지우지 않습니다.'),20000);
+  document.addEventListener('DOMContentLoaded',()=>{dom=true;if(state==='error')showError();else reveal();});
+  window.addEventListener('error',e=>{if(state==='loading'&&(e instanceof ErrorEvent||e.target?.tagName==='SCRIPT'))fail();},true);
+  window.addEventListener('unhandledrejection',()=>{if(state==='loading')fail();});
+  return {ready(){app=true;reveal();},styleReady(){css=true;reveal();},fail,get state(){return state;}};
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" media="print" onload="this.media='all'">
 <!-- Task 24: the Korean UI face (text, numbers, buttons) and a soft handwriting face (the log); both load in
      Korean slices only as needed, and css/style.css falls back to the system Korean faces if they never load -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=Gaegu:wght@400;700&display=swap" media="print" onload="this.media='all'">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css" media="print" onload="this.media='all';GameBootstrap.styleReady()" onerror="GameBootstrap.fail()">
 </head>
 <body>
+<div id="gameBootstrap" role="status" aria-live="polite" aria-busy="true">
+  <div class="boot-card"><span class="boot-house" aria-hidden="true"></span><h1>채굴 공방</h1><p id="gameBootMessage">마을을 준비하고 있어요.</p><button id="gameBootRetry" type="button" hidden onclick="location.reload()">다시 시도</button><noscript><p>마을을 열려면 자바스크립트를 켜고 새로고침해 주세요.</p></noscript></div>
+</div>
 <div class="wrap">
 
   <header>

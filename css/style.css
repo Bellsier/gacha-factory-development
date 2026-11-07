@@ -103,6 +103,45 @@
   .recipe .row button{flex:1; min-width:120px;}
   .toggle-auto{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:max(0.68rem, var(--fs-min)); color:var(--dim);}
   .target-input{width:70px; padding:2px 4px; font-size:max(0.68rem, var(--fs-min));}
+  /* UX-01 (Issue #32): recipe cards — inputs with have/need, the craft button and its reason up
+     front; selling and automation in a closed <details>. Scoped to the recipe cards only. */
+  #tab-dev #recipes .recipe-needs{list-style:none; margin:2px 0 8px; padding:0; display:grid; gap:2px; font-size:max(0.78rem, var(--fs-min)); color:var(--dim);}
+  #tab-dev #recipes .recipe{word-break:keep-all;} /* Korean breaks between words, not inside them */
+  #tab-dev #recipes .recipe-need-count, #tab-dev #recipes .recipe-need-flag{white-space:nowrap;}
+  #tab-dev #recipes .recipe-need.is-short{color:var(--text); font-weight:600;}
+  #tab-dev #recipes .recipe-need.is-short::before{content:'! '; color:var(--amber, #e0b04a);}
+  #tab-dev #recipes .recipe-main button{min-height:44px; flex:1 1 100%;}
+  #tab-dev #recipes .recipe-reason, #tab-dev #recipes .recipe-auto-state, #tab-dev #recipes .recipe-sell-hint{margin:4px 0 0; font-size:max(0.76rem, var(--fs-min)); line-height:1.35; overflow-wrap:anywhere;}
+  #tab-dev #recipes .recipe-reason{color:var(--text);}
+  #tab-dev #recipes .recipe-auto-state{color:var(--teal-on, #5fcab2);}
+  #tab-dev #recipes .recipe-sell-hint{color:var(--dim);}
+  #tab-dev #recipes [hidden]{display:none;}
+  #tab-dev #recipes .recipe-more{margin-top:8px; border-top:1px solid var(--line); padding-top:4px;}
+  #tab-dev #recipes .recipe-more > summary{min-height:44px; display:flex; flex-direction:column; justify-content:center; gap:1px; cursor:pointer; padding:4px 0 4px 18px; position:relative; list-style:none;}
+  #tab-dev #recipes .recipe-more > summary::-webkit-details-marker{display:none;}
+  #tab-dev #recipes .recipe-more > summary::before{content:'▸'; position:absolute; left:2px; top:50%; transform:translateY(-50%); color:var(--dim);}
+  #tab-dev #recipes .recipe-more[open] > summary::before{content:'▾';}
+  #tab-dev #recipes .recipe-more > summary:focus-visible{outline:2px solid var(--teal-on, #5fcab2); outline-offset:2px; border-radius:4px;}
+  #tab-dev #recipes .recipe-more-title{font-weight:600;}
+  #tab-dev #recipes .recipe-more-state{font-size:max(0.72rem, var(--fs-min)); color:var(--dim); overflow-wrap:anywhere;}
+  #tab-dev #recipes .recipe-more-body{display:grid; gap:4px; padding:4px 0 2px;}
+  #tab-dev #recipes .recipe-more-body .row button, #tab-dev #recipes .recipe-autosell-buy button{min-height:44px;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto{min-height:44px; margin-top:0; font-size:max(0.8rem, var(--fs-min)); cursor:pointer;}
+  /* a 22px box to see, a 44x44 area to touch (the whole control, not only its label) */
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]{-webkit-appearance:none; appearance:none; width:44px; height:44px; flex:none; margin:0 -6px 0 -11px; padding:0; border:0; cursor:pointer;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect x='1' y='1' width='20' height='20' rx='4' fill='%23241a12' stroke='%23b08a64' stroke-width='2'/%3E%3C/svg%3E") center/22px 22px no-repeat;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:checked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect x='1' y='1' width='20' height='20' rx='4' fill='%235fcab2' stroke='%235fcab2' stroke-width='2'/%3E%3Cpath d='M5.5 11.5l3.5 3.5 7-8' fill='none' stroke='%23241a12' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:disabled{opacity:0.45; cursor:not-allowed;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:focus-visible{outline:2px solid var(--teal-on, #5fcab2); outline-offset:-6px; border-radius:8px;}
+  #tab-dev #recipes .recipe-autosell-buy{display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+  #tab-dev #recipes .recipe-autosell-buy span{flex:1 1 auto; white-space:nowrap;}
+  /* the stock target: its label, then the field with its unit kept together, then one line of help */
+  #tab-dev #recipes .recipe-target{display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px;}
+  #tab-dev #recipes .recipe-target-label{white-space:nowrap; font-size:max(0.8rem, var(--fs-min));}
+  #tab-dev #recipes .recipe-target-field{display:inline-flex; align-items:center; gap:6px; white-space:nowrap; max-width:100%;}
+  #tab-dev #recipes .recipe-target-unit{white-space:nowrap; font-size:max(0.8rem, var(--fs-min)); color:var(--dim);}
+  #tab-dev #recipes .target-input{width:6.5em; max-width:100%; min-height:44px; padding:2px 6px; box-sizing:border-box;}
+  #tab-dev #recipes .recipe-target-help{flex:1 1 100%; margin:0; font-size:max(0.7rem, var(--fs-min)); color:var(--dim); line-height:1.35;}
 
   .gacha-box{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; text-align:center;}
   .gacha-box .rates{color:var(--dim); font-size:max(0.68rem, var(--fs-min)); margin-top:10px; line-height:1.6;}

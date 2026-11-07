@@ -50,6 +50,24 @@ test('무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속�
     await qa.tab('dev');
     for (let i = 0; i < 10; i++) await qa.press('[data-craft="steel"]');
     expect(await page.evaluate(() => state.products.steel)).toBe(10);
+    // UX-01: selling lives in the closed 「판매 · 자동화 설정」; open it with real input (no forced click on a hidden button)
+    const more = page.locator('[data-recipe-more="steel"]');
+    await expect(more).not.toHaveAttribute('open', '');
+    await expect(page.locator('[data-sell="steel"]')).toBeHidden();
+    await expect(page.locator('[data-recipe-sell-hint="steel"]')).toBeVisible();
+    if (mobile) await qa.press('[data-recipe-summary="steel"]');
+    else {
+      // keyboard: Space on the summary opens it and does not act in the world
+      // count world actions (the game's own tdInteractNow, called by the Space/E handler) around the key press
+      const player = await page.evaluate(() => { window.__qaActs = 0; window.__qaAct = tdInteractNow; window.tdInteractNow = (...a) => { window.__qaActs++; return window.__qaAct(...a); }; return JSON.stringify(state.world.player); });
+      await page.locator('[data-recipe-summary="steel"]').focus();
+      await page.keyboard.press('Space');
+      expect(await page.evaluate(() => { const n = window.__qaActs; window.tdInteractNow = window.__qaAct; return n; }), 'Space on the summary must not act in the world').toBe(0);
+      expect(await page.evaluate(() => JSON.stringify(state.world.player))).toBe(player);
+    }
+    await expect(more).toHaveAttribute('open', '');
+    await expect(page.locator('[data-sell="steel"]')).toBeVisible();
+    await qa.audit('제작 카드 상세');
     await qa.press('[data-sell="steel"]');
     await expect.poll(() => page.evaluate(() => state.gold)).toBe(50);
     expect(await page.evaluate(() => state.products.steel)).toBe(0);

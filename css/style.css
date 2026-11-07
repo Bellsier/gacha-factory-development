@@ -703,3 +703,18 @@
 #s2Menu .s2-row{padding:10px 0;border-bottom:1px solid #b3a17d}#s2Menu .s2-row p{margin:4px 0;overflow-wrap:anywhere}
 @media(max-width:600px){#s2Menu{padding:8px}#s2Menu .s2-paper{padding:12px}#s2Open{top:140px}#s2Status{bottom:88px;max-width:calc(100vw - 24px);font-size:11px}}
 #s2Menu summary{cursor:pointer;min-height:44px;padding:6px 0}#s2Menu summary h3{display:inline-block;margin:8px 0}#s2Menu [data-s2-recent]{font-weight:bold;border-width:2px}#s2Menu [data-s2-recent-label]{overflow-wrap:anywhere}
+
+/* Pre-S4: keep save controls outside the game's scrolling panels. */
+#s2Hud{display:contents} /* Classic view retains its existing fixed controls. */
+body.view-topdown #s2Hud{position:fixed;top:150px;right:12px;width:min(480px,calc(100vw - 24px));display:flex;align-items:flex-start;gap:8px;z-index:110;pointer-events:none}
+body.view-topdown #s2Open{position:static;order:1;flex:none;pointer-events:auto}
+body.view-topdown #s2Status{position:static;order:0;flex:1 1 0;min-width:0;max-width:none;line-height:1.35;overflow-wrap:anywhere}
+body.view-topdown:is(.td-panel-open,.td-log-open) #s2Hud{top:auto;bottom:calc(var(--td-dock-h) + 8px);width:min(820px,calc(100vw - 24px))}
+body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:has(#s2Hud).td-log-open #logSection{bottom:calc(var(--td-dock-h) + var(--s2-hud-height,44px) + 16px)}
+@media(max-width:760px){
+  body.view-topdown #s2Hud{top:140px}
+  body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:has(#s2Hud).td-log-open #logSection{top:28vh;top:28dvh;height:auto}
+}
+@media(max-height:500px) and (orientation:landscape){
+  body.view-topdown #s2Hud{top:104px}
+}

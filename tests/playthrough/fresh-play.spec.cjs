@@ -58,10 +58,12 @@ test('무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속�
     if (mobile) await qa.press('[data-recipe-summary="steel"]');
     else {
       // keyboard: Space on the summary opens it and does not act in the world
-      const world = await page.evaluate(() => JSON.stringify([state.resources, state.products, state.world.player]));
+      // count world actions (the game's own tdInteractNow, called by the Space/E handler) around the key press
+      const player = await page.evaluate(() => { window.__qaActs = 0; window.__qaAct = tdInteractNow; window.tdInteractNow = (...a) => { window.__qaActs++; return window.__qaAct(...a); }; return JSON.stringify(state.world.player); });
       await page.locator('[data-recipe-summary="steel"]').focus();
       await page.keyboard.press('Space');
-      expect(await page.evaluate(() => JSON.stringify([state.resources, state.products, state.world.player]))).toBe(world);
+      expect(await page.evaluate(() => { const n = window.__qaActs; window.tdInteractNow = window.__qaAct; return n; }), 'Space on the summary must not act in the world').toBe(0);
+      expect(await page.evaluate(() => JSON.stringify(state.world.player))).toBe(player);
     }
     await expect(more).toHaveAttribute('open', '');
     await expect(page.locator('[data-sell="steel"]')).toBeVisible();

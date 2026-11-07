@@ -127,7 +127,12 @@
   #tab-dev #recipes .recipe-more-body{display:grid; gap:4px; padding:4px 0 2px;}
   #tab-dev #recipes .recipe-more-body .row button, #tab-dev #recipes .recipe-autosell-buy button{min-height:44px;}
   #tab-dev #recipes .recipe-more-body .toggle-auto{min-height:44px; margin-top:0; font-size:max(0.8rem, var(--fs-min)); cursor:pointer;}
-  #tab-dev #recipes .recipe-more-body .toggle-auto input{width:22px; height:22px; flex:none; margin:0 4px 0 0;}
+  /* a 22px box to see, a 44x44 area to touch (the whole control, not only its label) */
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]{-webkit-appearance:none; appearance:none; width:44px; height:44px; flex:none; margin:0 -6px 0 -11px; padding:0; border:0; cursor:pointer;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect x='1' y='1' width='20' height='20' rx='4' fill='%23241a12' stroke='%23b08a64' stroke-width='2'/%3E%3C/svg%3E") center/22px 22px no-repeat;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:checked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect x='1' y='1' width='20' height='20' rx='4' fill='%235fcab2' stroke='%235fcab2' stroke-width='2'/%3E%3Cpath d='M5.5 11.5l3.5 3.5 7-8' fill='none' stroke='%23241a12' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:disabled{opacity:0.45; cursor:not-allowed;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:focus-visible{outline:2px solid var(--teal-on, #5fcab2); outline-offset:-6px; border-radius:8px;}
   #tab-dev #recipes .recipe-autosell-buy{display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
   #tab-dev #recipes .recipe-autosell-buy span{flex:1 1 auto; white-space:nowrap;}
   /* the stock target: its label, then the field with its unit kept together, then one line of help */

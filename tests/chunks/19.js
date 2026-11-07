@@ -426,3 +426,35 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   check('UX01: a workshop-only card keeps its note outside and only sale and target inside the details', !!k && !doc.querySelector('[data-craft="' + k + '"]') && !doc.querySelector('[data-autocraft="' + k + '"]') && !doc.querySelector('[data-buyautosell="' + k + '"]') &&
     more(k).contains(doc.querySelector('[data-sell="' + k + '"]')) && more(k).contains(doc.querySelector('[data-craft-target="' + k + '"]')) && !more(k).contains(p));
 })();
+// =============================================================================
+// UX-01 F-01 (Issue #32): Space on the card's enabled auto-craft / auto-sell checkbox stays in the card
+// (propagation stopped, default NOT prevented, so the browser ticks it); a disabled one, other keys and the
+// summary keep their old paths. The real-keyboard proof is tests/playthrough/recipe-keyboard.spec.cjs.
+// =============================================================================
+(function test_UX01_F01_checkboxSpace() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document, s = win.state;
+  const reached = [];
+  const spy = (e) => reached.push(e.key + ':' + (e.target.getAttribute('data-autocraft') !== null ? 'auto' : e.target.getAttribute('data-autoselltoggle') !== null ? 'sell' : e.target.tagName));
+  const press = (el, key, code) => { const ev = new win.KeyboardEvent('keydown', { key, code, bubbles: true, cancelable: true }); el.dispatchEvent(ev); return ev; };
+  // before the research: the auto-craft checkbox is disabled and keeps the old path
+  doc.addEventListener('keydown', spy);
+  const lockedAuto = doc.querySelector('[data-autocraft="steel"]');
+  press(lockedAuto, ' ', 'Space');
+  check('UX01-F01: a disabled auto-craft checkbox is not handled by the card (old path)', lockedAuto.disabled && reached.join() === ' :auto');
+  reached.length = 0;
+  s.research.autoCraftDevice = true; s.autoSell.steel = true; s.autoSellOn.steel = true; win.renderAll();
+  const auto = doc.querySelector('[data-autocraft="steel"]'), sell = doc.querySelector('[data-autoselltoggle="steel"]');
+  const evA = press(auto, ' ', 'Space'), evS = press(sell, ' ', 'Space');
+  check('UX01-F01: Space on the enabled auto-craft and auto-sell checkboxes stays in the card', reached.length === 0);
+  check('UX01-F01: the card never prevents the default (the browser ticks the box itself)', !evA.defaultPrevented && !evS.defaultPrevented);
+  check('UX01-F01: the card does not change the box or the state itself on keydown', auto.checked === false && s.autoCraft.steel !== true && sell.checked === true && s.autoSellOn.steel === true);
+  ['w', 'ArrowLeft', 'e'].forEach((k) => press(auto, k, k === 'w' ? 'KeyW' : k === 'e' ? 'KeyE' : k));
+  press(sell, 'd', 'KeyD');
+  check('UX01-F01: movement keys and E on those checkboxes still reach the game (Task95/99)', reached.join() === 'w:auto,ArrowLeft:auto,e:auto,d:sell');
+  reached.length = 0;
+  const summary = doc.querySelector('[data-recipe-summary="steel"]'), evSum = press(summary, ' ', 'Space');
+  const target = doc.querySelector('[data-craft-target="steel"]'), sellBtn = doc.querySelector('[data-sell="steel"]');
+  press(target, ' ', 'Space'); press(sellBtn, ' ', 'Space');
+  check('UX01-F01: the summary keeps its Space handling; other card controls keep their old paths', !evSum.defaultPrevented && reached.join() === ' :INPUT, :BUTTON');
+  doc.removeEventListener('keydown', spy);
+})();

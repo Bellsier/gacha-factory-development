@@ -785,10 +785,17 @@ function restoreRecipeInputs(wrap, snap){
     (f.attr === 'data-buyautosell' ? wrap.querySelector('[data-autoselltoggle="' + f.key + '"]') : null));
   if(el && el.focus) el.focus();
 }
-// Space on a summary opens it; it must not also act in the world (topdown/app.js acts on Space
-// outside buttons). Only this key on these summaries is stopped; Enter, letters and movement keep going.
+// Space on a summary opens it, and Space on the card's enabled auto-craft / auto-sell checkbox ticks it
+// (Issue #32 F-01); neither must also act in the world (topdown/app.js acts on Space outside buttons and
+// would cancel the checkbox's default). Only propagation is stopped — the browser's own toggle and the
+// existing change handlers do the work. Enter, letters, movement keys and keyup keep going.
+function recipeSpaceStaysInCard(t){
+  if(!t || !t.hasAttribute) return false;
+  if(t.tagName === 'SUMMARY') return t.hasAttribute('data-recipe-summary');
+  return t.tagName === 'INPUT' && t.type === 'checkbox' && !t.disabled && (t.hasAttribute('data-autocraft') || t.hasAttribute('data-autoselltoggle'));
+}
 function recipeSummaryKeydown(e){
-  if((e.key === ' ' || e.code === 'Space') && e.target && e.target.tagName === 'SUMMARY' && e.target.hasAttribute('data-recipe-summary')) e.stopPropagation();
+  if((e.key === ' ' || e.code === 'Space') && recipeSpaceStaysInCard(e.target)) e.stopPropagation();
 }
 
 // Full rebuild: only called after structural changes (auto-craft unlock

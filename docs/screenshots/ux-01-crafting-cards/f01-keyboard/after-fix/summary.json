@@ -1,0 +1,88 @@
+{
+ "sourceSha": "local-uncommitted-checkout",
+ "runStatus": "passed",
+ "scenarios": [
+  {
+   "project": "pc",
+   "title": "UX-01 키보드: 자동 제작·자동 판매 체크박스 Space, summary Space/Enter, Tab, 이동 키",
+   "status": "passed",
+   "stages": [
+    [
+     "01-setup",
+     "통과"
+    ],
+    [
+     "02-summary-keys",
+     "통과"
+    ],
+    [
+     "03-autocraft-space",
+     "통과"
+    ],
+    [
+     "04-autocraft-works",
+     "통과"
+    ],
+    [
+     "05-autosell-space",
+     "통과"
+    ],
+    [
+     "06-closed-details-tab",
+     "통과"
+    ],
+    [
+     "07-movement-contract",
+     "통과"
+    ],
+    [
+     "08-pointer",
+     "통과"
+    ]
+   ],
+   "findings": [],
+   "console": []
+  },
+  {
+   "project": "mobile",
+   "title": "UX-01 키보드: 자동 제작·자동 판매 체크박스 Space, summary Space/Enter, Tab, 이동 키",
+   "status": "passed",
+   "stages": [
+    [
+     "01-setup",
+     "통과"
+    ],
+    [
+     "02-summary-keys",
+     "통과"
+    ],
+    [
+     "03-autocraft-space",
+     "통과"
+    ],
+    [
+     "04-autocraft-works",
+     "통과"
+    ],
+    [
+     "05-autosell-space",
+     "통과"
+    ],
+    [
+     "06-closed-details-tab",
+     "통과"
+    ],
+    [
+     "07-movement-contract",
+     "통과"
+    ],
+    [
+     "08-pointer",
+     "통과"
+    ]
+   ],
+   "findings": [],
+   "console": []
+  }
+ ]
+}

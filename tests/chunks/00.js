@@ -95,6 +95,7 @@ function newDom(storage, opts) {
   const expose = `
 ;window.__expose = {
   state: () => state,
+  S2Runtime: () => S2Runtime, // UX-01: installs another run the way the game does
   permanent: () => permanent,
   saveBlocked: () => saveBlocked,
   RESOURCES: () => RESOURCES,
@@ -124,6 +125,7 @@ function newDom(storage, opts) {
   win.eval(moduleSource + expose);
   Object.defineProperties(win, {
     state: { get: () => win.__expose.state(), configurable: true },
+    S2Runtime: { get: () => win.__expose.S2Runtime(), configurable: true },
     // permanent is the game's single cross-prestige state container
     // (totalPrestige/runCount/tickets/firstGachaGranted), replacing the
     // separate totalPrestige/runCount lets and window.tickets/

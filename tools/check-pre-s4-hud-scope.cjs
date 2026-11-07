@@ -8,7 +8,16 @@ const root = path.resolve(__dirname, '..');
 const base = '224b3dad86614438ec28ad065bd71d3bbc4b0726';
 const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const changed = git(['diff', '--name-only', base, '--', 'index.html', 'js', 'css']).split('\n').filter(Boolean);
-for (const file of changed) assert(['css/style.css', 'js/save-runtime.js'].includes(file), 'Protected game file changed: ' + file);
+for (const file of changed) assert(['css/style.css', 'js/save-runtime.js', 'js/ui.js'].includes(file), 'Protected game file changed: ' + file);
+// UX-01 (Issue #32, approved 2026-11-07): stacked on the pre-S4 HUD head. Since that head only the recipe
+// card UI (js/ui.js) and its card styles (css/style.css) may change; S2 runtime, engine, state, balance,
+// world and every other game file stay as the HUD head left them.
+const hudHead = '055588bb3e979147bb3f723c1ee2b6e85b5ff5ad';
+const hasHudHead = (() => { try { git(['cat-file', '-e', hudHead + '^{commit}']); return true; } catch { return false; } })();
+if (hasHudHead) {
+  const sinceHud = git(['diff', '--name-only', hudHead, '--', 'index.html', 'js', 'css']).split('\n').filter(Boolean);
+  for (const file of sinceHud) assert(['css/style.css', 'js/ui.js'].includes(file), 'UX-01 may only change js/ui.js and css/style.css after the HUD head: ' + file);
+}
 const runtime = source => vm.runInNewContext(source + '\nS2Runtime;', {}, { timeout: 1000 });
 const before = runtime(git(['show', base + ':js/save-runtime.js']));
 const after = runtime(fs.readFileSync(path.join(root, 'js/save-runtime.js'), 'utf8'));

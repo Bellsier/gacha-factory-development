@@ -2,7 +2,7 @@ name: Playthrough QA
 
 on:
   pull_request:
-    branches: [main, develop, codex/save-s2, test/playthrough-qa]
+    branches: [main, develop, codex/save-s2, test/playthrough-qa, fix/pre-s4-save-hud] # fix/pre-s4-save-hud: UX-01 (Issue #32) stacks on PR #30
   workflow_dispatch:
 
 permissions:

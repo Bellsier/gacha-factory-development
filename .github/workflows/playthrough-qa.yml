@@ -2,7 +2,7 @@ name: Playthrough QA
 
 on:
   pull_request:
-    branches: [main, develop, codex/save-s2]
+    branches: [main, develop, codex/save-s2, test/playthrough-qa]
   workflow_dispatch:
 
 permissions:
@@ -89,9 +89,9 @@ jobs:
         id: install
       - run: npx playwright install --with-deps chromium
         id: browser
-      - name: Verify game baseline is untouched
+      - name: Verify protected game and S2 behavior are untouched
         id: baseline
-        run: git diff --exit-code f5169308b1659913119f8b035e5998a0543c538d -- index.html js css
+        run: node tools/check-pre-s4-hud-scope.cjs
       - name: Record runtime versions
         run: |
           mkdir -p work/playthrough

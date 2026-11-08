@@ -757,3 +757,28 @@ body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:
 @media(max-height:500px) and (orientation:landscape){
   body.view-topdown #s2Hud{top:104px}
 }
+
+/* Issue #32 C: the open panel's top band (its title, its icon and the fixed close button) no longer scrolls.
+   Before, the panel scrolled under the fixed close button, so a card button that passed beneath it was covered
+   and a tap there closed the panel instead. The band is the panel's own ::before, made sticky at the top of the
+   scroll area with the panel's top padding as its height: content scrolls beneath it, never beneath the close
+   button, which sits inside the band (PC 10-54px of a 64px band; phone 0-44px of 60px). The icon that ::after
+   drew moves into the band. Nothing is hidden and no z-index is lowered; scroll-padding keeps a focused
+   control from scrolling under the band. */
+body.view-topdown{--panel-head:64px; --panel-pad-x:16px;}
+@media (max-width: 760px), (max-height: 500px) and (orientation: landscape){ body.view-topdown{--panel-head:60px;} }
+@media (max-width: 760px){ body.view-topdown{--panel-pad-x:12px;} }
+body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{padding-top:var(--panel-head); scroll-padding-top:calc(var(--panel-head) + 8px);}
+body.view-topdown.td-panel-open .tab-panel.active::before, body.view-topdown.td-log-open #logSection::before{
+  position:sticky; top:calc(-1 * var(--panel-head)); left:auto; z-index:2; display:block; box-sizing:border-box; /* sticky offsets count from inside the top padding */
+  height:var(--panel-head); margin:calc(-1 * var(--panel-head)) calc(-1 * var(--panel-pad-x)) 0;
+  padding:18px 112px 0 calc(var(--panel-pad-x) + 28px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border-bottom:1px solid rgba(232,164,107,0.25);
+  /* the icon: a copper square at the old icon spot, cut to the icon's shape by the mask; the rest is the band */
+  background:linear-gradient(var(--copper-hi), var(--copper-hi)) var(--panel-pad-x) 22px / 20px 20px no-repeat,
+    linear-gradient(180deg, rgba(255,236,210,0.05), rgba(0,0,0,0) 120px), var(--wood-1);
+  -webkit-mask:var(--panel-icon) var(--panel-pad-x) 22px / 20px 20px no-repeat, linear-gradient(#000 0 0) var(--panel-pad-x) 22px / 20px 20px no-repeat, linear-gradient(#000 0 0);
+  -webkit-mask-composite:source-over, xor;
+  mask:var(--panel-icon) var(--panel-pad-x) 22px / 20px 20px no-repeat, linear-gradient(#000 0 0) var(--panel-pad-x) 22px / 20px 20px no-repeat, linear-gradient(#000 0 0);
+  mask-composite:add, exclude;}
+body.view-topdown.td-panel-open .tab-panel.active::after, body.view-topdown.td-log-open #logSection::after{content:none;}

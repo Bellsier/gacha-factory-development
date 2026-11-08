@@ -19,12 +19,13 @@ for (const [name, sha] of [['S2/playthrough base (#29 head)', base], ['pre-S4 HU
   }
 }
 const changed = git(['diff', '--name-only', base, '--', 'index.html', 'js', 'css']).split('\n').filter(Boolean);
-for (const file of changed) assert(['css/style.css', 'js/save-runtime.js', 'js/ui.js'].includes(file), 'Protected game file changed: ' + file);
+for (const file of changed) assert(['css/style.css', 'js/save-runtime.js', 'js/ui.js', 'js/topdown/app.js'].includes(file), 'Protected game file changed: ' + file);
 // UX-01 (Issue #32, approved 2026-11-07): stacked on the pre-S4 HUD head. Since that head only the recipe
 // card UI (js/ui.js) and its card styles (css/style.css) may change; S2 runtime, engine, state, balance,
 // world and every other game file stay as the HUD head left them.
 const sinceHud = git(['diff', '--name-only', hudHead, '--', 'index.html', 'js', 'css']).split('\n').filter(Boolean);
-for (const file of sinceHud) assert(['css/style.css', 'js/ui.js'].includes(file), 'UX-01 may only change js/ui.js and css/style.css after the HUD head: ' + file);
+// Issue #32 stabilisation: js/topdown/app.js only for the phone action button's tap (tdBindTap); see its comment.
+for (const file of sinceHud) assert(['css/style.css', 'js/ui.js', 'js/topdown/app.js'].includes(file), 'UX-01 may only change js/ui.js, css/style.css and js/topdown/app.js after the HUD head: ' + file);
 const runtime = source => vm.runInNewContext(source + '\nS2Runtime;', {}, { timeout: 1000 });
 const before = runtime(git(['show', base + ':js/save-runtime.js']));
 const after = runtime(fs.readFileSync(path.join(root, 'js/save-runtime.js'), 'utf8'));
@@ -34,4 +35,4 @@ for (const name of Object.keys(before)) {
   if (typeof before[name] === 'function') assert.equal(String(after[name]), String(before[name]), 'S2 behavior changed: ' + name);
   else assert.equal(JSON.stringify(after[name]), JSON.stringify(before[name]), 'S2 initial state changed: ' + name);
 }
-console.log('Protected game files and all S2 methods/fields except mount UI match ' + base + '; since ' + hudHead + ' only js/ui.js and css/style.css changed');
+console.log('Protected game files and all S2 methods/fields except mount UI match ' + base + '; since ' + hudHead + ' only js/ui.js, css/style.css and js/topdown/app.js changed');

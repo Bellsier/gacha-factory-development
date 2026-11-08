@@ -34,7 +34,7 @@ const runGuard = dir => spawnSync(process.execPath, ['tools/check-pre-s4-hud-sco
 test('both base commits present: the guard passes and runs the UX-01 scope check', () => {
   const r = runGuard(shallowCheckout([S2_BASE, HUD_HEAD]));
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /since 055588b\w+ only js\/ui\.js and css\/style\.css changed/);
+  assert.match(r.stdout, /since 055588b\w+ only js\/ui\.js, css\/style\.css and js\/topdown\/app\.js changed/);
 });
 test('HUD head missing (the case that used to pass): non-zero exit with a clear message', () => {
   const r = runGuard(shallowCheckout([S2_BASE]));

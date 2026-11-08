@@ -144,6 +144,29 @@ function tdBindStick(stick, knob){
   stick.addEventListener('pointercancel', end);
 }
 
+// Issue #32: right after a quick flick of the stick, Chromium sometimes delivers the action button's
+// pointerdown/pointerup but no click (measured: up to 12 of 20 taps lost), so the tap did nothing. A touch
+// (or pen) press that starts and ends on the button acts on pointerup; the click that normally follows is then
+// ignored once, so one tap acts once. Mouse, keyboard (Enter/Space) and scripted clicks keep the click path.
+function tdBindTap(btn, act){
+  if(!btn) return;
+  let pressed = null, skipClickUntil = 0;
+  btn.addEventListener('pointerdown', (e) => { if(e.pointerType === 'touch' || e.pointerType === 'pen') pressed = e.pointerId; });
+  btn.addEventListener('pointercancel', () => { pressed = null; });
+  btn.addEventListener('pointerup', (e) => {
+    if(e.pointerId !== pressed) return;
+    pressed = null;
+    const r = btn.getBoundingClientRect();
+    if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return; // slid off: no tap
+    skipClickUntil = performance.now() + 800;
+    act();
+  });
+  btn.addEventListener('click', () => {
+    if(performance.now() < skipClickUntil){ skipClickUntil = 0; return; } // the click of a tap already handled
+    act();
+  });
+}
+
 // --- set-up -------------------------------------------------------------------
 function tdInit(){
   if(tdViewMode() !== 'topdown') return false;
@@ -196,7 +219,7 @@ function tdInit(){
     body.classList.add('td-panel-open');
   }, true);
   document.getElementById('tdClose').onclick = tdClosePanels;
-  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };
+  tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); }); // Issue #32: a touch tap acts even when the browser drops its click
   document.getElementById('tdTorch').onclick = () => { tdTorchNow(); };
   document.getElementById('tdDecor').onclick = () => { tdGardenButtonNow(); }; // Task 120
   tdBindStick(document.getElementById('tdStick'), document.querySelector('#tdStick .td-knob'));

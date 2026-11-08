@@ -1,0 +1,48 @@
+  ✓   1 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.7s)
+  ✓   2 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.3s)
+  ✓   3 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.8s)
+  ✓   4 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.4s)
+  ✓   5 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.3s)
+  ✓   6 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.6s)
+  ✓   7 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.9s)
+  ✓   8 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.2s)
+  ✓   9 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.2s)
+  ✓  10 [pc] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (14.7s)
+  ✓  11 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.5s)
+  ✘  12 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (12.7s)
+  ✓  13 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.3s)
+  ✓  14 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.7s)
+  ✓  15 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.5s)
+  ✓  16 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.5s)
+  ✓  17 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.4s)
+  ✓  18 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.9s)
+  ✓  19 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.8s)
+  ✓  20 [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 (13.6s)
+    attachment #1: 01-new-village-passed.png (image/png) ───────────────────────────────────────────
+    work/playthrough/evidence/fresh-play-무주입-새-마을부터-채굴·판매·첫-인부·저장·재접속·복원-사본-mobile-repeat1/attachments/01-new-village-passed-png-2864d8c06f6b41a32ce70161dd3c69b016c6d893.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+    attachment #2: 02-collision-passed.png (image/png) ─────────────────────────────────────────────
+    work/playthrough/evidence/fresh-play-무주입-새-마을부터-채굴·판매·첫-인부·저장·재접속·복원-사본-mobile-repeat1/attachments/02-collision-passed-png-759eb657c410a7cb411308a531ad7d7034371f6f.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+    attachment #3: 03-proximity-mine-failed.png (image/png) ────────────────────────────────────────
+    work/playthrough/evidence/fresh-play-무주입-새-마을부터-채굴·판매·첫-인부·저장·재접속·복원-사본-mobile-repeat1/attachments/03-proximity-mine-failed-png-9e507e6aa5924049b295c587d515c34f06201014.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+    work/playthrough/evidence/fresh-play-무주입-새-마을부터-채굴·판매·첫-인부·저장·재접속·복원-사본-mobile-repeat1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+  1 failed
+  19 passed (4.9m)
+  1) [mobile] › tests/playthrough/fresh-play.spec.cjs:6:1 › 무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본 › 광맥까지 실제 이동 후 근접 채굴 
+
+    TimeoutError: page.waitForFunction: Timeout 10000ms exceeded.
+
+      30 |     if (await page.evaluate(() => mineById('mine_start_iron').developmentState !== 'secured')) {
+      31 |       if (mobile) await qa.press('#tdAction'); else await page.keyboard.press('e');
+    > 32 |       await page.waitForFunction(() => mineById('mine_start_iron').developmentState === 'secured');
+         |                  ^
+      33 |     }
+      34 |     const before = await page.evaluate(() => state.resources.iron);
+      35 |     if (mobile) await qa.press('#tdAction'); else await page.keyboard.press('e');
+        at /home/user/gacha-factory-development/tests/playthrough/fresh-play.spec.cjs:32:18
+        at /home/user/gacha-factory-development/tests/playthrough/fixtures.cjs:40:27
+        at /home/user/gacha-factory-development/tests/playthrough/fresh-play.spec.cjs:28:3

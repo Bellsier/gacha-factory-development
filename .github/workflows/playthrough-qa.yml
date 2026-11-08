@@ -2,7 +2,7 @@ name: Playthrough QA
 
 on:
   pull_request:
-    branches: [main, develop, codex/save-s2, test/playthrough-qa, fix/pre-s4-save-hud] # fix/pre-s4-save-hud: UX-01 (Issue #32) stacks on PR #30
+    branches: [main, develop, codex/save-s2, test/playthrough-qa, fix/pre-s4-save-hud, feat/ux-01-crafting-cards] # fix/pre-s4-save-hud: UX-01 (Issue #32) stacks on PR #30; feat/ux-01-crafting-cards: its POST-QA fixes stack on PR #33
   workflow_dispatch:
 
 permissions:

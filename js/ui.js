@@ -800,11 +800,30 @@ function recipeSummaryKeydown(e){
 
 // Full rebuild: only called after structural changes (auto-craft unlock
 // toggling, site unlock). Buttons keep their identity between ticks.
+// Issue #32 B/D: while a stock-target field of the SAME run is being edited (it has the focus — typing,
+// an unfinished number like "1e", or an input-method composition), a rebuild waits: replacing that node
+// would drop the draft (a removed number field reports value '' and the target became 0) and break the
+// composition. The rebuild runs as soon as the focus leaves the field (after its own change event).
+// A rebuild for another run (new village, restore, reload) never waits.
+function recipeEditingTarget(wrap){
+  const a = document.activeElement;
+  return !!(a && wrap.contains(a) && a.hasAttribute('data-craft-target'));
+}
+function recipeTargetFocusout(e){
+  const wrap = e.currentTarget;
+  if(!wrap.__recipeRebuildPending) return;
+  setTimeout(() => { if(wrap.__recipeRebuildPending) buildRecipes(); }, 0); // after the focus has moved
+}
 function buildRecipes(){
   const wrap = document.getElementById('recipes');
+  if(!wrap.dataset.recipeKeys){ wrap.addEventListener('keydown', recipeSummaryKeydown); wrap.addEventListener('focusout', recipeTargetFocusout); wrap.dataset.recipeKeys = '1'; }
+  if(wrap.__recipeRun === state && recipeEditingTarget(wrap)){ wrap.__recipeRebuildPending = true; return; }
+  wrap.__recipeRebuildPending = false;
   const snap = recipeInputsSnapshot(wrap);
-  if(!wrap.dataset.recipeKeys){ wrap.addEventListener('keydown', recipeSummaryKeydown); wrap.dataset.recipeKeys = '1'; }
-  wrap.innerHTML = '';
+  if(wrap.__recipeRun !== state) snap.drafts = {}; // a draft belongs to the run it was typed in
+  wrap.__recipeRebuilding = true; // a field removed here may fire change: it must not set a target
+  try { wrap.innerHTML = ''; } finally { wrap.__recipeRebuilding = false; }
+  wrap.__recipeRun = state;
   const autoUnlocked = isAutoCraftUnlocked(), open = recipeMoreOpenSet();
   RECIPES.forEach(r=>{
     // Hide recipes whose raw resource inputs aren't unlocked yet, to avoid clutter.
@@ -829,8 +848,15 @@ function buildRecipes(){
   wrap.querySelectorAll('[data-sell]').forEach(btn=>{
     btn.onclick=()=>{ sellAll(recipeByKey(btn.dataset.sell)); updateNumbers(); renderCurrencies(); };
   });
+  const run = state; // the run these fields were built for
   wrap.querySelectorAll('[data-craft-target]').forEach(inp=>{
-    inp.onchange=()=>{ setCraftTarget(inp.dataset.craftTarget, inp.value); inp.value = state.craftTarget[inp.dataset.craftTarget] || ''; updateNumbers(); };
+    inp.onchange=()=>{
+      if(wrap.__recipeRebuilding || run !== state) return; // removed by a rebuild, or a field of another run
+      const key = inp.dataset.craftTarget;
+      // an unfinished number ("1e", "-") reads as '' but is not the player clearing the field: keep the target
+      if(inp.validity && inp.validity.badInput){ inp.value = state.craftTarget[key] || ''; return; }
+      setCraftTarget(key, inp.value); inp.value = state.craftTarget[key] || ''; updateNumbers();
+    };
   });
   wrap.querySelectorAll('[data-autocraft]').forEach(chk=>{
     chk.onchange=()=>{ state.autoCraft[chk.dataset.autocraft] = chk.checked; updateNumbers(); };

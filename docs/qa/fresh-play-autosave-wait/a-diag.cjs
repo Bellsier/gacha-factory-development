@@ -4,7 +4,7 @@
 const path = require('path'), fs = require('fs'), http = require('http');
 const { chromium } = require('playwright');
 const [root, runsArg, mode] = process.argv.slice(2), runs = +runsArg || 5, waitNew = mode === 'wait-new';
-const { commitReady } = require(path.join(root, 'tests/playthrough/save-wait.cjs')) // the same predicate fresh-play uses;
+const { commitReady } = require(path.join(root, 'tests/playthrough/save-wait.cjs')); // the same predicate fresh-play uses
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript' };
 (async () => {
   const server = http.createServer((q, r) => { const p = decodeURIComponent(new URL(q.url, 'http://x').pathname); const f = p === '/' ? 'index.html' : p; fs.readFile(path.join(root, f), (e, b) => { if (e) { r.writeHead(404); r.end(); return; } r.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' }); r.end(b); }); });

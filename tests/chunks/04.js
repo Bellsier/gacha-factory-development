@@ -365,12 +365,12 @@ function t103Random(seed) {
   const dom = new JSDOM(single, { runScripts: 'dangerously', url: 'https://single.test/' });
   allDoms.push(dom);
   const sw = dom.window;
-  let ok = false, gold = null;
-  try {
-    sw.eval('mineResource("iron"); mineResource("iron"); mineResource("coal"); startCraft(recipeByKey("steel")); sellAll(recipeByKey("steel")); saveGame();');
-    gold = sw.eval('state.gold');
-    ok = JSON.parse(sw.localStorage.getItem('gachaFactorySave')).saveVersion === 1;
-  } catch (e) { ok = false; }
-  check('Task103: handoff — the single HTML boots the game, plays the core loop and saves (saveVersion 1)', ok && gold === 5 &&
-    sw.document.getElementById('goldVal').textContent !== '' && !!sw.document.querySelector('[data-mine="iron"]'));
+  // S2 requires asynchronous IndexedDB. jsdom has no IndexedDB: it must not
+  // silently fall back to overwriting localStorage. The real single-file core
+  // loop + durable save is covered in save-s2-browser.cjs with Chromium.
+  const pending = sw.eval('saveGame()');
+  check('Task103: handoff — without IndexedDB the single HTML blocks play and never falls back to legacy writes',
+    sw.eval('S2Runtime.started && !S2Runtime.canPlay()') && typeof pending.then === 'function' &&
+    sw.localStorage.getItem('gachaFactorySave') === null);
+
 })();

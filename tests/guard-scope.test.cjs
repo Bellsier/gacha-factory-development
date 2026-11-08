@@ -19,10 +19,10 @@ const has = sha => { try { git(repo, 'cat-file', '-e', sha + '^{commit}'); retur
 if (!has(S2_BASE) || !has(HUD_HEAD)) throw new Error('guard-scope.test needs the full history (fetch-depth 0): a base commit is missing here.');
 
 // A shallow clone at HEAD plus the listed extra commits (each fetched at depth 1), with the working guard copied in.
-function shallowCheckout(extra, guard = guardSource) {
+function shallowCheckout(extra, guard = guardSource, at = head) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-scope-'));
   git(dir, 'init', '-q');
-  git(dir, 'fetch', '-q', '--depth', '1', 'file://' + repo, head);
+  git(dir, 'fetch', '-q', '--depth', '1', 'file://' + repo, at);
   git(dir, 'checkout', '-q', 'FETCH_HEAD');
   for (const sha of extra) git(dir, 'fetch', '-q', '--depth', '1', 'file://' + repo, sha);
   fs.mkdirSync(path.join(dir, 'tools'), { recursive: true });
@@ -48,7 +48,8 @@ test('S2 base missing: non-zero exit with a clear message', () => {
   assert.match(r.stderr, /S2\/playthrough base \(#29 head\) 224b3da\w+ is not in this checkout/);
 });
 test('control: the guard before the fix exited 0 without the HUD head (the reported F-02)', () => {
-  const before = git(repo, 'show', 'cf65ab707249b9e973087e4177d48158f8bfdda6:tools/check-pre-s4-hud-scope.cjs');
-  const r = runGuard(shallowCheckout([S2_BASE], before));
+  // the commit that guard belonged to (#36 head), so it judges the code it was written for
+  const old = 'cf65ab707249b9e973087e4177d48158f8bfdda6', before = git(repo, 'show', old + ':tools/check-pre-s4-hud-scope.cjs');
+  const r = runGuard(shallowCheckout([S2_BASE], before, old));
   assert.equal(r.status, 0, 'the old guard is expected to pass here — that is the defect being fixed');
 });

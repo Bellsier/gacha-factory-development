@@ -24,8 +24,27 @@ for (const file of changed) assert(['css/style.css', 'js/save-runtime.js', 'js/u
 // card UI (js/ui.js) and its card styles (css/style.css) may change; S2 runtime, engine, state, balance,
 // world and every other game file stay as the HUD head left them.
 const sinceHud = git(['diff', '--name-only', hudHead, '--', 'index.html', 'js', 'css']).split('\n').filter(Boolean);
-// Issue #32 stabilisation: js/topdown/app.js only for the phone action button's tap (tdBindTap); see its comment.
 for (const file of sinceHud) assert(['css/style.css', 'js/ui.js', 'js/topdown/app.js'].includes(file), 'UX-01 may only change js/ui.js, css/style.css and js/topdown/app.js after the HUD head: ' + file);
+// PR #38: js/topdown/app.js is allowed ONLY for the phone action button's tap — the tdBindTap() function (with
+// the comment block right above it) and the one line that binds #tdAction with it. Take those two back out
+// (the binding line back to the HUD head's onclick line) and the file must equal the HUD head's byte for byte;
+// any other change (movement, world, collision, saving, another button...) fails.
+if (sinceHud.includes('js/topdown/app.js')) {
+  const stripApprovedTap = (src) => {
+    const start = src.indexOf('function tdBindTap(');
+    assert(start >= 0, 'js/topdown/app.js changed but has no tdBindTap(): only the approved tap handling may change');
+    let from = src.lastIndexOf('\n', start - 1) + 1; // the comment block right above the function
+    for (;;) { const prev = src.lastIndexOf('\n', from - 2) + 1; if (from === 0 || !src.slice(prev, from).startsWith('//')) break; from = prev; }
+    let depth = 0, end = src.indexOf('{', start);
+    for (let i = end; i < src.length; i++) { if (src[i] === '{') depth++; else if (src[i] === '}' && --depth === 0) { end = i + 1; break; } }
+    while (src[end] === '\n') end++;
+    const bind = /^  tdBindTap\(document\.getElementById\('tdAction'\), \(\) => \{ tdInteractNow\(\); \}\);.*$/m;
+    assert(bind.test(src), 'js/topdown/app.js: the #tdAction tdBindTap binding line is missing or changed');
+    return (src.slice(0, from) + src.slice(end)).replace(bind, "  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };");
+  };
+  const approvedOnly = stripApprovedTap(fs.readFileSync(path.join(root, 'js/topdown/app.js'), 'utf8'));
+  assert.equal(approvedOnly, git(['show', hudHead + ':js/topdown/app.js']) + '\n', 'js/topdown/app.js changed outside the approved tdBindTap() / #tdAction binding');
+}
 const runtime = source => vm.runInNewContext(source + '\nS2Runtime;', {}, { timeout: 1000 });
 const before = runtime(git(['show', base + ':js/save-runtime.js']));
 const after = runtime(fs.readFileSync(path.join(root, 'js/save-runtime.js'), 'utf8'));
@@ -35,4 +54,4 @@ for (const name of Object.keys(before)) {
   if (typeof before[name] === 'function') assert.equal(String(after[name]), String(before[name]), 'S2 behavior changed: ' + name);
   else assert.equal(JSON.stringify(after[name]), JSON.stringify(before[name]), 'S2 initial state changed: ' + name);
 }
-console.log('Protected game files and all S2 methods/fields except mount UI match ' + base + '; since ' + hudHead + ' only js/ui.js, css/style.css and js/topdown/app.js changed');
+console.log('Protected game files and all S2 methods/fields except mount UI match ' + base + '; since ' + hudHead + ' only js/ui.js, css/style.css and the approved tdBindTap part of js/topdown/app.js changed');

@@ -34,7 +34,7 @@ const runGuard = dir => spawnSync(process.execPath, ['tools/check-pre-s4-hud-sco
 test('both base commits present: the guard passes and runs the UX-01 scope check', () => {
   const r = runGuard(shallowCheckout([S2_BASE, HUD_HEAD]));
   assert.equal(r.status, 0, r.stderr);
-  assert.match(r.stdout, /since 055588b\w+ only js\/ui\.js, css\/style\.css and js\/topdown\/app\.js changed/);
+  assert.match(r.stdout, /since 055588b\w+ only js\/ui\.js, css\/style\.css and the approved tdBindTap part of js\/topdown\/app\.js changed/);
 });
 test('HUD head missing (the case that used to pass): non-zero exit with a clear message', () => {
   const r = runGuard(shallowCheckout([S2_BASE]));
@@ -52,4 +52,39 @@ test('control: the guard before the fix exited 0 without the HUD head (the repor
   const old = 'cf65ab707249b9e973087e4177d48158f8bfdda6', before = git(repo, 'show', old + ':tools/check-pre-s4-hud-scope.cjs');
   const r = runGuard(shallowCheckout([S2_BASE], before, old));
   assert.equal(r.status, 0, 'the old guard is expected to pass here — that is the defect being fixed');
+});
+
+// PR #38 review: js/topdown/app.js may change only in the approved tdBindTap() part. Each case edits one file in a
+// full (both bases) shallow checkout and runs the guard.
+const edited = (file, edit) => { const dir = shallowCheckout([S2_BASE, HUD_HEAD]); const f = path.join(dir, file); fs.writeFileSync(f, edit(fs.readFileSync(f, 'utf8'))); return runGuard(dir); };
+const replaceOnce = (src, from, to) => { assert.ok(src.includes(from), 'test setup: text not found: ' + from); return src.replace(from, to); };
+test('negative: an unrelated change in js/topdown/app.js (the world action) fails', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(src, 'const target = tdInteractTarget(p.x, p.y);', 'const target = tdInteractTarget(p.x + 1, p.y);'));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /changed outside the approved tdBindTap\(\) \/ #tdAction binding/);
+});
+test('negative: binding another button (the torch) with tdBindTap fails', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(src, "document.getElementById('tdTorch').onclick = () => { tdTorchNow(); };", "tdBindTap(document.getElementById('tdTorch'), () => { tdTorchNow(); });"));
+  assert.notEqual(r.status, 0);
+});
+test('negative: changing the #tdAction binding line fails', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(src, "tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); });", "tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); tdTorchNow(); });"));
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /binding line is missing or changed/);
+});
+test('negative: a movement change (js/player.js) fails', () => {
+  const r = edited('js/player.js', src => src + '\n// unrelated\n');
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /Protected game file changed: js\/player\.js/);
+});
+test('positive: a change inside the approved tdBindTap() passes', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(src, 'let pressed = null, handled = null;', 'let pressed = null, handled = null; // reviewed'));
+  assert.equal(r.status, 0, r.stderr);
+});
+test('control: the file-wide guard before this review (24ad345) let the unrelated app.js change through', () => {
+  const old = git(repo, 'show', '24ad345360f97f5a266783e08559b1fcac542de3:tools/check-pre-s4-hud-scope.cjs');
+  const dir = shallowCheckout([S2_BASE, HUD_HEAD], old);
+  const f = path.join(dir, 'js/topdown/app.js');
+  fs.writeFileSync(f, replaceOnce(fs.readFileSync(f, 'utf8'), 'const target = tdInteractTarget(p.x, p.y);', 'const target = tdInteractTarget(p.x + 1, p.y);'));
+  assert.equal(runGuard(dir).status, 0, 'the old guard is expected to pass here — that is the gap being closed');
 });

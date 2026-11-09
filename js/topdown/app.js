@@ -145,24 +145,30 @@ function tdBindStick(stick, knob){
 }
 
 // Issue #32: right after a quick flick of the stick, Chromium sometimes delivers the action button's
-// pointerdown/pointerup but no click (measured: up to 12 of 20 taps lost), so the tap did nothing. A touch
-// (or pen) press that starts and ends on the button acts on pointerup; the click that normally follows is then
-// ignored once, so one tap acts once. Mouse, keyboard (Enter/Space) and scripted clicks keep the click path.
+// pointerdown/pointerup but no click (measured: up to 20 of 20 taps lost), so the tap did nothing. A primary
+// touch (or pen) press that starts and ends on the button acts on pointerup. The click that tap may still send
+// carries the same pointerId and pointerType 'touch' (checked in Chromium), so exactly that click is skipped;
+// a mouse click (pointerType 'mouse'), Enter/Space (pointerType '', detail 0) or any other click acts as before.
+// No timer: an input that follows a tap whose click never came is never swallowed (PR #38 review).
+// Fallback for a browser whose click is not a PointerEvent: a click with detail > 0 right after a handled tap.
 function tdBindTap(btn, act){
   if(!btn) return;
-  let pressed = null, skipClickUntil = 0;
-  btn.addEventListener('pointerdown', (e) => { if(e.pointerType === 'touch' || e.pointerType === 'pen') pressed = e.pointerId; });
-  btn.addEventListener('pointercancel', () => { pressed = null; });
+  let pressed = null, handled = null;
+  btn.addEventListener('pointerdown', (e) => { if((e.pointerType === 'touch' || e.pointerType === 'pen') && e.isPrimary) pressed = e.pointerId; });
+  btn.addEventListener('pointercancel', (e) => { if(e.pointerId === pressed) pressed = null; });
   btn.addEventListener('pointerup', (e) => {
     if(e.pointerId !== pressed) return;
     pressed = null;
     const r = btn.getBoundingClientRect();
     if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return; // slid off: no tap
-    skipClickUntil = performance.now() + 800;
+    handled = e.pointerId;
     act();
   });
-  btn.addEventListener('click', () => {
-    if(performance.now() < skipClickUntil){ skipClickUntil = 0; return; } // the click of a tap already handled
+  btn.addEventListener('click', (e) => {
+    const sameTap = 'pointerType' in e ? (e.pointerType === 'touch' || e.pointerType === 'pen') && e.pointerId === handled
+      : handled !== null && e.detail > 0;
+    handled = null;
+    if(sameTap) return; // the click of the tap already acted on
     act();
   });
 }

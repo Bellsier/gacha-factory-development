@@ -18,9 +18,13 @@ const head = git(repo, 'rev-parse', 'HEAD');
 const has = sha => { try { git(repo, 'cat-file', '-e', sha + '^{commit}'); return true; } catch { return false; } };
 if (!has(S2_BASE) || !has(HUD_HEAD)) throw new Error('guard-scope.test needs the full history (fetch-depth 0): a base commit is missing here.');
 
+// Every clone of this run lives under one temporary folder; each clone is removed right after its guard run and
+// the folder when the file's tests end, pass or fail (also a clone whose setup failed half way).
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-scope-'));
+test.after(() => fs.rmSync(scratch, { recursive: true, force: true }));
 // A shallow clone at HEAD plus the listed extra commits (each fetched at depth 1), with the working guard copied in.
 function shallowCheckout(extra, guard = guardSource, at = head) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-scope-'));
+  const dir = fs.mkdtempSync(path.join(scratch, 'clone-'));
   git(dir, 'init', '-q');
   git(dir, 'fetch', '-q', '--depth', '1', 'file://' + repo, at);
   git(dir, 'checkout', '-q', 'FETCH_HEAD');
@@ -29,7 +33,8 @@ function shallowCheckout(extra, guard = guardSource, at = head) {
   fs.writeFileSync(path.join(dir, 'tools/check-pre-s4-hud-scope.cjs'), guard);
   return dir;
 }
-const runGuard = dir => spawnSync(process.execPath, ['tools/check-pre-s4-hud-scope.cjs'], { cwd: dir, encoding: 'utf8' });
+// runs the guard in the clone, then removes the clone (each is ~0.6 GB: the history's docs images)
+const runGuard = dir => { try { return spawnSync(process.execPath, ['tools/check-pre-s4-hud-scope.cjs'], { cwd: dir, encoding: 'utf8' }); } finally { fs.rmSync(dir, { recursive: true, force: true }); } };
 
 test('both base commits present: the guard passes and runs the UX-01 scope check', () => {
   const r = runGuard(shallowCheckout([S2_BASE, HUD_HEAD]));
@@ -56,7 +61,11 @@ test('control: the guard before the fix exited 0 without the HUD head (the repor
 
 // PR #38 review: js/topdown/app.js may change only in the approved tdBindTap() part. Each case edits one file in a
 // full (both bases) shallow checkout and runs the guard.
-const edited = (file, edit) => { const dir = shallowCheckout([S2_BASE, HUD_HEAD]); const f = path.join(dir, file); fs.writeFileSync(f, edit(fs.readFileSync(f, 'utf8'))); return runGuard(dir); };
+const edited = (file, edit) => {
+  const dir = shallowCheckout([S2_BASE, HUD_HEAD]), f = path.join(dir, file);
+  try { fs.writeFileSync(f, edit(fs.readFileSync(f, 'utf8'))); } catch (e) { fs.rmSync(dir, { recursive: true, force: true }); throw e; }
+  return runGuard(dir);
+};
 const replaceOnce = (src, from, to) => { assert.ok(src.includes(from), 'test setup: text not found: ' + from); return src.replace(from, to); };
 test('negative: an unrelated change in js/topdown/app.js (the world action) fails', () => {
   const r = edited('js/topdown/app.js', src => replaceOnce(src, 'const target = tdInteractTarget(p.x, p.y);', 'const target = tdInteractTarget(p.x + 1, p.y);'));
@@ -87,4 +96,47 @@ test('control: the file-wide guard before this review (24ad345) let the unrelate
   const f = path.join(dir, 'js/topdown/app.js');
   fs.writeFileSync(f, replaceOnce(fs.readFileSync(f, 'utf8'), 'const target = tdInteractTarget(p.x, p.y);', 'const target = tdInteractTarget(p.x + 1, p.y);'));
   assert.equal(runGuard(dir).status, 0, 'the old guard is expected to pass here — that is the gap being closed');
+});
+
+// PR #38 QA (Codex): the guard must tell the approved change from any other code exactly — not by braces or a
+// loose line pattern. Code is code wherever it hides; braces inside strings, comments, templates and regular
+// expressions are not code.
+const BIND = "tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); });";
+const bindingEdit = to => src => { const line = src.split('\n').find(l => l.startsWith('  ' + BIND)); assert.ok(line, 'test setup: binding line'); return src.replace(line, to); };
+for (const [name, line] of [
+  ['another statement after the binding', '  ' + BIND + ' tdTorchNow();'],
+  ['another statement and then a comment after the binding', '  ' + BIND + ' tdTorchNow(); // Issue #32'],
+  ['a statement after a line separator (U+2028) inside the binding comment', '  ' + BIND + ' // Issue #32\u2028tdTorchNow();'],
+]) test('negative: ' + name + ' fails', () => {
+  const r = edited('js/topdown/app.js', bindingEdit(line));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+  assert.match(r.stderr, /binding line is missing or changed/);
+});
+test('positive: the binding line without its comment passes', () => {
+  const r = edited('js/topdown/app.js', bindingEdit('  ' + BIND));
+  assert.equal(r.status, 0, r.stderr);
+});
+const insideTap = add => src => replaceOnce(src, '  let pressed = null, handled = null;\n', '  let pressed = null, handled = null;\n' + add + '\n');
+for (const [name, add] of [
+  ['a string', "  const open = '{', close = \"}}\";"],
+  ['a line comment', '  // a { brace } in a comment {'],
+  ['a block comment', '  /* { */'],
+  ['a template literal', '  const t = `{ ${pressed} {`;'],
+  ['a regular expression', '  const re = /\\{/;'],
+]) test('positive: a brace in ' + name + ' inside the approved tdBindTap() passes', () => {
+  const r = edited('js/topdown/app.js', insideTap(add));
+  assert.equal(r.status, 0, r.stderr);
+});
+test('negative: code after tdBindTap() hidden by unbalanced braces in strings fails', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(insideTap("  const s = '{';")(src),
+    '\n// --- set-up', "\ntdTorchNow(); const t = '}';\n\n// --- set-up"));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+});
+test('negative: a second function next to tdBindTap() fails', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(src, '\n// --- set-up', '\nfunction tdExtra(){ tdTorchNow(); }\n\n// --- set-up'));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+});
+test('negative: a statement after a line separator (U+2028) in the comment above tdBindTap() fails', () => {
+  const r = edited('js/topdown/app.js', src => replaceOnce(src, '// Issue #32: right after', '// Issue #32\u2028tdTorchNow(); right after'));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
 });

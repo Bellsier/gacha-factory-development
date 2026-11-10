@@ -25,25 +25,48 @@ for (const file of changed) assert(['css/style.css', 'js/save-runtime.js', 'js/u
 // world and every other game file stay as the HUD head left them.
 const sinceHud = git(['diff', '--name-only', hudHead, '--', 'index.html', 'js', 'css']).split('\n').filter(Boolean);
 for (const file of sinceHud) assert(['css/style.css', 'js/ui.js', 'js/topdown/app.js'].includes(file), 'UX-01 may only change js/ui.js, css/style.css and js/topdown/app.js after the HUD head: ' + file);
-// PR #38: js/topdown/app.js is allowed ONLY for the phone action button's tap — the tdBindTap() function (with
-// the comment block right above it) and the one line that binds #tdAction with it. Take those two back out
-// (the binding line back to the HUD head's onclick line) and the file must equal the HUD head's byte for byte;
-// any other change (movement, world, collision, saving, another button...) fails.
+// PR #38: js/topdown/app.js is allowed ONLY for the phone action button's tap: one function declaration
+// tdBindTap() (with the // comment lines right above it) inserted at the top level, and the line that binds #tdAction
+// with it in place of the HUD head's onclick line. Everything else must equal the HUD head byte for byte.
+// Where tdBindTap() ends is decided by the JavaScript engine, not by counting braces, so braces in strings,
+// comments, template literals or regular expressions are just text, and code can not hide past its end.
 if (sinceHud.includes('js/topdown/app.js')) {
-  const stripApprovedTap = (src) => {
-    const start = src.indexOf('function tdBindTap(');
-    assert(start >= 0, 'js/topdown/app.js changed but has no tdBindTap(): only the approved tap handling may change');
-    let from = src.lastIndexOf('\n', start - 1) + 1; // the comment block right above the function
-    for (;;) { const prev = src.lastIndexOf('\n', from - 2) + 1; if (from === 0 || !src.slice(prev, from).startsWith('//')) break; from = prev; }
-    let depth = 0, end = src.indexOf('{', start);
-    for (let i = end; i < src.length; i++) { if (src[i] === '{') depth++; else if (src[i] === '}' && --depth === 0) { end = i + 1; break; } }
-    while (src[end] === '\n') end++;
-    const bind = /^  tdBindTap\(document\.getElementById\('tdAction'\), \(\) => \{ tdInteractNow\(\); \}\);.*$/m;
-    assert(bind.test(src), 'js/topdown/app.js: the #tdAction tdBindTap binding line is missing or changed');
-    return (src.slice(0, from) + src.slice(end)).replace(bind, "  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };");
-  };
-  const approvedOnly = stripApprovedTap(fs.readFileSync(path.join(root, 'js/topdown/app.js'), 'utf8'));
-  assert.equal(approvedOnly, git(['show', hudHead + ':js/topdown/app.js']) + '\n', 'js/topdown/app.js changed outside the approved tdBindTap() / #tdAction binding');
+  const fail = msg => assert.fail('js/topdown/app.js: ' + msg);
+  const lines = fs.readFileSync(path.join(root, 'js/topdown/app.js'), 'utf8').split('\n');
+  const hudLines = execFileSync('git', ['show', hudHead + ':js/topdown/app.js'], { cwd: root, encoding: 'utf8' }).split('\n');
+  // A line comment ends at any JavaScript line terminator, so after one of these the rest of the "comment" is code.
+  const oneLineComment = text => /^\/\/[^\r\u2028\u2029]*$/.test(text);
+  // 1. The binding line: exactly the approved statement, then nothing, or one // comment to the end of the line.
+  const BIND = "  tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); });";
+  const binds = lines.flatMap((line, i) => line.includes("getElementById('tdAction')") && line.includes('tdBindTap(') ? [i] : []);
+  const b = binds[0], rest = b === undefined ? null : lines[b].slice(BIND.length);
+  if (binds.length !== 1 || !lines[b].startsWith(BIND) || !(rest === '' || oneLineComment(rest.replace(/^[ \t]+/, ''))))
+    fail('the #tdAction tdBindTap binding line is missing or changed (only an end-of-line // comment may follow it)');
+  lines[b] = "  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };";
+  // 2. With the HUD head's onclick line back, the only difference left must be one block of inserted lines.
+  let p = 0;
+  while (p < hudLines.length && lines[p] === hudLines[p]) p++;
+  const k = lines.length - hudLines.length;
+  if (k <= 0 || lines.slice(p + k).join('\n') !== hudLines.slice(p).join('\n')) fail('changed outside the approved tdBindTap() / #tdAction binding');
+  const block = lines.slice(p, p + k);
+  // 3. That block: // comment lines, then the function, then blank lines. Nothing else.
+  let c = 0;
+  while (c < block.length && block[c].startsWith('//')) { if (!oneLineComment(block[c])) fail('changed outside the approved tdBindTap() / #tdAction binding (a line terminator inside a comment above tdBindTap)'); c++; }
+  let e = block.length;
+  while (e > c && block[e - 1].trim() === '') e--;
+  const fn = block.slice(c, e).join('\n');
+  if (!fn.startsWith('function tdBindTap(')) fail('changed outside the approved tdBindTap() / #tdAction binding (the inserted lines are not the tdBindTap() function)');
+  // 4. The engine's view. The whole file runs as the body of a function that first returns tdBindTap: a top-level
+  // function declaration is hoisted, so it is returned before any statement of the file runs (nothing of the game
+  // runs). Function.prototype.toString gives the exact source of that declaration; it must be the whole inserted
+  // function — if any other code followed it inside the block, or it sits inside a string, comment or another
+  // function instead of the top level, the texts differ or tdBindTap is not there.
+  let declared;
+  try {
+    declared = vm.runInNewContext('(function(){ return tdBindTap;\n' + lines.join('\n') + '\n})()', {}, { timeout: 1000 });
+  } catch (err) { fail('tdBindTap() is not a top-level function declaration (' + err.message + ')'); }
+  if (typeof declared !== 'function' || Function.prototype.toString.call(declared) !== fn)
+    fail('changed outside the approved tdBindTap() / #tdAction binding (the inserted block is not exactly one tdBindTap() function)');
 }
 const runtime = source => vm.runInNewContext(source + '\nS2Runtime;', {}, { timeout: 1000 });
 const before = runtime(git(['show', base + ':js/save-runtime.js']));

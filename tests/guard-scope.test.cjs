@@ -107,6 +107,8 @@ for (const [name, line] of [
   ['another statement after the binding', '  ' + BIND + ' tdTorchNow();'],
   ['another statement and then a comment after the binding', '  ' + BIND + ' tdTorchNow(); // Issue #32'],
   ['a statement after a line separator (U+2028) inside the binding comment', '  ' + BIND + ' // Issue #32\u2028tdTorchNow();'],
+  ['a statement after a paragraph separator (U+2029) inside the binding comment', '  ' + BIND + ' // Issue #32\u2029tdTorchNow();'],
+  ['a statement after a carriage return inside the binding comment', '  ' + BIND + ' // Issue #32\rtdTorchNow();'],
 ]) test('negative: ' + name + ' fails', () => {
   const r = edited('js/topdown/app.js', bindingEdit(line));
   assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
@@ -138,5 +140,57 @@ test('negative: a second function next to tdBindTap() fails', () => {
 });
 test('negative: a statement after a line separator (U+2028) in the comment above tdBindTap() fails', () => {
   const r = edited('js/topdown/app.js', src => replaceOnce(src, '// Issue #32: right after', '// Issue #32\u2028tdTorchNow(); right after'));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+});
+
+// Codex QA: these are examples inside the approved function, not extra bindings.
+for (const [name, add] of [
+  ['a string', "  const example = \"tdBindTap(document.getElementById('tdAction'), () => { });\";"],
+  ['a line comment', "  // Example: tdBindTap(document.getElementById('tdAction'), () => { });"],
+  ['a template literal', "  const example = `tdBindTap(document.getElementById('tdAction'), () => { });`;"],
+]) test('positive: a binding example in ' + name + ' is not another #tdAction binding', () => {
+  const r = edited('js/topdown/app.js', insideTap(add));
+  assert.equal(r.status, 0, r.stderr);
+});
+
+for (const [name, edit] of [
+  ['a multiline template', insideTap('  const example = `\n  ' + BIND + '\n`;')],
+  ['a multiline block comment', insideTap('  /* Example:\n  ' + BIND + '\n  */')],
+  ['a regular expression', insideTap("  const example = /tdBindTap(document.getElementById('tdAction'), () => { });/;")],
+  ['the comment above tdBindTap', src => replaceOnce(src, 'function tdBindTap(', '// Example: ' + BIND + '\nfunction tdBindTap(')],
+]) test('positive: an adjacent binding example in ' + name + ' stays in the approved region', () => {
+  const r = edited('js/topdown/app.js', edit);
+  assert.equal(r.status, 0, r.stderr);
+});
+
+test('negative: a duplicate real #tdAction binding fails', () => {
+  const r = edited('js/topdown/app.js', bindingEdit('  ' + BIND + '\n  ' + BIND));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+});
+test('negative: an executable line after the #tdAction binding fails', () => {
+  const r = edited('js/topdown/app.js', bindingEdit('  ' + BIND + '\n  tdTorchNow();'));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+});
+
+test('positive: the approved helper may also be declared after the actual binding', () => {
+  const r = edited('js/topdown/app.js', src => {
+    const begin = src.indexOf('// Issue #32: right after'), end = src.indexOf('// --- set-up', begin);
+    assert.ok(begin >= 0 && end > begin, 'test setup: helper block');
+    const helper = src.slice(begin, end), without = src.slice(0, begin) + src.slice(end);
+    return replaceOnce(without, '\ntdInit();', '\n' + helper + 'tdInit();');
+  });
+  assert.equal(r.status, 0, r.stderr);
+});
+
+test('negative: a binding inside a late helper cannot substitute for the real binding', () => {
+  const r = edited('js/topdown/app.js', () => {
+    const hud = git(repo, 'show', HUD_HEAD + ':js/topdown/app.js').split('\n');
+    const binding = hud.indexOf("  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };"), call = hud.indexOf('tdInit();');
+    assert.ok(binding >= 0 && call > binding, 'test setup: original binding and init call');
+    // Keep the original onclick untouched. A copied reference suffix inside an unused helper must not
+    // trick the guard into treating this fake binding as the real one in tdInit().
+    const fake = ['function tdBindTap(btn, act){', '  ' + BIND, ...hud.slice(binding + 1, call)];
+    return [...hud.slice(0, call), ...fake, ...hud.slice(call)].join('\n') + '\n';
+  });
   assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
 });

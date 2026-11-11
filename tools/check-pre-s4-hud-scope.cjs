@@ -38,17 +38,33 @@ if (sinceHud.includes('js/topdown/app.js')) {
   const oneLineComment = text => /^\/\/[^\r\u2028\u2029]*$/.test(text);
   // 1. The binding line: exactly the approved statement, then nothing, or one // comment to the end of the line.
   const BIND = "  tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); });";
-  const binds = lines.flatMap((line, i) => line.includes("getElementById('tdAction')") && line.includes('tdBindTap(') ? [i] : []);
-  const b = binds[0], rest = b === undefined ? null : lines[b].slice(BIND.length);
-  if (binds.length !== 1 || !lines[b].startsWith(BIND) || !(rest === '' || oneLineComment(rest.replace(/^[ \t]+/, ''))))
-    fail('the #tdAction tdBindTap binding line is missing or changed (only an end-of-line // comment may follow it)');
-  lines[b] = "  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };";
-  // 2. With the HUD head's onclick line back, the only difference left must be one block of inserted lines.
-  let p = 0;
-  while (p < hudLines.length && lines[p] === hudLines[p]) p++;
+  const HUD_BIND = "  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };";
+  const hudBinding = hudLines.indexOf(HUD_BIND);
+  if (hudBinding < 0 || hudLines.lastIndexOf(HUD_BIND) !== hudBinding) fail('the required HUD head has no unique #tdAction binding');
+  // One inserted helper can only leave the reference binding at its old offset or shift it by k lines.
+  // Examples inside strings/comments/templates never select a slot by their text alone.
   const k = lines.length - hudLines.length;
-  if (k <= 0 || lines.slice(p + k).join('\n') !== hudLines.slice(p).join('\n')) fail('changed outside the approved tdBindTap() / #tdAction binding');
-  const block = lines.slice(p, p + k);
+  const bindings = [...new Set([hudBinding, hudBinding + k])].filter(b => {
+    if (b < 0 || b >= lines.length || !lines[b].startsWith(BIND)) return false;
+    const rest = lines[b].slice(BIND.length);
+    return rest === '' || oneLineComment(rest.replace(/^[ \t]+/, ''));
+  });
+  if (!bindings.length)
+    fail('the #tdAction tdBindTap binding line is missing or changed (only an end-of-line // comment may follow it)');
+  // 2. With the HUD head's onclick line back, the only difference left must be one block of inserted lines.
+  const matches = bindings.flatMap(b => {
+    const normalized = lines.slice();
+    normalized[b] = HUD_BIND;
+    let p = 0;
+    while (p < hudLines.length && normalized[p] === hudLines[p]) p++;
+    // The candidate must map to the reference line OUTSIDE the insertion, not a copied suffix in a helper.
+    if (k <= 0 || b !== hudBinding + (p <= hudBinding ? k : 0) ||
+        normalized.slice(p + k).join('\n') !== hudLines.slice(p).join('\n')) return [];
+    return [{ normalized, p }];
+  });
+  if (matches.length !== 1) fail('changed outside the approved tdBindTap() / #tdAction binding');
+  const { normalized, p } = matches[0];
+  const block = normalized.slice(p, p + k);
   // 3. That block: // comment lines, then the function, then blank lines. Nothing else.
   let c = 0;
   while (c < block.length && block[c].startsWith('//')) { if (!oneLineComment(block[c])) fail('changed outside the approved tdBindTap() / #tdAction binding (a line terminator inside a comment above tdBindTap)'); c++; }
@@ -63,7 +79,7 @@ if (sinceHud.includes('js/topdown/app.js')) {
   // function instead of the top level, the texts differ or tdBindTap is not there.
   let declared;
   try {
-    declared = vm.runInNewContext('(function(){ return tdBindTap;\n' + lines.join('\n') + '\n})()', {}, { timeout: 1000 });
+    declared = vm.runInNewContext('(function(){ return tdBindTap;\n' + normalized.join('\n') + '\n})()', {}, { timeout: 1000 });
   } catch (err) { fail('tdBindTap() is not a top-level function declaration (' + err.message + ')'); }
   if (typeof declared !== 'function' || Function.prototype.toString.call(declared) !== fn)
     fail('changed outside the approved tdBindTap() / #tdAction binding (the inserted block is not exactly one tdBindTap() function)');

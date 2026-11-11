@@ -194,3 +194,33 @@ test('negative: a binding inside a late helper cannot substitute for the real bi
   });
   assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
 });
+
+// Codex QA G-04: the approved helper declared after tdInit(), whose body ends, after a `return`, with a copy of the
+// #tdAction binding and the rest of the HUD head's init code. Two lines then look like the binding at a structurally
+// possible place; only the real one in tdInit() makes the inserted block exactly one tdBindTap() declaration.
+const g04 = ({ realBinding = '  ' + BIND, after = [] } = {}) => () => {
+  const hud = git(repo, 'show', HUD_HEAD + ':js/topdown/app.js').split('\n');
+  const b = hud.indexOf("  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };"), call = hud.indexOf('tdInit();');
+  assert.ok(b >= 0 && call > b, 'test setup: original binding and init call');
+  const cur = fs.readFileSync(path.join(repo, 'js/topdown/app.js'), 'utf8').split('\n');
+  const s = cur.findIndex(l => l.startsWith('function tdBindTap(')), e = cur.indexOf('}', s);
+  assert.ok(s >= 0 && e > s, 'test setup: approved helper');
+  const helper = [...cur.slice(s, e), '  return;', '  ' + BIND, ...hud.slice(b + 1, call)]; // tdInit's own `}` closes it
+  return [...hud.slice(0, b), realBinding, ...hud.slice(b + 1, call), ...helper, ...after, ...hud.slice(call)].join('\n') + '\n'; // git() trims the final newline
+};
+test('positive (G-04): a binding example and the HUD init tail after return in a late helper pass, the same way every run', () => {
+  const dir = shallowCheckout([S2_BASE, HUD_HEAD]), f = path.join(dir, 'js/topdown/app.js');
+  try { fs.writeFileSync(f, g04()()); } catch (e) { fs.rmSync(dir, { recursive: true, force: true }); throw e; }
+  const run = () => spawnSync(process.execPath, ['tools/check-pre-s4-hud-scope.cjs'], { cwd: dir, encoding: 'utf8' });
+  const first = run(), second = run(), third = runGuard(dir);
+  assert.equal(first.status, 0, first.stderr);
+  for (const r of [second, third]) assert.deepEqual([r.status, r.stdout, r.stderr], [first.status, first.stdout, first.stderr]);
+});
+for (const [name, opts] of [
+  ['the real binding with another statement after it', { realBinding: '  ' + BIND + ' tdTorchNow();' }],
+  ['the real binding left as the HUD onclick (only the example binds)', { realBinding: "  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };" }],
+  ['an executable line right after the late helper', { after: ['tdTorchNow();'] }],
+]) test('negative (G-04 shape): ' + name + ' fails', () => {
+  const r = edited('js/topdown/app.js', g04(opts));
+  assert.notEqual(r.status, 0, 'the guard passed: ' + r.stdout);
+});

@@ -51,38 +51,46 @@ if (sinceHud.includes('js/topdown/app.js')) {
   });
   if (!bindings.length)
     fail('the #tdAction tdBindTap binding line is missing or changed (only an end-of-line // comment may follow it)');
-  // 2. With the HUD head's onclick line back, the only difference left must be one block of inserted lines.
-  const matches = bindings.flatMap(b => {
+  // 2-4 run for EACH structural candidate, and the file passes only if exactly one candidate passes them all.
+  // (Codex QA G-04: a late helper may end, after a `return`, with a copy of the binding and the rest of the HUD
+  // init code. That copy is a second place where the binding fits the structure; only the real binding leaves an
+  // inserted block that is exactly one tdBindTap() declaration, so it is the full check that decides.)
+  // Each candidate returns the reason it is rejected, or null when it passes.
+  const check = b => {
+    // 2. With the HUD head's onclick line back, the only difference left must be one block of inserted lines.
     const normalized = lines.slice();
     normalized[b] = HUD_BIND;
     let p = 0;
     while (p < hudLines.length && normalized[p] === hudLines[p]) p++;
     // The candidate must map to the reference line OUTSIDE the insertion, not a copied suffix in a helper.
     if (k <= 0 || b !== hudBinding + (p <= hudBinding ? k : 0) ||
-        normalized.slice(p + k).join('\n') !== hudLines.slice(p).join('\n')) return [];
-    return [{ normalized, p }];
-  });
-  if (matches.length !== 1) fail('changed outside the approved tdBindTap() / #tdAction binding');
-  const { normalized, p } = matches[0];
-  const block = normalized.slice(p, p + k);
-  // 3. That block: // comment lines, then the function, then blank lines. Nothing else.
-  let c = 0;
-  while (c < block.length && block[c].startsWith('//')) { if (!oneLineComment(block[c])) fail('changed outside the approved tdBindTap() / #tdAction binding (a line terminator inside a comment above tdBindTap)'); c++; }
-  let e = block.length;
-  while (e > c && block[e - 1].trim() === '') e--;
-  const fn = block.slice(c, e).join('\n');
-  if (!fn.startsWith('function tdBindTap(')) fail('changed outside the approved tdBindTap() / #tdAction binding (the inserted lines are not the tdBindTap() function)');
-  // 4. The engine's view. The whole file runs as the body of a function that first returns tdBindTap: a top-level
-  // function declaration is hoisted, so it is returned before any statement of the file runs (nothing of the game
-  // runs). Function.prototype.toString gives the exact source of that declaration; it must be the whole inserted
-  // function — if any other code followed it inside the block, or it sits inside a string, comment or another
-  // function instead of the top level, the texts differ or tdBindTap is not there.
-  let declared;
-  try {
-    declared = vm.runInNewContext('(function(){ return tdBindTap;\n' + normalized.join('\n') + '\n})()', {}, { timeout: 1000 });
-  } catch (err) { fail('tdBindTap() is not a top-level function declaration (' + err.message + ')'); }
-  if (typeof declared !== 'function' || Function.prototype.toString.call(declared) !== fn)
-    fail('changed outside the approved tdBindTap() / #tdAction binding (the inserted block is not exactly one tdBindTap() function)');
+        normalized.slice(p + k).join('\n') !== hudLines.slice(p).join('\n')) return 'changed outside the approved tdBindTap() / #tdAction binding';
+    const block = normalized.slice(p, p + k);
+    // 3. That block: // comment lines, then the function, then blank lines. Nothing else.
+    let c = 0;
+    for (; c < block.length && block[c].startsWith('//'); c++)
+      if (!oneLineComment(block[c])) return 'changed outside the approved tdBindTap() / #tdAction binding (a line terminator inside a comment above tdBindTap)';
+    let e = block.length;
+    while (e > c && block[e - 1].trim() === '') e--;
+    const fn = block.slice(c, e).join('\n');
+    if (!fn.startsWith('function tdBindTap(')) return 'changed outside the approved tdBindTap() / #tdAction binding (the inserted lines are not the tdBindTap() function)';
+    // 4. The engine's view. The whole file runs as the body of a function that first returns tdBindTap: a top-level
+    // function declaration is hoisted, so it is returned before any statement of the file runs (nothing of the game
+    // runs). Function.prototype.toString gives the exact source of that declaration; it must be the whole inserted
+    // function — if any other code followed it inside the block, or it sits inside a string, comment or another
+    // function instead of the top level, the texts differ or tdBindTap is not there.
+    let declared;
+    try {
+      declared = vm.runInNewContext('(function(){ return tdBindTap;\n' + normalized.join('\n') + '\n})()', {}, { timeout: 1000 });
+    } catch (err) { return 'tdBindTap() is not a top-level function declaration (' + err.message + ')'; }
+    if (typeof declared !== 'function' || Function.prototype.toString.call(declared) !== fn)
+      return 'changed outside the approved tdBindTap() / #tdAction binding (the inserted block is not exactly one tdBindTap() function)';
+    return null;
+  };
+  const results = bindings.map(b => ({ b, reason: check(b) }));
+  const passed = results.filter(r => r.reason === null);
+  if (passed.length === 0) fail(results[0].reason);
+  if (passed.length > 1) fail('changed outside the approved tdBindTap() / #tdAction binding (more than one line passes as the #tdAction binding: ' + passed.map(r => r.b + 1).join(', ') + ')');
 }
 const runtime = source => vm.runInNewContext(source + '\nS2Runtime;', {}, { timeout: 1000 });
 const before = runtime(git(['show', base + ':js/save-runtime.js']));

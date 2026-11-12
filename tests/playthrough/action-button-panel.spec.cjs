@@ -5,7 +5,7 @@
 //  - A button tapped while another finger holds the stick must act (before, only the first finger on the screen counted).
 // Every check looks at the real game state and at where click events land, not only at how often the handler ran.
 // Inputs are real: CDP touch (Input.dispatchTouchEvent), Playwright tap, CDP pen (Input.dispatchMouseEvent with
-// pointerType 'pen'). CDP lifts all fingers at once, so "stick held + tap" ends with both fingers lifted together.
+// pointerType 'pen'). CDP touchEnd lists the fingers being lifted; unlisted fingers remain down.
 // The one synthetic part is the last step (a click that is not a PointerEvent), and it says so.
 const { test, expect } = require('./fixtures.cjs');
 
@@ -25,6 +25,7 @@ test('행동·횃불·장식 버튼: 패널로 새는 click 없음, 조이스틱
   // every click anywhere in the document since the last call: where it landed and what kind it was
   const clicks = () => page.evaluate(() => window.__qaClicks.splice(0));
   const acts = () => page.evaluate(() => window.__qaActs);
+  const torchCalls = () => page.evaluate(() => window.__qaTorchCalls);
   const settle = () => page.waitForTimeout(350); // a late click of the tap would arrive within this
   const emptySpot = () => page.evaluate(() => { tdClosePanels(); Object.assign(state.world.player, window.__qaSpot); });
   const atDoor = async () => {
@@ -45,6 +46,12 @@ test('행동·횃불·장식 버튼: 패널로 새는 click 없음, 조이스틱
       const b = state.world.base;
       for (let r = 3; r < 12; r += 0.5) { const x = b.x + r, y = b.y + r; if (playerCanStand(x, y) && !tdInteractTarget(x, y)) { Object.assign(state.world.player, { x, y }); window.__qaSpot = { x, y }; break; } }
       window.__qaActs = 0; const act = tdInteractNow; window.tdInteractNow = (...a) => { window.__qaActs++; return act(...a); };
+      window.__qaTorchCalls = 0; const torch = tdTorchNow;
+      window.tdTorchNow = function (...a) { window.__qaTorchCalls++; return torch.apply(this, a); };
+      window.__qaTouchEnds = [];
+      document.addEventListener('touchend', e => window.__qaTouchEnds.push({
+        ended: [...e.changedTouches].map(t => t.identifier), remaining: [...e.touches].map(t => t.identifier), trusted: e.isTrusted,
+      }), { capture: true, passive: true });
       window.__qaClicks = [];
       const name = el => el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : '');
       document.addEventListener('click', e => { const c = e.target.closest('button,summary,input,select,label,a');
@@ -122,6 +129,40 @@ test('행동·횃불·장식 버튼: 패널로 새는 click 없음, 조이스틱
     expect(await clicks()).toEqual([]);
   });
 
+  for (const walking of [false, true]) for (const actionFirst of [true, false]) {
+    const mode = walking ? 'walking' : 'panel', order = actionFirst ? 'action-first' : 'stick-first';
+    await qa.step(`03-release-${mode}-${order}`, `${walking ? '걷는 중' : '공방 문 앞'}: ${actionFirst ? '행동 → 조이스틱' : '조이스틱 → 행동'} 순서로 개별 해제`, async () => {
+      if (walking) await emptySpot(); else await atDoor();
+      await clicks(); await page.evaluate(() => { window.__qaTouchEnds = []; });
+      const before = await acts(), state0 = await snap();
+      const stick = { ...S, id: 1 }, button = { ...A, id: 2 };
+      const input = () => page.evaluate(() => ({ held: { ...playerHeld }, active: document.querySelector('#tdStick').classList.contains('is-active') }));
+      const idle = { up: false, down: false, left: false, right: false };
+      await touch('touchStart', [stick]);
+      if (walking) { stick.x += 40; await touch('touchMove', [stick]); }
+      expect(await input(), '누르고 있는 동안의 이동 입력').toEqual({ held: { ...idle, right: walking }, active: true });
+      await touch('touchStart', [stick, button]);
+      expect(await acts() - before, '아직 행동 손가락을 떼지 않음').toBe(0);
+      const first = actionFirst ? button : stick, last = actionFirst ? stick : button;
+      await touch('touchEnd', [first]);
+      expect(await page.evaluate(() => window.__qaTouchEnds), '다른 손가락은 화면에 남아 있음').toEqual([
+        { ended: [first.id], remaining: [last.id], trusted: true },
+      ]);
+      expect(await acts() - before, '행동 손가락을 뗄 때만 1회').toBe(actionFirst ? 1 : 0);
+      expect(await input(), '조이스틱 손가락이 남아 있을 때만 입력 유지').toEqual({ held: { ...idle, right: walking && actionFirst }, active: actionFirst });
+      if (!walking) expect(await panelOpen(), '행동 손가락을 뗄 때 패널 열림').toBe(actionFirst);
+      await touch('touchEnd', [last]);
+      await settle();
+      expect(await page.evaluate(() => window.__qaTouchEnds), '각 손가락이 따로 해제됨').toEqual([
+        { ended: [first.id], remaining: [last.id], trusted: true }, { ended: [last.id], remaining: [], trusted: true },
+      ]);
+      expect(await acts() - before, '모든 손을 뗀 뒤 총 행동 1회').toBe(1);
+      expect(await input(), '모든 손을 떼면 이동 입력과 조이스틱 표시 해제').toEqual({ held: idle, active: false });
+      expect(await clicks(), '후속 click 없음').toEqual([]);
+      if (!walking) { expect(await panelOpen()).toBe(true); expect(await snap()).toBe(state0); }
+    });
+  }
+
   await qa.step('04-torch', '횃불 버튼: 탭 1회 = 횃불 1개 변화, 조이스틱 유지 중에도, 취소·밖에서 놓기는 0, 마우스·Enter 유지', async () => {
     // a place where the game lets a torch be set down in front of the player (the world differs from village to village)
     const spot = await page.evaluate(() => {
@@ -138,7 +179,11 @@ test('행동·횃불·장식 버튼: 패널로 새는 click 없음, 조이스틱
     });
     expect(spot, '횃불을 놓을 수 있는 자리').not.toBeNull();
     await clicks();
-    const change = async (input) => { const n = await torches(); await input(); await settle(); return Math.abs(await torches() - n); };
+    const change = async (input, expectedCalls = 1) => {
+      const n = await torches(), before = await torchCalls(); await input(); await settle();
+      expect(await torchCalls() - before, '입력당 tdTorchNow 실행 횟수').toBe(expectedCalls);
+      return Math.abs(await torches() - n);
+    };
     expect(await change(() => page.locator('#tdTorch').tap()), '탭 1회(놓기)').toBe(1);
     expect(await change(() => page.locator('#tdTorch').tap()), '탭 1회(거두기)').toBe(1);
     expect(await change(async () => {
@@ -146,10 +191,10 @@ test('행동·횃불·장식 버튼: 패널로 새는 click 없음, 조이스틱
       await touch('touchStart', [{ ...S, id: 1 }, { ...T, id: 2 }]);
       await touch('touchEnd', []);
     }), '조이스틱을 누른 채 횃불 탭').toBe(1);
-    expect(await change(async () => { await touch('touchStart', [{ ...T, id: 3 }]); await touch('touchCancel', []); }), '터치 취소').toBe(0);
+    expect(await change(async () => { await touch('touchStart', [{ ...T, id: 3 }]); await touch('touchCancel', []); }, 0), '터치 취소').toBe(0);
     expect(await change(async () => {
       await touch('touchStart', [{ ...T, id: 4 }]); await touch('touchMove', [{ x: T.x - 160, y: T.y - 160, id: 4 }]); await touch('touchEnd', []);
-    }), '버튼 밖으로 밀고 놓기').toBe(0);
+    }, 0), '버튼 밖으로 밀고 놓기').toBe(0);
     expect(await clicks(), '터치에서는 click이 나오지 않음').toEqual([]);
     expect(await change(() => page.mouse.click(T.x, T.y)), '터치 뒤 마우스 클릭').toBe(1);
     expect(await change(async () => { await page.locator('#tdTorch').focus(); await page.keyboard.press('Enter'); }), '터치 뒤 Enter').toBe(1);

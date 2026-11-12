@@ -35,21 +35,34 @@ ls tests/playthrough tools/check-pre-s4-hud-scope.cjs tests/guard-scope.test.cjs
 The pre-installed Chromium (`/opt/pw-browsers/chromium`, revision 1243) is not the revision the project's
 Playwright 1.56.1 expects (1194). Point the tests at it; never run `playwright install`.
 
+`PRELOAD` below is this skill's `scripts/pw-chromium.cjs` (absolute path; in a checkout that has this skill:
+`./.claude/skills/mining-workshop-qa/scripts/pw-chromium.cjs`). Only the smoke test needs it: it is the one browser
+test that does not read `CHROMIUM`. Counts in the last column are PR #38 (2026-11); expect them to grow.
+
 | Check | Command (repository root) | Pass looks like |
 |---|---|---|
-| Regression | `NODE_OPTIONS=--max-old-space-size=5120 npm test` (~5 min, ~3.2 GB) | `Total: N  Pass: N  Fail: 0` |
-| Smoke | `node -r ./.claude/skills/mining-workshop-qa/scripts/pw-chromium.cjs tests/browser-smoke.cjs` | `Browser smoke test passed` |
+| Regression | `NODE_OPTIONS=--max-old-space-size=5120 npm test` (~5 min, ~3.2 GB) | `Total: N  Pass: N  Fail: 0` (2818) |
+| Smoke | `node -r $PRELOAD tests/browser-smoke.cjs` | `Browser smoke test passed` |
 | S2 saves | `CHROMIUM=/opt/pw-browsers/chromium npm run test:saves` | 38 `PASS` lines, `S2 browser tests passed` |
 | Bootstrap | `CHROMIUM=/opt/pw-browsers/chromium npm run test:bootstrap` | 9 `PASS` lines |
 | World stage 3 | `CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:stage3:browser` | only when world generation changed |
 | Reporter units | `npm run test:playthrough:reporter` | `# fail 0` twice |
 | Scope guard | `node tools/check-pre-s4-hud-scope.cjs` | exit 0, one `Protected game files … match` line |
-| Guard tests | `node tests/guard-scope.test.cjs` | `# fail 0`; needs the full history (`git fetch --unshallow` if shallow) |
-| Biome (CI) | `npx --yes @biomejs/biome@2.2.5 check --formatter-enabled=false --assist-enabled=false biome.json renovate.json tests/browser-smoke.cjs` | `0 errors`; add changed `.cjs` files to see new problems |
-| Playthrough | see **REQUIRED SUB-SKILL** `mining-workshop-playthrough` | |
+| Guard tests | `node tests/guard-scope.test.cjs` (~1.5 min) | `# fail 0` (65). Needs commits `224b3da`, `055588b`, `cf65ab7`, `24ad345` locally: `git fetch origin <sha>` if one is missing (no `--unshallow`: the history is large) |
+| Biome | `npx --yes @biomejs/biome@2.2.5 check --formatter-enabled=false --assist-enabled=false biome.json renovate.json tests/browser-smoke.cjs <changed tool/test files>` | `0 errors`. `biome.json` excludes `js/`, `css/`, `index.html`, `tests/chunks/`. CI runs it only on PRs into `develop`/`main` |
+| Playthrough | see **REQUIRED SUB-SKILL** `mining-workshop-playthrough` | `0 failed` (23 passed, 3 skipped) |
 
-Run the narrow checks for what changed first, the full set before a push. Long runs go in the background with output
-to a file in the scratchpad; read the summary line, not just the exit code.
+Run one check at a time (they share port 4177, CPU and disk). Long runs go in the background with output to a file in
+the scratchpad; read the summary line, not just the exit code. Run the narrow checks for what changed first, the full
+set before a push:
+
+| Changed | Run first |
+|---|---|
+| `js/topdown/app.js`, `tools/check-pre-s4-hud-scope.cjs`, guard tests | guard, guard-scope, the matching `tests/playthrough/action-button-*` specs |
+| `js/save-runtime.js`, `js/save-engine.js`, anything saved | S2 saves, bootstrap, `npm test` |
+| `js/ui.js`, `css/style.css` | the playthrough specs for that UI (`panel-close-band`, `recipe-*`, `hud-occlusion`), smoke |
+| world generation, terrain | `npm test`, world stage 3 |
+| `tests/playthrough/*` | that spec on both projects, `--repeat-each=5`, reporter units |
 
 ## Scope guard and protected areas
 
@@ -58,8 +71,9 @@ to a file in the scratchpad; read the summary line, not just the exit code.
   stop and report it. Never loosen the guard or a guard test to get green; changing either needs the user's approval.
 - The guard needs two base commits (`224b3da`, `055588b`). If a parent PR is squash/rebase merged they can vanish and
   the guard fails on purpose; the SHA update steps are in the PR #38 body.
-- Each guard-scope clone of the history is ~0.6 GB. A test that leaves clones behind fills the container disk
-  (`No space left on device` in unrelated tests). Check `df -h /` when tests fail for no code reason.
+- guard-scope clones the history into `/tmp/guard-scope-*` (~0.6 GB each). The PR #38 version removes them; older
+  versions left them behind and filled the disk (`No space left on device` in unrelated tests). Check `df -h /` and
+  `ls -d /tmp/guard-scope-* | wc -l` before and after. Deleting leftovers you did not create needs the user's OK.
 
 ## Save compatibility
 
@@ -72,7 +86,10 @@ to a file in the scratchpad; read the summary line, not just the exit code.
 
 - Which workflows run depends on the PR's base branch (`docs/COLLABORATION.md` §7). A PR into a stack branch gets only
   `Playthrough QA` (4 jobs: regression, existing-browser, playthrough pc, playthrough mobile).
-- Read the run whose head SHA is the commit you pushed. A green run of an older commit proves nothing.
+- Read the run whose head SHA is the commit you pushed (GitHub MCP `actions_list` → `list_workflow_runs` for the
+  branch, then `list_workflow_jobs`). A green run of an older commit proves nothing.
+- The guard and guard-scope run inside each `playthrough` job, before the play. Each job writes a Korean summary
+  (Step Summary) and uploads `work/playthrough/` as an artifact.
 - On red: get the failing job's log (GitHub MCP `get_job_logs`), find the first failing step and assertion, and
   reproduce it locally before changing anything (`superpowers:systematic-debugging`). "Flaky" is not a cause.
   Re-run a job at most once, and only to confirm the failure is not this PR's.
@@ -94,7 +111,8 @@ Use this order. Keep test results and browser results apart.
 ## 스킬과 Context7 사용     ← 실제 호출한 것, 안 썼으면 한 줄 이유
 ```
 
-Never write a model name in commits, PR text or code. Never claim a run that did not happen.
+After a push, update the PR body to the new head SHA and results. Never write a model name in commits, PR text or
+code. Never claim a run that did not happen.
 
 ## Common mistakes (seen in this project)
 

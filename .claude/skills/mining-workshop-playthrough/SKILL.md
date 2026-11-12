@@ -44,22 +44,28 @@ with `qa.step`s). Phone-only checks: `test.skip(testInfo.project.name !== 'mobil
   await touch('touchEnd', [button]);                  // lifts only the listed finger; stick stays down
   await touch('touchEnd', [stick]);
   ```
-  `touchMove` with a changed point moves a finger; `touchCancel` cancels. Record `touchend` events if the order matters.
+  `touchEnd` with `[]` lifts every finger at once. `touchMove` with a changed point moves a finger; `touchCancel`
+  cancels. Record `touchend` events (`changedTouches`, `touches`) when the order matters.
 - **Pen:** `cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed' | 'mouseReleased', x, y, button: 'left', clickCount: 1, pointerType: 'pen' })`.
-- Game functions may be **wrapped to count calls** (observe only). Never replace game logic to make a step pass; if a
+- Game functions may be **wrapped to count calls** (observe only): `const f = tdTorchNow; window.tdTorchNow = (...a) => { n++; return f(...a); }`.
+  This sees only calls that look the global up by name; a reference stored before the wrap is not counted. Never replace game logic to make a step pass; if a
   fixture forces a mode or state, write it in `report.preparation` and keep at least one step without it.
 
 ## What makes a check trustworthy
 
-1. **Assert outcomes, not calls.** Compare game state before/after (gold, products, checkboxes, open cards, torches…)
-   and record every `click` in the document (capture listener) to see where input landed. Leave out values that change
-   by themselves every tick (raw resources).
+1. **Assert outcomes, not calls.** Compare game state before/after (gold, products, checkboxes, open cards, torches…).
+   Leave out values that change by themselves every tick (raw resources). See where input landed with capture
+   listeners on `document`: `pointerdown`/`pointerup` targets for touch, `click` for mouse, keyboard and pen. A touch
+   on a `tdBindTap` button (`#tdAction`, `#tdTorch`, `#tdDecor`, PR #38) sends no click at all; any click after it is
+   a bug.
 2. **Exactly once:** wait ~350 ms after the input for a late click or a duplicate run, then count.
 3. **Positions depend on the village.** The world differs per new village, so find a spot with the game's own
    predicates (`playerCanStand`, `tdInteractTarget`, `torchPlaceProblem`, …), assert one was found, then act. A fixed
    offset that worked once fails on CI.
-4. **Prove it fails without the fix:** run the spec on the parent commit (a `git worktree` of `fix^`, with a
-   `node_modules` symlink), and/or undo one part of the fix at a time; each must fail at the step that covers it.
+4. **Prove it fails without the fix.** Find the fix commit (`git log --oneline -- <file>`), then
+   `git worktree add <scratch>/before <fix>^`, `ln -s "$PWD/node_modules" <scratch>/before/node_modules`, copy the
+   spec in and run it there (not at the same time as another run: port 4177). Helpers in the old commit may differ.
+   Also undo one part of the fix at a time; each must fail at the step that covers it. Remove the worktree after.
 5. **Repeat:** `--repeat-each=5` (or more) for anything touching timing or input.
 6. Run both projects; a phone-only spec that shows `skipped` on mobile checked nothing.
 
@@ -73,6 +79,8 @@ CHROMIUM=/opt/pw-browsers/chromium QA_VIDEO=off npx playwright test -c tests/pla
 - `CHROMIUM` is required in this container (pre-installed Chromium 1243, Playwright expects 1194; never `playwright
   install`). `QA_VIDEO=off` only saves time and disk; CI records video.
 - Port 4177 must be free (`reuseExistingServer: false`). The full run takes ~8 min (pc + mobile).
+- The config only finds specs inside `tests/playthrough/`. To try a draft without touching your checkout, run it in a
+  scratch `git worktree` as in point 4. Every `*.spec.cjs` there runs in CI on both projects automatically.
 - Results: `work/playthrough/summary.md` (Korean stages), `evidence/<test>/` (stage PNGs, `trace.zip`,
   `browser-errors.json`). Each run overwrites them — copy what you need first.
   Trace: `npx playwright show-trace work/playthrough/evidence/<test>/trace.zip`.

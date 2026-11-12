@@ -144,17 +144,22 @@ function tdBindStick(stick, knob){
   stick.addEventListener('pointercancel', end);
 }
 
-// Issue #32: right after a quick flick of the stick, Chromium sometimes delivers the action button's
-// pointerdown/pointerup but no click (measured: up to 20 of 20 taps lost), so the tap did nothing. A primary
-// touch (or pen) press that starts and ends on the button acts on pointerup. The click that tap may still send
-// carries the same pointerId and pointerType 'touch' (checked in Chromium), so exactly that click is skipped;
-// a mouse click (pointerType 'mouse'), Enter/Space (pointerType '', detail 0) or any other click acts as before.
-// No timer: an input that follows a tap whose click never came is never swallowed (PR #38 review).
+// Issue #32: the phone buttons act on a touch (or pen) press that starts and ends on the button, at pointerup,
+// instead of waiting for the browser's click. Chromium does not always send that click: right after a quick
+// flick of the stick it was lost (measured: up to 20 of 20 taps), and a second finger never gets one, so a button
+// pressed while the other thumb holds the stick did nothing.
+//  - Any finger counts, not only the first on the screen; with two fingers on one button the last to land is the
+//    tap, so there is one action.
+//  - A touch sends no click at all (its touchend is cancelled). Otherwise a tap that opens a panel had its click
+//    land on whatever appeared under the finger, e.g. a "sell all" button of the panel (PR #38 deep review).
+//  - A pen's click still comes, to this button, with the pointerId of the press: exactly that click is skipped.
+//    A mouse click (pointerType 'mouse'), Enter/Space (pointerType '', detail 0) or any other click acts as before.
+//  - No timer, and every new press forgets the last tap, so a later input is never swallowed.
 // Fallback for a browser whose click is not a PointerEvent: a click with detail > 0 right after a handled tap.
 function tdBindTap(btn, act){
   if(!btn) return;
   let pressed = null, handled = null;
-  btn.addEventListener('pointerdown', (e) => { if((e.pointerType === 'touch' || e.pointerType === 'pen') && e.isPrimary) pressed = e.pointerId; });
+  btn.addEventListener('pointerdown', (e) => { handled = null; if(e.pointerType === 'touch' || e.pointerType === 'pen') pressed = e.pointerId; });
   btn.addEventListener('pointercancel', (e) => { if(e.pointerId === pressed) pressed = null; });
   btn.addEventListener('pointerup', (e) => {
     if(e.pointerId !== pressed) return;
@@ -164,6 +169,7 @@ function tdBindTap(btn, act){
     handled = e.pointerId;
     act();
   });
+  btn.addEventListener('touchend', (e) => { if(e.cancelable) e.preventDefault(); }); // no click from a touch
   btn.addEventListener('click', (e) => {
     const sameTap = 'pointerType' in e ? (e.pointerType === 'touch' || e.pointerType === 'pen') && e.pointerId === handled
       : handled !== null && e.detail > 0;
@@ -225,9 +231,9 @@ function tdInit(){
     body.classList.add('td-panel-open');
   }, true);
   document.getElementById('tdClose').onclick = tdClosePanels;
-  tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); }); // Issue #32: a touch tap acts even when the browser drops its click
-  document.getElementById('tdTorch').onclick = () => { tdTorchNow(); };
-  document.getElementById('tdDecor').onclick = () => { tdGardenButtonNow(); }; // Task 120
+  tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); }); // Issue #32: a touch tap acts without waiting for the browser's click
+  tdBindTap(document.getElementById('tdTorch'), () => { tdTorchNow(); });
+  tdBindTap(document.getElementById('tdDecor'), () => { tdGardenButtonNow(); }); // Task 120
   tdBindStick(document.getElementById('tdStick'), document.querySelector('#tdStick .td-knob'));
   // E / Space acts, Escape closes panels (never while typing in a field)
   document.addEventListener('keydown', (e) => {

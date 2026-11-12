@@ -65,6 +65,19 @@ test('패널 머리 띠: 닫기 버튼 밑으로 조작 요소가 지나가지 �
       return { fieldTop: f.getBoundingClientRect().top, bandBottom: p.getBoundingClientRect().top + parseFloat(getComputedStyle(p, '::before').height) }; });
     expect(r.fieldTop, '포커스된 칸이 머리 띠 아래에 보임').toBeGreaterThanOrEqual(r.bandBottom - 1);
   });
+  await qa.step('04b-band-opaque', '머리 띠는 불투명: 내용이 띠 밑으로 스크롤돼도 띠(아이콘·제목 자리)의 화면이 그대로', async () => {
+    // The band's left part (icon and title), without its bottom border row. Before, the icon's 20x20 square was cut out
+    // of the band by a mask and scrolled content showed through around the icon (deep review P4-1).
+    const clip = await page.evaluate(() => { const p = document.querySelector('.tab-panel.active'), r = p.getBoundingClientRect();
+      return { x: Math.round(r.left), y: Math.round(r.top), width: 150, height: Math.round(parseFloat(getComputedStyle(p, '::before').height)) - 2 }; });
+    const shots = [];
+    for (const y of [0, 90, 150, 220, 300, 460]) {
+      await page.evaluate(y => { document.querySelector('.tab-panel.active').scrollTop = y; }, y);
+      await page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+      shots.push([y, (await page.screenshot({ clip })).toString('base64')]);
+    }
+    for (const [y, shot] of shots) expect(shot === shots[0][1], `스크롤 ${y}에서 띠의 화면이 스크롤 0과 같음`).toBe(true);
+  });
   await qa.step('05-close', mobile ? '닫기 버튼 탭으로 패널 닫기, 다시 열고 Esc로 닫기' : '닫기 버튼 클릭으로 패널 닫기, 다시 열고 Esc로 닫기', async () => {
     await qa.press('#tdClose');
     await expect.poll(() => page.evaluate(() => document.body.classList.contains('td-panel-open'))).toBe(false);

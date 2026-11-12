@@ -35,14 +35,25 @@ ls tests/playthrough tools/check-pre-s4-hud-scope.cjs tests/guard-scope.test.cjs
 The pre-installed Chromium (`/opt/pw-browsers/chromium`, revision 1243) is not the revision the project's
 Playwright 1.56.1 expects (1194). Point the tests at it; never run `playwright install`.
 
-`PRELOAD` below is this skill's `scripts/pw-chromium.cjs` (absolute path; in a checkout that has this skill:
-`./.claude/skills/mining-workshop-qa/scripts/pw-chromium.cjs`). Only the smoke test needs it: it is the one browser
-test that does not read `CHROMIUM`. Counts in the last column are PR #38 (2026-11); expect them to grow.
+Only the smoke test needs the preload in this skill's `scripts/`: it is the one browser test that does not read
+`CHROMIUM`. Set `PRELOAD` once per shell, from the repository root:
+
+```bash
+# in a checkout that contains this skill
+PRELOAD="$(git rev-parse --show-toplevel)/.claude/skills/mining-workshop-qa/scripts/pw-chromium.cjs"
+# in a checkout without it (e.g. a stacked PR branch), use the base directory this skill was loaded from instead:
+# PRELOAD="<skill base directory>/scripts/pw-chromium.cjs"
+test -f "$PRELOAD" || echo "no preload at $PRELOAD"
+node -r "$PRELOAD" tests/browser-smoke.cjs
+```
+
+The tests need the project's `node_modules` (`npm ci`). Counts in the last column are PR #38 (2026-11); expect them to
+grow.
 
 | Check | Command (repository root) | Pass looks like |
 |---|---|---|
 | Regression | `NODE_OPTIONS=--max-old-space-size=5120 npm test` (~5 min, ~3.2 GB) | `Total: N  Pass: N  Fail: 0` (2818) |
-| Smoke | `node -r $PRELOAD tests/browser-smoke.cjs` | `Browser smoke test passed` |
+| Smoke | `node -r "$PRELOAD" tests/browser-smoke.cjs` (set `PRELOAD` as above) | `Browser smoke test passed` |
 | S2 saves | `CHROMIUM=/opt/pw-browsers/chromium npm run test:saves` | 38 `PASS` lines, `S2 browser tests passed` |
 | Bootstrap | `CHROMIUM=/opt/pw-browsers/chromium npm run test:bootstrap` | 9 `PASS` lines |
 | World stage 3 | `CHROMIUM_PATH=/opt/pw-browsers/chromium npm run test:stage3:browser` | only when world generation changed |

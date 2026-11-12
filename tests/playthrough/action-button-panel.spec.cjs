@@ -123,7 +123,21 @@ test('행동·횃불·장식 버튼: 패널로 새는 click 없음, 조이스틱
   });
 
   await qa.step('04-torch', '횃불 버튼: 탭 1회 = 횃불 1개 변화, 조이스틱 유지 중에도, 취소·밖에서 놓기는 0, 마우스·Enter 유지', async () => {
-    await emptySpot(); await clicks();
+    // a place where the game lets a torch be set down in front of the player (the world differs from village to village)
+    const spot = await page.evaluate(() => {
+      tdClosePanels();
+      const b = state.world.base, p = state.world.player;
+      for (let r = 3; r < 30; r += 0.5) for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1], [1, 0], [0, 1], [-1, 0], [0, -1]]) {
+        const x = b.x + sx * r, y = b.y + sy * r;
+        if (!playerCanStand(x, y) || tdInteractTarget(x, y)) continue;
+        Object.assign(p, { x, y, facing: 'down' });
+        const ahead = torchSpotAhead();
+        if (!torchPlaceProblem(ahead.x, ahead.y) && torchAtHand() < 0) return { x, y };
+      }
+      return null;
+    });
+    expect(spot, '횃불을 놓을 수 있는 자리').not.toBeNull();
+    await clicks();
     const change = async (input) => { const n = await torches(); await input(); await settle(); return Math.abs(await torches() - n); };
     expect(await change(() => page.locator('#tdTorch').tap()), '탭 1회(놓기)').toBe(1);
     expect(await change(() => page.locator('#tdTorch').tap()), '탭 1회(거두기)').toBe(1);

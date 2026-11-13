@@ -1,10 +1,11 @@
 'use strict';
 const { test, expect } = require('./fixtures.cjs');
 const { holdDirection, walkToMine } = require('./navigation.cjs');
+const { commitReady } = require('./save-wait.cjs');
 
 test('무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속·복원 사본', async ({ page, qa }, testInfo) => {
   const mobile = testInfo.project.name === 'mobile';
-  let villageId, manual, autosave;
+  let villageId, manual, autosave, workerChange;
   await qa.step('01-new-village', '첫 실행 및 UI로 새 마을 생성', async () => {
     await qa.boot();
     expect(await page.evaluate(() => state.gold)).toBe(0);
@@ -80,11 +81,23 @@ test('무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속�
     const next = assigned === 'iron' ? 'coal' : 'iron';
     await page.locator('[data-reassign]').selectOption(next);
     expect(await page.evaluate(() => state.characters[0].resource)).toBe(next);
+    // Issue #32 A: what the next autosave must carry, and the revision committed before it (read, never written)
+    workerChange = await page.evaluate(async id => ({
+      villageId: id, afterRevision: (await S2Runtime.engine.read(id)).revision,
+      gold: state.gold, workers: state.characters.length, assignments: state.characters.map(w => w.resource),
+    }), villageId);
+    expect(workerChange).toMatchObject({ gold: 50, workers: 1, assignments: [next] });
     await qa.audit('인부 패널');
   });
   await qa.step('07-autosave', '실제 자동 저장 타이머의 IndexedDB 커밋 대기', async () => {
-    await expect.poll(() => page.evaluate(async id => (await S2Runtime.engine.read(id)).snapshot.payload.run.gold, villageId), { timeout: 15_000 }).toBe(50);
+    // Issue #32 A: gold===50 alone also matched an OLDER autosave (before the worker), so the refresh could load 0
+    // workers. Wait (bounded: the autosave runs every 10 s) for a commit of this village NEWER than the one before
+    // the recruit that carries the gold, the worker and its assignment. On timeout the last committed state and
+    // the missing parts are printed.
+    await expect.poll(async () => commitReady(await page.evaluate(id => S2Runtime.engine.read(id), villageId), workerChange),
+      { timeout: 25_000, message: '변경 이후 커밋된 자동 저장(인부·배치·골드)' }).toMatchObject({ ready: true, reasons: [] });
     autosave = await page.evaluate(id => S2Runtime.engine.read(id), villageId);
+    qa.report.stages.at(-1).committed = commitReady(autosave, workerChange).committed;
     await expect(page.locator('#s2Status')).toContainText('마지막 자동 저장:');
   });
   await qa.step('08-manual-save', '수동 슬롯 1 저장과 자동/수동 구분', async () => {
@@ -107,6 +120,7 @@ test('무주입: 새 마을부터 채굴·판매·첫 인부·저장·재접속�
     await page.waitForFunction(id => S2Runtime.session?.id === id && S2Runtime.canPlay(), villageId);
     expect(await page.evaluate(() => state.gold)).toBe(50);
     expect(await page.evaluate(() => state.characters.length)).toBe(1);
+    expect(await page.evaluate(() => state.characters.map(w => w.resource))).toEqual(workerChange.assignments);
   });
   await qa.step('10-copy-restore', '수동 저장을 새 사본으로 복원·원본 두 종류 보존', async () => {
     await qa.press('#s2Open');

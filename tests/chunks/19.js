@@ -458,3 +458,40 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   check('UX01-F01: the summary keeps its Space handling; other card controls keep their old paths', !evSum.defaultPrevented && reached.join() === ' :INPUT, :BUTTON');
   doc.removeEventListener('keydown', spy);
 })();
+// =============================================================================
+// Issue #32 POST-QA B/D: a recipe card rebuild waits while a stock-target field of the same run is being
+// edited (an unfinished number or a composition is never replaced), runs once the focus leaves, and a
+// change from a removed field or an unfinished number never sets a target. Real browser proof:
+// tests/playthrough/recipe-draft.spec.cjs. (19.js: Claude-owned tests.)
+// =============================================================================
+(function test_UX01_BD_targetDraft() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document;
+  const field = () => doc.querySelector('[data-craft-target="steel"]'), more = () => doc.querySelector('[data-recipe-more="steel"]');
+  win.state.craftTarget.steel = 7; win.renderAll();
+  more().open = true; more().dispatchEvent(new win.Event('toggle'));
+  const a = field(); a.focus(); a.value = '42';
+  win.renderAll();
+  check('UX01-BD: while the target field is being edited a rebuild waits (same node, draft and focus kept)', field() === a && a.value === '42' && doc.activeElement === a && win.state.craftTarget.steel === 7);
+  win.SITES.forEach((site) => { win.state.unlockedSites[site.key] = true; }); win.renderAll();
+  check('UX01-BD: a structural change waits too (no new cards while editing)', field() === a && !doc.querySelector('[data-stock="specialAlloy"]'));
+  a.blur(); win.buildRecipes(); // what the focusout handler runs once the focus has moved
+  check('UX01-BD: once the focus leaves, the rebuild runs (new cards, details still open)', field() !== a && !!doc.querySelector('[data-stock="specialAlloy"]') && more().open);
+  // an unfinished number ("1e") reads as '' with validity.badInput: it is not the player clearing the field
+  const b = field(); b.value = ''; Object.defineProperty(b, 'validity', { value: { badInput: true }, configurable: true }); b.onchange(); delete b.validity;
+  check('UX01-BD: an unfinished number keeps the target and shows it again', win.state.craftTarget.steel === 7 && b.value === '7');
+  const c = field(); c.value = ''; c.onchange();
+  check('UX01-BD: a field the player really cleared still means no limit (existing rule)', win.state.craftTarget.steel === 0 && c.value === '');
+  c.value = '-3'; c.onchange(); const neg = win.state.craftTarget.steel;
+  c.value = '5.7'; c.onchange(); const dec = win.state.craftTarget.steel;
+  c.value = '9999999'; c.onchange();
+  check('UX01-BD: the existing normalisation is unchanged (-3 -> 0, 5.7 -> 5, 9999999 -> 999999)', neg === 0 && dec === 5 && win.state.craftTarget.steel === 999999);
+  // another run (new village, restore, reload): the rebuild never waits, and the old field cannot write into the new run
+  win.state.craftTarget.steel = 7; win.renderAll();
+  const d = field(); d.focus(); d.value = '42';
+  const R = win.S2Runtime, oldRun = win.state;
+  R.apply({ id: 'ux01-bd', name: 'UX01 BD', snapshot: { savedAt: 1, payload: R.payload(win.freshRunState(), win.permanent) } });
+  const fresh = field();
+  check('UX01-BD: another run rebuilds at once; the draft is not carried into it', win.state !== oldRun && fresh !== d && fresh.value === '' && !(win.state.craftTarget.steel > 0) && !more().open);
+  d.onchange();
+  check('UX01-BD: a change from the old run\'s removed field sets nothing in either run', !(win.state.craftTarget.steel > 0) && oldRun.craftTarget.steel === 7, JSON.stringify({ now: win.state.craftTarget.steel, old: oldRun.craftTarget.steel, same: win.state === oldRun }));
+})();

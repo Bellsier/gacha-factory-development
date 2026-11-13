@@ -1,0 +1,3 @@
+  ✘  1 [mobile] › tests/playthrough/action-button-tap.spec.cjs:8:1 › 행동 버튼: 조이스틱을 튕긴 직후 탭도 정확히 한 번 실행, 마우스·키보드 유지 (20.3s)
+    Error: 탭마다 실행 횟수(0 = 탭 소실, 2 = 중복)
+    + Received  + 15

@@ -1,0 +1,20 @@
+    Error: 변경 이후 커밋된 자동 저장(인부·배치·골드)
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 2
+    + Received  + 7
+
+      Object {
+    -   "ready": true,
+    -   "reasons": Array [],
+    +   "ready": false,
+    +   "reasons": Array [
+    +     "revision 1 ≤ 기준 1 (변경 이후 커밋 아님)",
+    +     "골드 0 ≠ 50",
+    +     "인부 0 ≠ 1",
+    +     "배치 [] ≠ [\"coal\"]",
+    +   ],
+      }
+
+    Call Log:

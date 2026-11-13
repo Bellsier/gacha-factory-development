@@ -103,6 +103,45 @@
   .recipe .row button{flex:1; min-width:120px;}
   .toggle-auto{display:flex; align-items:center; gap:6px; margin-top:8px; font-size:max(0.68rem, var(--fs-min)); color:var(--dim);}
   .target-input{width:70px; padding:2px 4px; font-size:max(0.68rem, var(--fs-min));}
+  /* UX-01 (Issue #32): recipe cards — inputs with have/need, the craft button and its reason up
+     front; selling and automation in a closed <details>. Scoped to the recipe cards only. */
+  #tab-dev #recipes .recipe-needs{list-style:none; margin:2px 0 8px; padding:0; display:grid; gap:2px; font-size:max(0.78rem, var(--fs-min)); color:var(--dim);}
+  #tab-dev #recipes .recipe{word-break:keep-all;} /* Korean breaks between words, not inside them */
+  #tab-dev #recipes .recipe-need-count, #tab-dev #recipes .recipe-need-flag{white-space:nowrap;}
+  #tab-dev #recipes .recipe-need.is-short{color:var(--text); font-weight:600;}
+  #tab-dev #recipes .recipe-need.is-short::before{content:'! '; color:var(--amber, #e0b04a);}
+  #tab-dev #recipes .recipe-main button{min-height:44px; flex:1 1 100%;}
+  #tab-dev #recipes .recipe-reason, #tab-dev #recipes .recipe-auto-state, #tab-dev #recipes .recipe-sell-hint{margin:4px 0 0; font-size:max(0.76rem, var(--fs-min)); line-height:1.35; overflow-wrap:anywhere;}
+  #tab-dev #recipes .recipe-reason{color:var(--text);}
+  #tab-dev #recipes .recipe-auto-state{color:var(--teal-on, #5fcab2);}
+  #tab-dev #recipes .recipe-sell-hint{color:var(--dim);}
+  #tab-dev #recipes [hidden]{display:none;}
+  #tab-dev #recipes .recipe-more{margin-top:8px; border-top:1px solid var(--line); padding-top:4px;}
+  #tab-dev #recipes .recipe-more > summary{min-height:44px; display:flex; flex-direction:column; justify-content:center; gap:1px; cursor:pointer; padding:4px 0 4px 18px; position:relative; list-style:none;}
+  #tab-dev #recipes .recipe-more > summary::-webkit-details-marker{display:none;}
+  #tab-dev #recipes .recipe-more > summary::before{content:'▸'; position:absolute; left:2px; top:50%; transform:translateY(-50%); color:var(--dim);}
+  #tab-dev #recipes .recipe-more[open] > summary::before{content:'▾';}
+  #tab-dev #recipes .recipe-more > summary:focus-visible{outline:2px solid var(--teal-on, #5fcab2); outline-offset:2px; border-radius:4px;}
+  #tab-dev #recipes .recipe-more-title{font-weight:600;}
+  #tab-dev #recipes .recipe-more-state{font-size:max(0.72rem, var(--fs-min)); color:var(--dim); overflow-wrap:anywhere;}
+  #tab-dev #recipes .recipe-more-body{display:grid; gap:4px; padding:4px 0 2px;}
+  #tab-dev #recipes .recipe-more-body .row button, #tab-dev #recipes .recipe-autosell-buy button{min-height:44px;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto{min-height:44px; margin-top:0; font-size:max(0.8rem, var(--fs-min)); cursor:pointer;}
+  /* a 22px box to see, a 44x44 area to touch (the whole control, not only its label) */
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]{-webkit-appearance:none; appearance:none; width:44px; height:44px; flex:none; margin:0 -6px 0 -11px; padding:0; border:0; cursor:pointer;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect x='1' y='1' width='20' height='20' rx='4' fill='%23241a12' stroke='%23b08a64' stroke-width='2'/%3E%3C/svg%3E") center/22px 22px no-repeat;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:checked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Crect x='1' y='1' width='20' height='20' rx='4' fill='%235fcab2' stroke='%235fcab2' stroke-width='2'/%3E%3Cpath d='M5.5 11.5l3.5 3.5 7-8' fill='none' stroke='%23241a12' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:disabled{opacity:0.45; cursor:not-allowed;}
+  #tab-dev #recipes .recipe-more-body .toggle-auto input[type=checkbox]:focus-visible{outline:2px solid var(--teal-on, #5fcab2); outline-offset:-6px; border-radius:8px;}
+  #tab-dev #recipes .recipe-autosell-buy{display:flex; flex-wrap:wrap; align-items:center; gap:6px;}
+  #tab-dev #recipes .recipe-autosell-buy span{flex:1 1 auto; white-space:nowrap;}
+  /* the stock target: its label, then the field with its unit kept together, then one line of help */
+  #tab-dev #recipes .recipe-target{display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px;}
+  #tab-dev #recipes .recipe-target-label{white-space:nowrap; font-size:max(0.8rem, var(--fs-min));}
+  #tab-dev #recipes .recipe-target-field{display:inline-flex; align-items:center; gap:6px; white-space:nowrap; max-width:100%;}
+  #tab-dev #recipes .recipe-target-unit{white-space:nowrap; font-size:max(0.8rem, var(--fs-min)); color:var(--dim);}
+  #tab-dev #recipes .target-input{width:6.5em; max-width:100%; min-height:44px; padding:2px 6px; box-sizing:border-box;}
+  #tab-dev #recipes .recipe-target-help{flex:1 1 100%; margin:0; font-size:max(0.7rem, var(--fs-min)); color:var(--dim); line-height:1.35;}
 
   .gacha-box{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; text-align:center;}
   .gacha-box .rates{color:var(--dim); font-size:max(0.68rem, var(--fs-min)); margin-top:10px; line-height:1.6;}
@@ -516,13 +555,13 @@
     --panel:var(--wood-1); --panel-2:var(--wood-2); --line:#5a4332; --text:#f4ead9; --dim:#c4b098;
     --amber:var(--copper); --amber-dim:var(--copper-lo); --teal:var(--teal-on); --legend:#ecbb5a;
     --hud-bg:rgba(29,22,17,0.9); --hud-edge:rgba(232,164,107,0.45);
-    --ico-mining:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h6v1h-6zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h2v1h-2zM5 2h2v1h-2zM9 2h2v1h-2zM0 3h2v1h-2zM5 3h2v1h-2zM10 3h2v1h-2zM0 4h1v1h-1zM5 4h2v1h-2zM11 4h1v1h-1zM5 5h2v1h-2zM5 6h2v1h-2zM5 7h2v1h-2zM5 8h2v1h-2zM5 9h2v1h-2zM5 10h2v1h-2z'/%3E%3C/svg%3E");
-    --ico-dev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M1 2h10v1h-10zM2 3h9v1h-9zM3 4h7v1h-7zM4 5h5v1h-5zM5 6h3v1h-3zM5 7h3v1h-3zM4 8h5v1h-5zM2 9h9v1h-9zM2 10h9v1h-9z'/%3E%3C/svg%3E");
-    --ico-workers:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h4v1h-4zM2 1h8v1h-8zM1 2h10v1h-10zM0 3h12v1h-12zM3 5h6v1h-6zM3 6h1v1h-1zM5 6h2v1h-2zM8 6h1v1h-1zM3 7h6v1h-6zM4 8h4v1h-4zM2 9h8v1h-8zM1 10h10v1h-10zM1 11h10v1h-10z'/%3E%3C/svg%3E");
-    --ico-research:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h6v1h-6zM4 1h4v1h-4zM4 2h1v1h-1zM7 2h1v1h-1zM4 3h1v1h-1zM7 3h1v1h-1zM3 4h1v1h-1zM8 4h1v1h-1zM2 5h1v1h-1zM9 5h1v1h-1zM1 6h1v1h-1zM10 6h1v1h-1zM0 7h1v1h-1zM2 7h8v1h-8zM11 7h1v1h-1zM0 8h1v1h-1zM2 8h8v1h-8zM11 8h1v1h-1zM0 9h1v1h-1zM2 9h8v1h-8zM11 9h1v1h-1zM1 10h10v1h-10z'/%3E%3C/svg%3E");
-    --ico-delivery:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h10v1h-10zM1 2h10v1h-10zM1 4h10v1h-10zM1 5h1v1h-1zM5 5h2v1h-2zM10 5h1v1h-1zM1 6h1v1h-1zM5 6h2v1h-2zM10 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM1 8h1v1h-1zM10 8h1v1h-1zM1 9h10v1h-10z'/%3E%3C/svg%3E");
-    --ico-village:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M5 0h2v1h-2zM4 1h4v1h-4zM3 2h6v1h-6zM2 3h8v1h-8zM1 4h10v1h-10zM0 5h12v1h-12zM2 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM5 7h2v1h-2zM9 7h1v1h-1zM2 8h1v1h-1zM5 8h2v1h-2zM9 8h1v1h-1zM2 9h1v1h-1zM5 9h2v1h-2zM9 9h1v1h-1zM2 10h8v1h-8z'/%3E%3C/svg%3E");
-    --ico-log:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M1 1h4v1h-4zM7 1h4v1h-4zM1 2h1v1h-1zM4 2h1v1h-1zM7 2h1v1h-1zM10 2h1v1h-1zM1 3h1v1h-1zM3 3h2v1h-2zM7 3h2v1h-2zM10 3h1v1h-1zM1 4h1v1h-1zM4 4h1v1h-1zM7 4h1v1h-1zM10 4h1v1h-1zM1 5h1v1h-1zM3 5h2v1h-2zM7 5h2v1h-2zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM1 7h1v1h-1zM4 7h1v1h-1zM7 7h1v1h-1zM10 7h1v1h-1zM1 8h4v1h-4zM7 8h4v1h-4zM5 9h2v1h-2z'/%3E%3C/svg%3E");
+    --ico-mining:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M3 0h6v1h-6zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h2v1h-2zM5 2h2v1h-2zM9 2h2v1h-2zM0 3h2v1h-2zM5 3h2v1h-2zM10 3h2v1h-2zM0 4h1v1h-1zM5 4h2v1h-2zM11 4h1v1h-1zM5 5h2v1h-2zM5 6h2v1h-2zM5 7h2v1h-2zM5 8h2v1h-2zM5 9h2v1h-2zM5 10h2v1h-2z'/%3E%3C/svg%3E");
+    --ico-dev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M1 2h10v1h-10zM2 3h9v1h-9zM3 4h7v1h-7zM4 5h5v1h-5zM5 6h3v1h-3zM5 7h3v1h-3zM4 8h5v1h-5zM2 9h9v1h-9zM2 10h9v1h-9z'/%3E%3C/svg%3E");
+    --ico-workers:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M4 0h4v1h-4zM2 1h8v1h-8zM1 2h10v1h-10zM0 3h12v1h-12zM3 5h6v1h-6zM3 6h1v1h-1zM5 6h2v1h-2zM8 6h1v1h-1zM3 7h6v1h-6zM4 8h4v1h-4zM2 9h8v1h-8zM1 10h10v1h-10zM1 11h10v1h-10z'/%3E%3C/svg%3E");
+    --ico-research:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M3 0h6v1h-6zM4 1h4v1h-4zM4 2h1v1h-1zM7 2h1v1h-1zM4 3h1v1h-1zM7 3h1v1h-1zM3 4h1v1h-1zM8 4h1v1h-1zM2 5h1v1h-1zM9 5h1v1h-1zM1 6h1v1h-1zM10 6h1v1h-1zM0 7h1v1h-1zM2 7h8v1h-8zM11 7h1v1h-1zM0 8h1v1h-1zM2 8h8v1h-8zM11 8h1v1h-1zM0 9h1v1h-1zM2 9h8v1h-8zM11 9h1v1h-1zM1 10h10v1h-10z'/%3E%3C/svg%3E");
+    --ico-delivery:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M1 1h10v1h-10zM1 2h10v1h-10zM1 4h10v1h-10zM1 5h1v1h-1zM5 5h2v1h-2zM10 5h1v1h-1zM1 6h1v1h-1zM5 6h2v1h-2zM10 6h1v1h-1zM1 7h1v1h-1zM10 7h1v1h-1zM1 8h1v1h-1zM10 8h1v1h-1zM1 9h10v1h-10z'/%3E%3C/svg%3E");
+    --ico-village:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M5 0h2v1h-2zM4 1h4v1h-4zM3 2h6v1h-6zM2 3h8v1h-8zM1 4h10v1h-10zM0 5h12v1h-12zM2 6h1v1h-1zM9 6h1v1h-1zM2 7h1v1h-1zM5 7h2v1h-2zM9 7h1v1h-1zM2 8h1v1h-1zM5 8h2v1h-2zM9 8h1v1h-1zM2 9h1v1h-1zM5 9h2v1h-2zM9 9h1v1h-1zM2 10h8v1h-8z'/%3E%3C/svg%3E");
+    --ico-log:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath fill='%23e8a46b' d='M1 1h4v1h-4zM7 1h4v1h-4zM1 2h1v1h-1zM4 2h1v1h-1zM7 2h1v1h-1zM10 2h1v1h-1zM1 3h1v1h-1zM3 3h2v1h-2zM7 3h2v1h-2zM10 3h1v1h-1zM1 4h1v1h-1zM4 4h1v1h-1zM7 4h1v1h-1zM10 4h1v1h-1zM1 5h1v1h-1zM3 5h2v1h-2zM7 5h2v1h-2zM10 5h1v1h-1zM1 6h1v1h-1zM4 6h1v1h-1zM7 6h1v1h-1zM10 6h1v1h-1zM1 7h1v1h-1zM4 7h1v1h-1zM7 7h1v1h-1zM10 7h1v1h-1zM1 8h4v1h-4zM7 8h4v1h-4zM5 9h2v1h-2z'/%3E%3C/svg%3E");
     --ico-gold:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M4 0h4v1h-4zM2 1h2v1h-2zM8 1h2v1h-2zM1 2h1v1h-1zM4 2h4v1h-4zM10 2h1v1h-1zM1 3h1v1h-1zM3 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM5 4h2v1h-2zM9 4h1v1h-1zM11 4h1v1h-1zM0 5h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM9 5h1v1h-1zM11 5h1v1h-1zM0 6h1v1h-1zM2 6h1v1h-1zM5 6h2v1h-2zM9 6h1v1h-1zM11 6h1v1h-1zM0 7h1v1h-1zM2 7h1v1h-1zM5 7h2v1h-2zM9 7h1v1h-1zM11 7h1v1h-1zM1 8h1v1h-1zM3 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM1 9h1v1h-1zM4 9h4v1h-4zM10 9h1v1h-1zM2 10h2v1h-2zM8 10h2v1h-2zM4 11h4v1h-4z'/%3E%3C/svg%3E");
     --ico-ticket:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M0 2h12v1h-12zM0 3h3v1h-3zM5 3h7v1h-7zM0 4h1v1h-1zM2 4h1v1h-1zM5 4h6v1h-6zM3 5h9v1h-9zM3 6h9v1h-9zM0 7h1v1h-1zM2 7h1v1h-1zM5 7h6v1h-6zM0 8h3v1h-3zM5 8h7v1h-7zM0 9h12v1h-12z'/%3E%3C/svg%3E");
     --ico-prestige:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Cpath d='M5 0h2v1h-2zM5 1h2v1h-2zM4 2h4v1h-4zM4 3h4v1h-4zM0 4h12v1h-12zM1 5h10v1h-10zM2 6h8v1h-8zM3 7h6v1h-6zM3 8h6v1h-6zM2 9h3v1h-3zM7 9h3v1h-3zM2 10h2v1h-2zM8 10h2v1h-2zM1 11h1v1h-1zM10 11h1v1h-1z'/%3E%3C/svg%3E");
@@ -718,3 +757,27 @@ body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:
 @media(max-height:500px) and (orientation:landscape){
   body.view-topdown #s2Hud{top:104px}
 }
+
+/* Issue #32 C: the open panel's top band (its title, its icon and the fixed close button) no longer scrolls.
+   Before, the panel scrolled under the fixed close button, so a card button that passed beneath it was covered
+   and a tap there closed the panel instead. The band is the panel's own ::before, made sticky at the top of the
+   scroll area with the panel's top padding as its height: content scrolls beneath it, never beneath the close
+   button, which sits inside the band (PC 10-54px of a 64px band; phone 0-44px of 60px). The icon that ::after
+   drew moves into the band, as a background layer. Nothing is hidden and no z-index is lowered; scroll-padding keeps a focused
+   control from scrolling under the band. */
+body.view-topdown{--panel-head:64px; --panel-pad-x:16px;}
+@media (max-width: 760px), (max-height: 500px) and (orientation: landscape){ body.view-topdown{--panel-head:60px;} }
+@media (max-width: 760px){ body.view-topdown{--panel-pad-x:12px;} }
+body.view-topdown.td-panel-open .tab-panel.active, body.view-topdown.td-log-open #logSection{padding-top:var(--panel-head); scroll-padding-top:calc(var(--panel-head) + 8px);}
+body.view-topdown.td-panel-open .tab-panel.active::before, body.view-topdown.td-log-open #logSection::before{
+  position:sticky; top:calc(-1 * var(--panel-head)); left:auto; z-index:2; display:block; box-sizing:border-box; /* sticky offsets count from inside the top padding */
+  height:var(--panel-head); margin:calc(-1 * var(--panel-head)) calc(-1 * var(--panel-pad-x)) 0;
+  padding:18px 112px 0 calc(var(--panel-pad-x) + 28px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border-bottom:1px solid rgba(232,164,107,0.25);
+  /* the icon is one more background layer of the band (the panel icons are drawn in the copper colour themselves;
+     where they are used as masks only their shape counts). The band has no mask and no hole: nothing scrolled
+     beneath it shows through. */
+  background:var(--panel-icon) var(--panel-pad-x) 22px / 20px 20px no-repeat,
+    linear-gradient(180deg, rgba(255,236,210,0.05), rgba(0,0,0,0) 120px), var(--wood-1);
+  image-rendering:pixelated;}
+body.view-topdown.td-panel-open .tab-panel.active::after, body.view-topdown.td-log-open #logSection::after{content:none;}

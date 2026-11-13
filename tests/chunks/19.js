@@ -339,3 +339,159 @@ function hutWin() { const st = makeMemoryStorage(); st.setItem('gachaFactorySave
   });
   win.close();
 })();
+// =============================================================================
+// UX-01 (Issue #32): recipe cards — inputs with have/need, the craft button and its real reason up
+// front; selling, auto-craft, the stock target and auto-sell in a closed <details>. UI only: the save,
+// the rules and every control's data-* attribute stay as they were. (19.js: Claude-owned tests.)
+// =============================================================================
+(function test_UX01_recipeCards() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document, s = win.state;
+  const card = (k) => doc.querySelector('[data-stock="' + k + '"]').closest('.recipe');
+  const more = (k) => doc.querySelector('[data-recipe-more="' + k + '"]');
+  const reason = (k) => doc.querySelector('[data-craft-reason="' + k + '"]');
+  const steel = card('steel');
+  check('UX01: the craft button, the stock and the inputs are outside the details; sale and automation inside',
+    !more('steel').contains(steel.querySelector('[data-craft="steel"]')) && !more('steel').contains(steel.querySelector('[data-stock="steel"]')) &&
+    steel.querySelectorAll('[data-need^="steel:"]').length === 2 && ['[data-sell="steel"]', '[data-autocraft="steel"]', '[data-craft-target="steel"]', '[data-buyautosell="steel"]'].every((q) => more('steel').contains(doc.querySelector(q))));
+  check('UX01: every card has a closed details named 「판매 · 자동화 설정」', [...doc.querySelectorAll('#recipes .recipe')].every((c) => { const d = c.querySelector('details[data-recipe-more]'); return d && !d.open && d.querySelector('summary .recipe-more-title').textContent === '판매 · 자동화 설정'; }));
+  // the real reason, from recipeShortages(): every missing input
+  Object.assign(s.resources, { iron: 1, coal: 0 }); s.craftQueue.steel = null; win.updateNumbers();
+  const short = win.recipeShortages(win.recipeByKey('steel')).map((x) => x.name + ' ' + (x.need - x.have) + '개').join(' · ') + ' 부족';
+  check('UX01: a disabled craft button says exactly what is missing (all inputs)', reason('steel').textContent === short && short === '철광석 1개 · 석탄 1개 부족' && !reason('steel').hidden &&
+    doc.querySelector('[data-craft="steel"]').disabled && doc.querySelector('[data-craft="steel"]').getAttribute('aria-describedby') === reason('steel').id);
+  check('UX01: each input shows have / need and marks a shortage in words', doc.querySelector('[data-need="steel:iron"]').textContent === '철광석 보유 1 / 필요 2 (부족)' && doc.querySelector('[data-need="steel:iron"]').classList.contains('is-short'));
+  s.resources.iron = 1.99; win.updateNumbers();
+  check('UX01: a fractional stock counts in whole units, the same as the craft rule (1.99 of 2 is still short)', reason('steel').textContent.startsWith('철광석 1개') && doc.querySelector('[data-craft="steel"]').disabled);
+  Object.assign(s.resources, { iron: 10, coal: 10 }); win.updateNumbers();
+  check('UX01: with enough inputs the reason disappears and the button works', reason('steel').hidden && reason('steel').textContent === '' && !doc.querySelector('[data-craft="steel"]').disabled && doc.querySelector('[data-need="steel:iron"]').textContent === '철광석 보유 10 / 필요 2');
+  s.craftQueue.ironTool = 1.5; s.resources.iron = 0; win.updateNumbers();
+  check('UX01: while crafting the button says so and no shortage is claimed', reason('ironTool').hidden && /제작 중/.test(doc.querySelector('[data-craft="ironTool"]').textContent));
+  s.craftQueue.ironTool = null;
+  // sale and auto-sell reasons, with the real numbers
+  s.products.steel = 0; s.gold = 10; win.updateNumbers();
+  check('UX01: an empty stock explains the disabled sale', doc.querySelector('[data-sell-reason="steel"]').textContent === '팔 수 있는 재고가 없어요');
+  check('UX01: auto-sell shows the real gold shortfall', doc.querySelector('[data-buyautosell-reason="steel"]').textContent === '골드 ' + win.fmt(win.autoSellCost(win.recipeByKey('steel')) - 10) + 'G 부족 (필요 ' + win.fmt(win.autoSellCost(win.recipeByKey('steel'))) + 'G · 보유 10G)');
+  s.gold = 9.6; win.updateNumbers();
+  check('UX01: a fractional gold never reads as "0G short"', /^골드 [1-9][0-9,]*G 부족/.test(doc.querySelector('[data-buyautosell-reason="steel"]').textContent));
+  // auto-craft state on the closed card: what it really does
+  s.research.autoCraftDevice = true; win.renderAll();
+  s.autoCraft.coalBrick = true; s.craftTarget.coalBrick = 3; s.products.coalBrick = 3; win.updateNumbers();
+  const auto = doc.querySelector('[data-recipe-auto-state="coalBrick"]');
+  check('UX01: auto-craft at its stock target says it is resting, visible with the details closed', !more('coalBrick').open && !auto.hidden && auto.textContent === '자동 제작 · 목표 재고 도달로 쉬는 중');
+  s.craftTarget.coalBrick = 0; s.resources.coal = 0; win.updateNumbers();
+  check('UX01: auto-craft without inputs says it waits for them (not "crafting")', auto.textContent === '자동 제작 · 재료 부족으로 대기');
+  s.autoCraft.coalBrick = false; win.updateNumbers();
+  check('UX01: no auto-craft, no state line', auto.hidden);
+  // open state: kept across rebuilds of the same run, not saved, reset for another run
+  const before = JSON.stringify(s), keys = Object.keys(win.localStorage).sort().join();
+  more('steel').open = true; more('steel').dispatchEvent(new win.Event('toggle'));
+  win.renderAll();
+  check('UX01: an opened details stays open after renderAll (same village)', more('steel').open && !more('coalBrick').open);
+  check('UX01: opening details changes nothing in the run state or the storage', JSON.stringify(s) === before && Object.keys(win.localStorage).sort().join() === keys && !/recipeMore|recipe-more/.test(JSON.stringify(s)));
+  // another run object, installed the way the game does it (S2Runtime.apply: a new village, a restore or a reload):
+  // the details start closed again. The same run comes back open.
+  const R = win.S2Runtime, runBefore = win.state;
+  R.apply({ id: 'ux01-a', name: 'UX01 A', snapshot: { savedAt: 1, payload: R.payload(win.freshRunState(), win.permanent) } });
+  const swapped = win.state !== runBefore, openAfter = [...doc.querySelectorAll('[data-recipe-more]')].filter((d) => d.open).length;
+  check('UX01: another run (new village, restore, reload) starts with every details closed', swapped && openAfter === 0, JSON.stringify({ swapped, openAfter }));
+  // focus kept across the auto-sell purchase (button -> toggle)
+  const s2 = win.state; s2.gold = 1e6; win.renderAll(); more('steel').open = true; more('steel').dispatchEvent(new win.Event('toggle'));
+  const buy = doc.querySelector('[data-buyautosell="steel"]'); buy.focus(); buy.click();
+  check('UX01: buying auto-sell moves the focus to its new toggle', s2.autoSell.steel === true && doc.activeElement === doc.querySelector('[data-autoselltoggle="steel"]') && more('steel').open);
+  s2.products.steel = 5; win.updateNumbers();
+  check('UX01: with auto-sell on, the sale explains why it is off and the closed card says auto-sell is on',
+    doc.querySelector('[data-sell="steel"]').disabled && doc.querySelector('[data-sell-reason="steel"]').textContent === '자동 판매가 켜져 있어 직접 팔 수 없어요' && /자동 판매 켜짐/.test(doc.querySelector('[data-recipe-auto-state="steel"]').textContent));
+  // the stock target: its own label, the field with its unit, and the help that states the rule
+  const field = doc.querySelector('[data-craft-target="steel"]'), label = doc.querySelector('label[for="' + field.id + '"]');
+  check('UX01: the stock target has its own label, a unit and a help line with the existing rule', label && label.textContent === '목표 재고' && field.nextElementSibling.textContent === '개에서 멈춤' &&
+    /새 시작만/.test(doc.getElementById(field.getAttribute('aria-describedby')).textContent) && /0은 제한 없음/.test(doc.getElementById(field.getAttribute('aria-describedby')).textContent));
+  field.value = '-3'; field.onchange();
+  check('UX01: the target keeps its rule (negative -> no limit) and the summary says so', s2.craftTarget.steel === 0 && field.value === '' && /목표 없음/.test(doc.querySelector('[data-recipe-more-state="steel"]').textContent));
+  // the sale hint on the closed card: only while there is something to sell by hand
+  s2.autoSellOn.steel = false; more('steel').open = false; more('steel').dispatchEvent(new win.Event('toggle')); win.updateNumbers();
+  check('UX01: a closed card with stock tells where selling is', !doc.querySelector('[data-recipe-sell-hint="steel"]').hidden && /「판매 · 자동화 설정」/.test(doc.querySelector('[data-recipe-sell-hint="steel"]').textContent));
+  // Space on a summary opens it but does not act in the world; other keys still reach the game
+  let reached = [];
+  const spy = (e) => reached.push(e.key);
+  doc.addEventListener('keydown', spy);
+  const summary = doc.querySelector('[data-recipe-summary="steel"]');
+  summary.dispatchEvent(new win.KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+  summary.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'w', code: 'KeyW', bubbles: true }));
+  doc.removeEventListener('keydown', spy);
+  check('UX01: Space on a recipe summary stays local; movement keys still reach the game', reached.join() === 'w');
+  // workshop-only cards: nothing new — no hand craft, no automation; sale and target in the details
+  win.SITES.forEach((site) => { s2.unlockedSites[site.key] = true; }); win.renderAll();
+  const p = doc.querySelector('[data-workshop-only="specialAlloy"]') || doc.querySelector('[data-workshop-only]');
+  const k = p && p.getAttribute('data-workshop-only');
+  check('UX01: a workshop-only card keeps its note outside and only sale and target inside the details', !!k && !doc.querySelector('[data-craft="' + k + '"]') && !doc.querySelector('[data-autocraft="' + k + '"]') && !doc.querySelector('[data-buyautosell="' + k + '"]') &&
+    more(k).contains(doc.querySelector('[data-sell="' + k + '"]')) && more(k).contains(doc.querySelector('[data-craft-target="' + k + '"]')) && !more(k).contains(p));
+})();
+// =============================================================================
+// UX-01 F-01 (Issue #32): Space on the card's enabled auto-craft / auto-sell checkbox stays in the card
+// (propagation stopped, default NOT prevented, so the browser ticks it); a disabled one, other keys and the
+// summary keep their old paths. The real-keyboard proof is tests/playthrough/recipe-keyboard.spec.cjs.
+// =============================================================================
+(function test_UX01_F01_checkboxSpace() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document, s = win.state;
+  const reached = [];
+  const spy = (e) => reached.push(e.key + ':' + (e.target.getAttribute('data-autocraft') !== null ? 'auto' : e.target.getAttribute('data-autoselltoggle') !== null ? 'sell' : e.target.tagName));
+  const press = (el, key, code) => { const ev = new win.KeyboardEvent('keydown', { key, code, bubbles: true, cancelable: true }); el.dispatchEvent(ev); return ev; };
+  // before the research: the auto-craft checkbox is disabled and keeps the old path
+  doc.addEventListener('keydown', spy);
+  const lockedAuto = doc.querySelector('[data-autocraft="steel"]');
+  press(lockedAuto, ' ', 'Space');
+  check('UX01-F01: a disabled auto-craft checkbox is not handled by the card (old path)', lockedAuto.disabled && reached.join() === ' :auto');
+  reached.length = 0;
+  s.research.autoCraftDevice = true; s.autoSell.steel = true; s.autoSellOn.steel = true; win.renderAll();
+  const auto = doc.querySelector('[data-autocraft="steel"]'), sell = doc.querySelector('[data-autoselltoggle="steel"]');
+  const evA = press(auto, ' ', 'Space'), evS = press(sell, ' ', 'Space');
+  check('UX01-F01: Space on the enabled auto-craft and auto-sell checkboxes stays in the card', reached.length === 0);
+  check('UX01-F01: the card never prevents the default (the browser ticks the box itself)', !evA.defaultPrevented && !evS.defaultPrevented);
+  check('UX01-F01: the card does not change the box or the state itself on keydown', auto.checked === false && s.autoCraft.steel !== true && sell.checked === true && s.autoSellOn.steel === true);
+  ['w', 'ArrowLeft', 'e'].forEach((k) => press(auto, k, k === 'w' ? 'KeyW' : k === 'e' ? 'KeyE' : k));
+  press(sell, 'd', 'KeyD');
+  check('UX01-F01: movement keys and E on those checkboxes still reach the game (Task95/99)', reached.join() === 'w:auto,ArrowLeft:auto,e:auto,d:sell');
+  reached.length = 0;
+  const summary = doc.querySelector('[data-recipe-summary="steel"]'), evSum = press(summary, ' ', 'Space');
+  const target = doc.querySelector('[data-craft-target="steel"]'), sellBtn = doc.querySelector('[data-sell="steel"]');
+  press(target, ' ', 'Space'); press(sellBtn, ' ', 'Space');
+  check('UX01-F01: the summary keeps its Space handling; other card controls keep their old paths', !evSum.defaultPrevented && reached.join() === ' :INPUT, :BUTTON');
+  doc.removeEventListener('keydown', spy);
+})();
+// =============================================================================
+// Issue #32 POST-QA B/D: a recipe card rebuild waits while a stock-target field of the same run is being
+// edited (an unfinished number or a composition is never replaced), runs once the focus leaves, and a
+// change from a removed field or an unfinished number never sets a target. Real browser proof:
+// tests/playthrough/recipe-draft.spec.cjs. (19.js: Claude-owned tests.)
+// =============================================================================
+(function test_UX01_BD_targetDraft() {
+  const win = newDom(makeMemoryStorage()).window, doc = win.document;
+  const field = () => doc.querySelector('[data-craft-target="steel"]'), more = () => doc.querySelector('[data-recipe-more="steel"]');
+  win.state.craftTarget.steel = 7; win.renderAll();
+  more().open = true; more().dispatchEvent(new win.Event('toggle'));
+  const a = field(); a.focus(); a.value = '42';
+  win.renderAll();
+  check('UX01-BD: while the target field is being edited a rebuild waits (same node, draft and focus kept)', field() === a && a.value === '42' && doc.activeElement === a && win.state.craftTarget.steel === 7);
+  win.SITES.forEach((site) => { win.state.unlockedSites[site.key] = true; }); win.renderAll();
+  check('UX01-BD: a structural change waits too (no new cards while editing)', field() === a && !doc.querySelector('[data-stock="specialAlloy"]'));
+  a.blur(); win.buildRecipes(); // what the focusout handler runs once the focus has moved
+  check('UX01-BD: once the focus leaves, the rebuild runs (new cards, details still open)', field() !== a && !!doc.querySelector('[data-stock="specialAlloy"]') && more().open);
+  // an unfinished number ("1e") reads as '' with validity.badInput: it is not the player clearing the field
+  const b = field(); b.value = ''; Object.defineProperty(b, 'validity', { value: { badInput: true }, configurable: true }); b.onchange(); delete b.validity;
+  check('UX01-BD: an unfinished number keeps the target and shows it again', win.state.craftTarget.steel === 7 && b.value === '7');
+  const c = field(); c.value = ''; c.onchange();
+  check('UX01-BD: a field the player really cleared still means no limit (existing rule)', win.state.craftTarget.steel === 0 && c.value === '');
+  c.value = '-3'; c.onchange(); const neg = win.state.craftTarget.steel;
+  c.value = '5.7'; c.onchange(); const dec = win.state.craftTarget.steel;
+  c.value = '9999999'; c.onchange();
+  check('UX01-BD: the existing normalisation is unchanged (-3 -> 0, 5.7 -> 5, 9999999 -> 999999)', neg === 0 && dec === 5 && win.state.craftTarget.steel === 999999);
+  // another run (new village, restore, reload): the rebuild never waits, and the old field cannot write into the new run
+  win.state.craftTarget.steel = 7; win.renderAll();
+  const d = field(); d.focus(); d.value = '42';
+  const R = win.S2Runtime, oldRun = win.state;
+  R.apply({ id: 'ux01-bd', name: 'UX01 BD', snapshot: { savedAt: 1, payload: R.payload(win.freshRunState(), win.permanent) } });
+  const fresh = field();
+  check('UX01-BD: another run rebuilds at once; the draft is not carried into it', win.state !== oldRun && fresh !== d && fresh.value === '' && !(win.state.craftTarget.steel > 0) && !more().open);
+  d.onchange();
+  check('UX01-BD: a change from the old run\'s removed field sets nothing in either run', !(win.state.craftTarget.steel > 0) && oldRun.craftTarget.steel === 7, JSON.stringify({ now: win.state.craftTarget.steel, old: oldRun.craftTarget.steel, same: win.state === oldRun }));
+})();

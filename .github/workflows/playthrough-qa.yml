@@ -2,7 +2,7 @@ name: Playthrough QA
 
 on:
   pull_request:
-    branches: [main, develop, codex/save-s2, test/playthrough-qa]
+    branches: [main, develop, codex/save-s2, test/playthrough-qa, fix/pre-s4-save-hud, feat/ux-01-crafting-cards, fix/ux-01-target-draft, test/fresh-play-autosave-wait] # fix/pre-s4-save-hud: UX-01 (Issue #32) stacks on PR #30; feat/ux-01-crafting-cards: its POST-QA fixes stack on PR #33; fix/ux-01-target-draft: POST-QA A stacks on PR #36; test/fresh-play-autosave-wait: UX-01 stabilisation stacks on PR #37
   workflow_dispatch:
 
 permissions:
@@ -92,6 +92,8 @@ jobs:
       - name: Verify protected game and S2 behavior are untouched
         id: baseline
         run: node tools/check-pre-s4-hud-scope.cjs
+      - name: Guard fails on a checkout without its base commits (Issue #32 E)
+        run: node tests/guard-scope.test.cjs
       - name: Record runtime versions
         run: |
           mkdir -p work/playthrough

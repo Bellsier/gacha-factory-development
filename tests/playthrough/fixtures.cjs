@@ -80,6 +80,8 @@ const test = base.extend({
       },
       async audit(label) {
         const result = await page.evaluate(() => {
+          // Issue #32 C: an open panel has a sticky top band (its ::before); content scrolled under it is out of sight
+          const band = panel => { const b = getComputedStyle(panel, '::before'); return b.position === 'sticky' ? parseFloat(b.height) || 0 : 0; };
           const visible = el => {
             const closed = el.closest('details:not([open])');
             if (closed && !closed.querySelector(':scope > summary')?.contains(el)) return false;
@@ -87,7 +89,7 @@ const test = base.extend({
             const panel = document.body.classList.contains('td-panel-open') && el.closest('.tab-panel.active');
             if (panel) {
               const p = panel.getBoundingClientRect();
-              if (r.bottom <= p.top || r.top >= p.bottom || r.right <= p.left || r.left >= p.right) return false;
+              if (r.bottom <= p.top + band(panel) || r.top >= p.bottom || r.right <= p.left || r.left >= p.right) return false;
             }
             return r.width > 0 && r.height > 0 && s.visibility === 'visible' && s.display !== 'none' && r.bottom > 0 && r.top < innerHeight;
           };
@@ -101,7 +103,7 @@ const test = base.extend({
             if (r.height < 44 || r.width < 44) small.push({ text, width: +r.width.toFixed(1), height: +r.height.toFixed(1) });
             const scrollPanel = document.body.classList.contains('td-panel-open') && el.closest('.tab-panel.active');
             const p = scrollPanel && scrollPanel.getBoundingClientRect();
-            const centerInside = !p || (r.y + r.height / 2 >= p.top && r.y + r.height / 2 <= p.bottom);
+            const centerInside = !p || (r.y + r.height / 2 >= p.top + band(scrollPanel) && r.y + r.height / 2 <= p.bottom);
             if (centerInside && r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight) {
               const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
               if (hit && !el.contains(hit) && hit !== el && !el.disabled) occluded.push({ text, coveredBy: hit.id || hit.className || hit.tagName });

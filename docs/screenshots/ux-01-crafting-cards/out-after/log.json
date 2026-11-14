@@ -1,0 +1,1190 @@
+{
+ "pc": {
+  "default": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 330,
+     "w": 218
+    },
+    {
+     "key": "coalBrick",
+     "h": 330,
+     "w": 218
+    },
+    {
+     "key": "alloy",
+     "h": 334,
+     "w": 218
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 334,
+     "w": 218
+    },
+    {
+     "key": "specialAlloy",
+     "h": 333,
+     "w": 218
+    },
+    {
+     "key": "precisionPart",
+     "h": 333,
+     "w": 218
+    },
+    {
+     "key": "relicPart",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "ironTool",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "manaLamp",
+     "h": 292,
+     "w": 218
+    },
+    {
+     "key": "crystalLens",
+     "h": 292,
+     "w": 218
+    },
+    {
+     "key": "steelGear",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "relicOrnament",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "manaEngine",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "precisionMachine",
+     "h": 291,
+     "w": 218
+    }
+   ],
+   "overflow": false
+  },
+  "open": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 564,
+     "w": 218
+    },
+    {
+     "key": "coalBrick",
+     "h": 564,
+     "w": 218
+    },
+    {
+     "key": "alloy",
+     "h": 334,
+     "w": 218
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 334,
+     "w": 218
+    },
+    {
+     "key": "specialAlloy",
+     "h": 471,
+     "w": 218
+    },
+    {
+     "key": "precisionPart",
+     "h": 471,
+     "w": 218
+    },
+    {
+     "key": "relicPart",
+     "h": 334,
+     "w": 218
+    },
+    {
+     "key": "ironTool",
+     "h": 334,
+     "w": 218
+    },
+    {
+     "key": "manaLamp",
+     "h": 292,
+     "w": 218
+    },
+    {
+     "key": "crystalLens",
+     "h": 292,
+     "w": 218
+    },
+    {
+     "key": "steelGear",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "relicOrnament",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "manaEngine",
+     "h": 291,
+     "w": 218
+    },
+    {
+     "key": "precisionMachine",
+     "h": 291,
+     "w": 218
+    }
+   ],
+   "overflow": false
+  },
+  "errors": []
+ },
+ "mobile": {
+  "default": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "coalBrick",
+     "h": 306,
+     "w": 366
+    },
+    {
+     "key": "alloy",
+     "h": 332,
+     "w": 366
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "specialAlloy",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "precisionPart",
+     "h": 286,
+     "w": 366
+    },
+    {
+     "key": "relicPart",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "ironTool",
+     "h": 259,
+     "w": 366
+    },
+    {
+     "key": "manaLamp",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "crystalLens",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "steelGear",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "relicOrnament",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "manaEngine",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "precisionMachine",
+     "h": 239,
+     "w": 366
+    }
+   ],
+   "overflow": false
+  },
+  "open": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "coalBrick",
+     "h": 498,
+     "w": 366
+    },
+    {
+     "key": "alloy",
+     "h": 332,
+     "w": 366
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "specialAlloy",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "precisionPart",
+     "h": 382,
+     "w": 366
+    },
+    {
+     "key": "relicPart",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "ironTool",
+     "h": 332,
+     "w": 366
+    },
+    {
+     "key": "manaLamp",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "crystalLens",
+     "h": 284,
+     "w": 366
+    },
+    {
+     "key": "steelGear",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "relicOrnament",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "manaEngine",
+     "h": 239,
+     "w": 366
+    },
+    {
+     "key": "precisionMachine",
+     "h": 239,
+     "w": 366
+    }
+   ],
+   "overflow": false
+  },
+  "errors": []
+ },
+ "small": {
+  "default": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "coalBrick",
+     "h": 330,
+     "w": 296
+    },
+    {
+     "key": "alloy",
+     "h": 356,
+     "w": 296
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "specialAlloy",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "precisionPart",
+     "h": 310,
+     "w": 296
+    },
+    {
+     "key": "relicPart",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "ironTool",
+     "h": 283,
+     "w": 296
+    },
+    {
+     "key": "manaLamp",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "crystalLens",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "steelGear",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "relicOrnament",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "manaEngine",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "precisionMachine",
+     "h": 263,
+     "w": 296
+    }
+   ],
+   "overflow": false
+  },
+  "open": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "coalBrick",
+     "h": 522,
+     "w": 296
+    },
+    {
+     "key": "alloy",
+     "h": 356,
+     "w": 296
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "specialAlloy",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "precisionPart",
+     "h": 406,
+     "w": 296
+    },
+    {
+     "key": "relicPart",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "ironTool",
+     "h": 356,
+     "w": 296
+    },
+    {
+     "key": "manaLamp",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "crystalLens",
+     "h": 308,
+     "w": 296
+    },
+    {
+     "key": "steelGear",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "relicOrnament",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "manaEngine",
+     "h": 263,
+     "w": 296
+    },
+    {
+     "key": "precisionMachine",
+     "h": 263,
+     "w": 296
+    }
+   ],
+   "overflow": false
+  },
+  "errors": []
+ },
+ "landscape": {
+  "default": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "coalBrick",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "alloy",
+     "h": 310,
+     "w": 448
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "specialAlloy",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "precisionPart",
+     "h": 264,
+     "w": 448
+    },
+    {
+     "key": "relicPart",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "ironTool",
+     "h": 259,
+     "w": 448
+    },
+    {
+     "key": "manaLamp",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "crystalLens",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "steelGear",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "relicOrnament",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "manaEngine",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "precisionMachine",
+     "h": 239,
+     "w": 448
+    }
+   ],
+   "overflow": false
+  },
+  "open": {
+   "target": {
+    "steel": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "coalBrick": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "alloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "specialAlloy": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicPart": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "ironTool": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaLamp": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "crystalLens": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "steelGear": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "relicOrnament": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "manaEngine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    },
+    "precisionMachine": {
+     "maxLinesPerPhrase": 1,
+     "words": "목표 재고:1|개에서 멈춤:1",
+     "visible": true
+    }
+   },
+   "cards": [
+    {
+     "key": "steel",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "coalBrick",
+     "h": 498,
+     "w": 448
+    },
+    {
+     "key": "alloy",
+     "h": 310,
+     "w": 448
+    },
+    {
+     "key": "crystalAlloy",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "specialAlloy",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "precisionPart",
+     "h": 382,
+     "w": 448
+    },
+    {
+     "key": "relicPart",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "ironTool",
+     "h": 310,
+     "w": 448
+    },
+    {
+     "key": "manaLamp",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "crystalLens",
+     "h": 284,
+     "w": 448
+    },
+    {
+     "key": "steelGear",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "relicOrnament",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "manaEngine",
+     "h": 239,
+     "w": 448
+    },
+    {
+     "key": "precisionMachine",
+     "h": 239,
+     "w": 448
+    }
+   ],
+   "overflow": false
+  },
+  "errors": []
+ }
+}

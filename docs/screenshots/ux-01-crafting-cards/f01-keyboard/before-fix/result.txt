@@ -1,0 +1,2 @@
+pc failed Error: expect(locator).toBeChecked() failed |  | Locator:  locator('[data-autocraft="steel"]')
+mobile failed Error: expect(locator).toBeChecked() failed |  | Locator:  locator('[data-autocraft="steel"]')

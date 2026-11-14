@@ -80,10 +80,17 @@ const test = base.extend({
       },
       async audit(label) {
         const result = await page.evaluate(() => {
+          // Issue #32 C: an open panel has a sticky top band (its ::before); content scrolled under it is out of sight
+          const band = panel => { const b = getComputedStyle(panel, '::before'); return b.position === 'sticky' ? parseFloat(b.height) || 0 : 0; };
           const visible = el => {
             const closed = el.closest('details:not([open])');
             if (closed && !closed.querySelector(':scope > summary')?.contains(el)) return false;
             const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+            const panel = document.body.classList.contains('td-panel-open') && el.closest('.tab-panel.active');
+            if (panel) {
+              const p = panel.getBoundingClientRect();
+              if (r.bottom <= p.top + band(panel) || r.top >= p.bottom || r.right <= p.left || r.left >= p.right) return false;
+            }
             return r.width > 0 && r.height > 0 && s.visibility === 'visible' && s.display !== 'none' && r.bottom > 0 && r.top < innerHeight;
           };
           const small = [], occluded = [], clipped = [], coveredText = [], statusCoveredText = [];
@@ -94,7 +101,10 @@ const test = base.extend({
             if (!visible(el)) continue;
             const r = el.getBoundingClientRect(), text = (el.textContent || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 80);
             if (r.height < 44 || r.width < 44) small.push({ text, width: +r.width.toFixed(1), height: +r.height.toFixed(1) });
-            if (r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight) {
+            const scrollPanel = document.body.classList.contains('td-panel-open') && el.closest('.tab-panel.active');
+            const p = scrollPanel && scrollPanel.getBoundingClientRect();
+            const centerInside = !p || (r.y + r.height / 2 >= p.top + band(scrollPanel) && r.y + r.height / 2 <= p.bottom);
+            if (centerInside && r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight) {
               const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
               if (hit && !el.contains(hit) && hit !== el && !el.disabled) occluded.push({ text, coveredBy: hit.id || hit.className || hit.tagName });
             }
@@ -104,14 +114,15 @@ const test = base.extend({
           if (scope === document && document.body.classList.contains('td-panel-open') && panel) {
             for (const overlay of document.querySelectorAll('#s2Open,#s2Status')) {
               if (!visible(overlay)) continue;
-              const b = overlay.getBoundingClientRect(), walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
+              const b = overlay.getBoundingClientRect(), panelBox = panel.getBoundingClientRect(), walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
               const abovePanel = +getComputedStyle(overlay).zIndex > +getComputedStyle(panel).zIndex;
               let textNode;
               while ((textNode = walker.nextNode())) {
                 if (!textNode.textContent.trim() || !visible(textNode.parentElement)) continue;
                 const range = document.createRange(); range.selectNodeContents(textNode);
                 for (const r of range.getClientRects()) {
-                  const left = Math.max(b.left, r.left), right = Math.min(b.right, r.right), top = Math.max(b.top, r.top), bottom = Math.min(b.bottom, r.bottom);
+                  // Scrolled-out text has layout boxes but is not painted outside the scrollport.
+                  const left = Math.max(b.left, r.left, panelBox.left, 0), right = Math.min(b.right, r.right, panelBox.right, innerWidth), top = Math.max(b.top, r.top, panelBox.top, 0), bottom = Math.min(b.bottom, r.bottom, panelBox.bottom, innerHeight);
                   const onTop = overlay.id === 's2Status' ? abovePanel : overlay.contains(document.elementFromPoint((left + right) / 2, (top + bottom) / 2));
                   if (right - left > 6 && bottom - top > 4 && onTop) {
                     (overlay.id === 's2Status' ? statusCoveredText : coveredText).push(textNode.textContent.trim().slice(0, 100)); break;
@@ -130,6 +141,8 @@ const test = base.extend({
         if (result.horizontalOverflow || result.clipped.length) add('UX-text-overflow', '경미', JSON.stringify({ horizontalOverflow: result.horizontalOverflow, clipped: result.clipped }), '폭과 줄바꿈을 검토');
         if (result.coveredText.length) add('UX-save-overlay', 'UX 개선', `고정 저장 버튼이 패널 텍스트를 덮음: ${JSON.stringify(result.coveredText)}`, '저장 버튼을 공통 HUD의 예약 영역 또는 패널 외부로 배치');
         if (result.statusCoveredText.length) add('UX-status-overlay', 'UX 개선', `고정 저장 상태가 패널 텍스트를 덮음: ${JSON.stringify(result.statusCoveredText)}`, '모바일 패널/본문의 하단 여백 또는 저장 상태 배치를 조정');
+        expect([...result.coveredText, ...result.statusCoveredText], label + ': 저장 HUD의 본문 가림').toEqual([]);
+        expect(result.occluded.filter(item => ['s2Open', 's2Status', 's2Hud'].includes(item.coveredBy)), label + ': 저장 HUD의 조작 가림').toEqual([]);
         return result;
       },
     };

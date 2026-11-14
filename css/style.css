@@ -748,6 +748,8 @@
 body.view-topdown #s2Hud{position:fixed;top:150px;right:12px;width:min(480px,calc(100vw - 24px));display:flex;align-items:flex-start;gap:8px;z-index:110;pointer-events:none}
 body.view-topdown #s2Open{position:static;order:1;flex:none;pointer-events:auto}
 body.view-topdown #s2Status{position:static;order:0;flex:1 1 0;min-width:0;max-width:none;line-height:1.35;overflow-wrap:anywhere}
+/* S2 already reports save status in the top-down HUD. */
+body.view-topdown:has(#s2Status) header #saveStatus{display:none}
 body.view-topdown:is(.td-panel-open,.td-log-open) #s2Hud{top:auto;bottom:calc(var(--td-dock-h) + 8px);width:min(820px,calc(100vw - 24px))}
 body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:has(#s2Hud).td-log-open #logSection{bottom:calc(var(--td-dock-h) + var(--s2-hud-height,44px) + 16px)}
 @media(max-width:760px){

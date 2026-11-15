@@ -1,0 +1,8 @@
+  ✘  1 [pc] › tests/playthrough/panel-close-band.spec.cjs:28:1 › 패널 머리 띠: 닫기 버튼 밑으로 조작 요소가 지나가지 않음, 판매·닫기·키보드 포커스 (4.1s)
+  ✘  2 [mobile] › tests/playthrough/panel-close-band.spec.cjs:28:1 › 패널 머리 띠: 닫기 버튼 밑으로 조작 요소가 지나가지 않음, 판매·닫기·키보드 포커스 (4.9s)
+    Error: 닫기 버튼 밑에 보이는 조작 요소: [{"y":216,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":224,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":232,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":240,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":248,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"}]
+    Expected: 0
+    Received: 58
+    Error: 닫기 버튼 밑에 보이는 조작 요소: [{"y":248,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":256,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":264,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":272,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"},{"y":280,"control":"<button id=\"craftFacilityBtn\" class=\"ghost\">제작 시설 강화 — 500G<"}]
+    Expected: 0
+    Received: 127

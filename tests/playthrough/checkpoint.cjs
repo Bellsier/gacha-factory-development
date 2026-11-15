@@ -1,6 +1,6 @@
 'use strict';
-// The only gameplay-state writes in this suite. Runs once, before play assertions.
-// No unlock, research, worker, level, timer, ownership, or save-engine flag is granted.
+// Gameplay-state writes are confined to these named, one-time preparations.
+// The actual playthrough receives supplies only, never progress/authority flags.
 async function prepareSupplies(page) {
   return page.evaluate(() => {
     if (state.gold !== 0 || state.characters.length || state.world.workshops.length || Object.values(state.research).some(Boolean)) {
@@ -15,4 +15,16 @@ async function prepareSupplies(page) {
     return receipt;
   });
 }
-module.exports = { prepareSupplies };
+// Layout-only checkpoint: a completed museum provides long descriptions/rewards.
+// This is not used by, or counted as progress in, the production playthrough.
+async function prepareHudVillage(page) {
+  await prepareSupplies(page);
+  await page.evaluate(() => {
+    const v = state.village;
+    v.stage.appraiser = 2; v.stage.museum = 2; v.codex = VILLAGE_RELICS.map(r => r.key);
+    v.donated = [...v.codex]; v.owned = {}; v.appraised = v.codex.length;
+    v.specimens = VILLAGE_SPECIMENS.map(s => ({ key: s.key, at: 0 }));
+    renderAll();
+  });
+}
+module.exports = { prepareSupplies, prepareHudVillage };

@@ -1,0 +1,8 @@
+  ✘  1 [pc] › tests/playthrough/recipe-draft.spec.cjs:8:1 › UX-01 목표 재고 초안: 불완전 숫자·조합 중 재렌더, 정상 입력·정규화·포커스·커서 (3.3s)
+  ✘  2 [mobile] › tests/playthrough/recipe-draft.spec.cjs:8:1 › UX-01 목표 재고 초안: 불완전 숫자·조합 중 재렌더, 정상 입력·정규화·포커스·커서 (2.4s)
+    Error: 편집 중인 칸은 교체되지 않음(같은 노드, 불완전 값 유지)
+    - Expected  - 2
+    + Received  + 2
+    Error: 편집 중인 칸은 교체되지 않음(같은 노드, 불완전 값 유지)
+    - Expected  - 2
+    + Received  + 2

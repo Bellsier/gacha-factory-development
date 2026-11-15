@@ -148,8 +148,15 @@ const S2Runtime = {
     this.status();if(typeof GameBootstrap!=='undefined')GameBootstrap.ready();
   },
   mount(){
-    const button=document.createElement('button');button.id='s2Open';button.type='button';button.textContent='저장 · 마을';button.onclick=()=>{this.menuOpen=true;this.clearInput();this.renderMenu();this.status();this.root.querySelector('[data-s2-close]').focus();};document.body.appendChild(button);
-    const status=document.createElement('div');status.id='s2Status';status.setAttribute('role','status');document.body.appendChild(status);
+    const button=document.createElement('button');button.id='s2Open';button.type='button';button.textContent='저장 · 마을';button.onclick=()=>{this.menuOpen=true;this.clearInput();this.renderMenu();this.status();this.root.querySelector('[data-s2-close]').focus();};
+    const status=document.createElement('div');status.id='s2Status';status.setAttribute('role','status');
+    // Presentation only: reserve the rendered HUD height outside panel scroll areas.
+    // These observers read geometry; they never read/write saved data or authority.
+    const hud=document.createElement('div');hud.id='s2Hud';hud.append(button,status);document.body.appendChild(hud);
+    const measure=()=>document.documentElement.style.setProperty('--s2-hud-height',Math.ceil(hud.getBoundingClientRect().height)+'px');
+    if(typeof ResizeObserver!=='undefined')new ResizeObserver(measure).observe(hud);
+    else if(typeof MutationObserver!=='undefined')new MutationObserver(measure).observe(status,{childList:true,characterData:true,subtree:true});
+    window.addEventListener('resize',measure);measure();
     const root=document.createElement('section');root.id='s2Menu';root.tabIndex=-1;root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');root.setAttribute('aria-label','저장과 마을 관리');root.innerHTML='<div class="s2-paper"><h2>저장과 마을</h2><p data-s2-current></p><p data-s2-message role="status"></p><button type="button" data-s2-recent disabled>최근 마을 이어하기</button><p data-s2-recent-label></p><button type="button" data-s2-close>플레이로 돌아가기</button><label>새 마을 이름 <input data-s2-name maxlength="40" value="새 마을"></label><button type="button" data-s2-new>새 마을 만들기</button><p>다른 마을과 수동 저장은 유지됩니다.</p><button type="button" data-s2-import>기존 저장을 별도 마을로 가져오기</button><details data-s2-auto-section open><summary><h3>자동 저장 · 마을별 1개</h3></summary><div data-s2-autos></div></details><details data-s2-manual-section open><summary><h3>수동 저장 · 전체 공용 5개</h3></summary><div data-s2-manuals></div></details></div>';document.body.appendChild(root);this.root=root;
     if(typeof matchMedia==='function'&&matchMedia('(max-width:600px)').matches)root.querySelector('[data-s2-manual-section]').open=false;
     root.querySelector('[data-s2-recent]').onclick=()=>{if(this.recentId)this.resume(this.recentId);};

@@ -94,6 +94,8 @@ test('준비 자원: 모든 지역·연구·제품, 최대 시설, 박물관 최
     await qa.activate(page.locator('[data-workshop-auto]').first());
     await expect(page.locator('[data-workshop-auto]').first()).not.toBeChecked();
     const before = await page.evaluate(() => state.gold);
+    await qa.press('[data-recipe-summary="plasmaCore"]'); // UX-01: the sale is in the card's details
+    await expect(page.locator('[data-recipe-more="plasmaCore"]')).toHaveAttribute('open', '');
     await qa.press('[data-sell="plasmaCore"]');
     expect(await page.evaluate(() => state.gold)).toBeGreaterThan(before);
     expect(await page.evaluate(() => state.products.plasmaCore)).toBe(0);

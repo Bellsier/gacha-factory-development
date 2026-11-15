@@ -21,6 +21,16 @@ async function scrollWithInput(page, selector, mobile) {
     } finally { await session.detach(); }
   }
   await expect.poll(() => panel.evaluate(el => el.scrollTop)).toBeGreaterThan(20);
+  // A quick swipe can leave a fling running. A tap during a fling only stops it and Chrome
+  // sends no click, so wait until the panel has stopped scrolling before the next input.
+  await panel.evaluate(el => new Promise(resolve => {
+    let last = el.scrollTop, since = performance.now();
+    const check = now => {
+      if (el.scrollTop !== last) { last = el.scrollTop; since = now; }
+      if (now - since >= 300) resolve(); else requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }));
 }
 
 test('pre-S4: 저장 HUD 가림 회귀·전후 비교·기존 저장 호환', async ({ page, qa }, testInfo) => {

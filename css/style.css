@@ -757,7 +757,11 @@ body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:
   body.view-topdown:has(#s2Hud).td-panel-open .tab-panel.active,body.view-topdown:has(#s2Hud).td-log-open #logSection{top:28vh;top:28dvh;height:auto}
 }
 @media(max-height:500px) and (orientation:landscape){
-  body.view-topdown #s2Hud{top:104px}
+  /* Landscape: the next-step hint and the right-hand buttons fill the top band, so in the world view the save HUD
+     sits above the dock. Touch: between the stick (18px + 124px) and the button column (16px + up to 120px).
+     No touch: no stick; clear of the wide torch/garden buttons at the right (14px + about 165px). */
+  body.view-topdown:not(.td-panel-open):not(.td-log-open) #s2Hud{top:auto;bottom:calc(var(--td-dock-h) + 8px);left:152px;right:144px;width:auto}
+  body.view-topdown:not(.td-touch):not(.td-panel-open):not(.td-log-open) #s2Hud{left:12px;right:188px}
 }
 
 /* Issue #32 C: the open panel's top band (its title, its icon and the fixed close button) no longer scrolls.

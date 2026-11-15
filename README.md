@@ -65,3 +65,7 @@ node tools/build-dist.js
 6. **연구** 탭에서 "납품 계약"을 연구하면 **납품** 탭에서 회사에 제품을 보낼 수 있다. 회사의 수주를 완수하면 명성을 얻고(최대 36), 명성이 오르면 거래할 수 있는 회사가 늘고 채굴·판매 배율과 효과가 열린다. 환생(전체 초기화)은 없다.
 
 진행 상황은 브라우저 `localStorage`에 자동 저장됩니다 (`saveVersion` 1).
+
+## 자동 플레이 QA
+
+`npm ci`와 `npx playwright install --with-deps chromium` 후 `npm run test:playthrough`로 PC·모바일 Chromium 플레이를 실행합니다. 시나리오, 준비 자원 사용 경계와 증거 확인 방법은 [자동 플레이 QA](docs/PLAYTHROUGH_QA.md), 확인된 UX 문제는 [1차 결과 기록](docs/PLAYTHROUGH_QA_REPORT.md)에 있습니다.

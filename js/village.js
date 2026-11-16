@@ -161,12 +161,38 @@ function villageReachGrid(reach){
   return villageReachArea(base.x - reach, base.y - reach, base.x + reach, base.y + reach, { x: base.x, y: base.y + 0.05 });
 }
 
+// playerCanStand for every point of an nx x ny grid from (x0, y0), step st (1 = can stand).
+// Nothing changes while the grid is filled, so the obstacle index is read once and each point
+// looks at the same boxes playerCanStand would (worldObstaclesNear: index entries whose point is
+// within 2 units) without building and sorting a list per point (most of a new game's start-up).
+function villageStandGrid(x0, y0, nx, ny, st){
+  const can = new Uint8Array(nx * ny);
+  const R = 2; // worldObstacles(x, y, 1) asks the index within 1 + 1
+  // worldObstacles first loads the generated chunks round each point it is asked about (the
+  // test world); every chunk an entry within R of a grid point lives in is in this rectangle
+  worldEnsureRect({ minX: x0 - R, maxX: x0 + (nx - 1) * st + R, minY: y0 - R, maxY: y0 + (ny - 1) * st + R });
+  const index = typeof worldIndex === 'function' && typeof worldObstaclesNear === 'function' ? worldIndex() : null;
+  const U = index ? WORLD_INDEX.UNITS : 0;
+  for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++){
+    const x = x0 + i * st, y = y0 + j * st;
+    if(!index){ can[j * nx + i] = playerCanStand(x, y) ? 1 : 0; continue; }
+    if(!isWorldPointWalkable(x, y)) continue;
+    let blocked = false;
+    for(let cy = Math.floor((y - R) / U); cy <= Math.floor((y + R) / U) && !blocked; cy++)
+      for(let cx = Math.floor((x - R) / U); cx <= Math.floor((x + R) / U) && !blocked; cx++){
+        const b = index.obstacles.get(cx + ',' + cy);
+        if(b) blocked = b.some(e => Math.hypot(e.x - x, e.y - y) <= R && playerFootOverlaps(e.obj, x, y));
+      }
+    if(!blocked) can[j * nx + i] = 1;
+  }
+  return can;
+}
+
 // The same check over any rectangle, flood-filled from `start` (Task 120: the garden's
 // own neighbourhood from the plaza — a decoration can only cut off ground near it).
 function villageReachArea(x0, y0, x1, y1, start){
   const st = VILLAGE.SITE.GRID, nx = Math.round((x1 - x0) / st) + 1, ny = Math.round((y1 - y0) / st) + 1, N = nx * ny;
-  const can = new Uint8Array(N);
-  for(let j = 0; j < ny; j++) for(let i = 0; i < nx; i++) can[j * nx + i] = playerCanStand(x0 + i * st, y0 + j * st) ? 1 : 0;
+  const can = villageStandGrid(x0, y0, nx, ny, st);
   const cell = (x, y) => { const i = Math.round((x - x0) / st), j = Math.round((y - y0) / st); return i < 0 || j < 0 || i >= nx || j >= ny ? -1 : j * nx + i; };
   const fill = (blocked) => {
     const seen = new Uint8Array(N), s0 = cell(start.x, start.y);
@@ -527,9 +553,10 @@ let villageRoadCache = null;
 
 function villageRoadKey(){
   const w = state.world, v = state.village, ws = w.workshops.filter(Boolean).map(h => h.x + ',' + h.y).join(';');
-  const last = w.mines[w.mines.length - 1];
+  const mines = worldVillageMines();
+  const last = mines[mines.length - 1];
   return w.base.x + ',' + w.base.y + '|' + JSON.stringify(v.district) + '|' + VILLAGE.ORDER.map(k => v.sites[k] ? v.sites[k].x + ',' + v.sites[k].y : '-').join(';') +
-    '|' + w.mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
+    '|' + mines.length + (last ? '@' + last.x + ',' + last.y : '') + '|' + ws + '|' + (terrainTunnelOpen() ? 1 : 0);
 }
 
 // The roads: [{ to, points: [{x, y}, ...] }]. Each starts at a door step (or the

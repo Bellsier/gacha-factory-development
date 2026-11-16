@@ -28,9 +28,9 @@ jobs:
         
     - run: npm install
     - run: npm run build --if-present
-    # The suite runs many test game windows (jsdom) in one process; its live
-    # heap peaks at about 3.2 GB, above Node's default limit (about 2 GB) on
-    # the smaller runners private repositories get.
+    # The suite runs many test game windows (jsdom) in one process. Since the
+    # runner frees each test's windows before the next test, it also
+    # passes with a 1 GB heap; the larger limit only leaves headroom.
     - run: npm test
       env:
         NODE_OPTIONS: --max-old-space-size=5120

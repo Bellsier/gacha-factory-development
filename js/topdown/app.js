@@ -144,6 +144,41 @@ function tdBindStick(stick, knob){
   stick.addEventListener('pointercancel', end);
 }
 
+// Issue #32: the phone buttons act on a touch (or pen) press that starts and ends on the button, at pointerup,
+// instead of waiting for the browser's click. Chromium does not always send that click: right after a quick
+// flick of the stick it was lost (measured: up to 20 of 20 taps), and a second finger never gets one, so a button
+// pressed while the other thumb holds the stick did nothing.
+//  - Any finger counts, not only the first on the screen; with two fingers on one button the last to land is the
+//    tap, so there is one action.
+//  - A touch sends no click at all (its touchend is cancelled). Otherwise a tap that opens a panel had its click
+//    land on whatever appeared under the finger, e.g. a "sell all" button of the panel (PR #38 deep review).
+//  - A pen's click still comes, to this button, with the pointerId of the press: exactly that click is skipped.
+//    A mouse click (pointerType 'mouse'), Enter/Space (pointerType '', detail 0) or any other click acts as before.
+//  - No timer, and every new press forgets the last tap, so a later input is never swallowed.
+// Fallback for a browser whose click is not a PointerEvent: a click with detail > 0 right after a handled tap.
+function tdBindTap(btn, act){
+  if(!btn) return;
+  let pressed = null, handled = null;
+  btn.addEventListener('pointerdown', (e) => { handled = null; if(e.pointerType === 'touch' || e.pointerType === 'pen') pressed = e.pointerId; });
+  btn.addEventListener('pointercancel', (e) => { if(e.pointerId === pressed) pressed = null; });
+  btn.addEventListener('pointerup', (e) => {
+    if(e.pointerId !== pressed) return;
+    pressed = null;
+    const r = btn.getBoundingClientRect();
+    if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return; // slid off: no tap
+    handled = e.pointerId;
+    act();
+  });
+  btn.addEventListener('touchend', (e) => { if(e.cancelable) e.preventDefault(); }); // no click from a touch
+  btn.addEventListener('click', (e) => {
+    const sameTap = 'pointerType' in e ? (e.pointerType === 'touch' || e.pointerType === 'pen') && e.pointerId === handled
+      : handled !== null && e.detail > 0;
+    handled = null;
+    if(sameTap) return; // the click of the tap already acted on
+    act();
+  });
+}
+
 // --- set-up -------------------------------------------------------------------
 function tdInit(){
   if(tdViewMode() !== 'topdown') return false;
@@ -180,6 +215,13 @@ function tdInit(){
     logBtn.onclick = () => { const open = body.classList.contains('td-log-open'); tdClosePanels(); if(!open) body.classList.add('td-log-open'); };
     tabbar.appendChild(logBtn);
   }
+  // Task 24: each panel shows its tab's name as a title (CSS draws it with the tab's icon)
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(b => { const p = document.getElementById('tab-' + b.dataset.tab); if(p) p.setAttribute('data-panel-title', b.textContent.trim()); });
+  const logSection = document.getElementById('logSection');
+  if(logSection) logSection.setAttribute('data-panel-title', '기록');
+  // Task 24: on a phone the next-step hint shows two lines; a tap opens the rest (and closes it again)
+  const hint = document.getElementById('nextHint');
+  if(hint) hint.addEventListener('click', () => hint.classList.toggle('is-open'));
   // a tab button opens its panel; pressing the open tab again closes it
   document.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest ? e.target.closest('.tab-btn') : null;
@@ -189,14 +231,16 @@ function tdInit(){
     body.classList.add('td-panel-open');
   }, true);
   document.getElementById('tdClose').onclick = tdClosePanels;
-  document.getElementById('tdAction').onclick = () => { tdInteractNow(); };
-  document.getElementById('tdTorch').onclick = () => { tdTorchNow(); };
-  document.getElementById('tdDecor').onclick = () => { tdGardenButtonNow(); }; // Task 120
+  tdBindTap(document.getElementById('tdAction'), () => { tdInteractNow(); }); // Issue #32: a touch tap acts without waiting for the browser's click
+  tdBindTap(document.getElementById('tdTorch'), () => { tdTorchNow(); });
+  tdBindTap(document.getElementById('tdDecor'), () => { tdGardenButtonNow(); }); // Task 120
   tdBindStick(document.getElementById('tdStick'), document.querySelector('#tdStick .td-knob'));
   // E / Space acts, Escape closes panels (never while typing in a field)
   document.addEventListener('keydown', (e) => {
-    if(e.repeat || playerTypingTarget(e.target)) return;
+    if(e.repeat) return;
+    // Task 24: Escape closes the panel even from a field in it (the field only keeps the letters)
     if(e.key === 'Escape' && (tdPanelOpen() || body.classList.contains('td-log-open'))){ tdClosePanels(); return; }
+    if(playerTypingTarget(e.target)) return;
     const onButton = e.target && e.target.tagName === 'BUTTON';
     if(e.key === 'e' || e.key === 'E' || (e.key === ' ' && !onButton)){
       if(e.key === ' ') e.preventDefault();
@@ -207,7 +251,11 @@ function tdInit(){
     if((e.key === 'q' || e.key === 'Q') && tdGardenButtonMode() === 'cycle') tdGardenButtonNow('cycle'); // ...or choose the next kind
   });
   // clicking the world puts the keyboard back on the world (out of any panel field)
-  canvas.addEventListener('pointerdown', () => { if(document.activeElement && document.activeElement !== body && document.activeElement.blur) document.activeElement.blur(); });
+  canvas.addEventListener('pointerdown', () => {
+    if(document.activeElement && document.activeElement !== body && document.activeElement.blur) document.activeElement.blur();
+    // Task 24: on a phone, a tap on the world above an open panel closes it (the way back without aiming for ✕)
+    if(TD.touch && (tdPanelOpen() || body.classList.contains('td-log-open'))) tdClosePanels();
+  });
   if(!TD.ctx) return true; // no 2D canvas (tests): the layout is set up, nothing is drawn
   TD.sheet = tdBuildSpriteSheet();
   TD.running = true;

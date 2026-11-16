@@ -55,10 +55,14 @@ function log(msg){
   while(el.children.length > 40) el.removeChild(el.lastChild);
 }
 
+// toLocaleString() with no arguments formats like a default Intl.NumberFormat, but looks the
+// formatter up on every call (half of updateNumbers' time); one formatter gives the same text.
+let fmtFormat = null;
 function fmt(n){
   if(n <= 0) return '0';
   if(n < 10 && n % 1 !== 0) return n.toFixed(1);
-  return Math.floor(n).toLocaleString();
+  if(!fmtFormat) fmtFormat = typeof Intl === 'object' && Intl.NumberFormat ? new Intl.NumberFormat() : { format: (x) => x.toLocaleString() };
+  return fmtFormat.format(Math.floor(n));
 }
 
 // Shared helpers to avoid repeating the same formula/lookup everywhere.
@@ -432,17 +436,25 @@ function tickAutoSell(){
 // reveals it. Mines without an entry (starters, expansion seeds, any older
 // save) are discovered.
 // ---------------------------------------------------------------------------
+let hiddenMineCache=null;
+function hiddenMineSet(){
+ const ids=state.world.hiddenMineIds;
+ if(!Array.isArray(ids))return new Set();
+ if(!hiddenMineCache||hiddenMineCache.ids!==ids||hiddenMineCache.length!==ids.length)hiddenMineCache={ids,length:ids.length,set:new Set(ids)};
+ return hiddenMineCache.set;
+}
 function isMineDiscovered(mine){
   if(!mine) return false;
   const hidden = state.world.hiddenMineIds;
-  return !Array.isArray(hidden) || !hidden.includes(mine.id);
+  return !Array.isArray(hidden) || !hiddenMineSet().has(mine.id);
 }
 
 function discoverMine(mineId){
   const hidden = state.world.hiddenMineIds;
-  if(!Array.isArray(hidden) || !hidden.includes(mineId)) return false;
+  if(!Array.isArray(hidden) || !hiddenMineSet().has(mineId)) return false;
   const mine = mineById(mineId);
   state.world.hiddenMineIds = hidden.filter(id => id !== mineId);
+  recordGeneratedMineEdit(mineId);
   if(mine){
     const res = resourceByKey(mine.resource);
     log('새 광맥 발견: ' + (res ? res.name : mine.resource) + ' (' + mine.x + ', ' + mine.y + ')');
@@ -457,8 +469,10 @@ function tickExploration(){
   if(!Array.isArray(hidden) || hidden.length === 0) return [];
   const p = state.world.player;
   const r = discoveryRadius(); // Task 80: 탐사 장비 widens it
-  const found = state.world.mines
-    .filter(m => m && hidden.includes(m.id) && Math.hypot(m.x - p.x, m.y - p.y) <= r)
+  worldEnsureRect({minX:p.x-r,maxX:p.x+r,minY:p.y-r,maxY:p.y+r});
+  const candidates=typeof worldMinesNear==='function'?worldMinesNear(p.x,p.y,r):state.world.mines;
+  const found = candidates
+    .filter(m => m && hiddenMineSet().has(m.id) && Math.hypot(m.x - p.x, m.y - p.y) <= r)
     .map(m => m.id);
   found.forEach(discoverMine);
   if(found.length && typeof renderWorldObjects === 'function'){
@@ -469,7 +483,16 @@ function tickExploration(){
   return found;
 }
 
+// One game tick (TICK_MS of game time), then the numbers on screen.
 function tickLoop(){
+  tickStep();
+  updateNumbers();
+  updatePlayerSprite();
+}
+
+// Task 21: one game tick without the screen update. The game clock (main.js) runs several of
+// these in a row when ticks are overdue, and redraws the numbers once after the last.
+function tickStep(){
   // Task 114: a village without sites (a new game or an older save) gets them once
   if(typeof villageEnsureSites === 'function' && state.village && state.village.sites && !(state.village.sites.appraiser && state.village.sites.museum && state.village.district)) villageEnsureSites(); // Task 118: and the plaza
   tickMining();
@@ -481,8 +504,6 @@ function tickLoop(){
   tickPlayer();
   tickExploration(); // Task 65
   if(tickTunnelWork() && typeof renderAll === 'function') renderAll(); // Task 93: the work is done, the tunnel opens
-  updateNumbers();
-  updatePlayerSprite();
 }
 
 // passive ticket trickle — only once the first (50G-earned) ticket has been

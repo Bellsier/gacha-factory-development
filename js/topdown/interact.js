@@ -6,6 +6,22 @@
 // (blueprint 24.4 #1). Nothing here is saved.
 // ---------------------------------------------------------------------------
 
+// Task 23: the cabin's and the huts' doors face south (their point is the door step). Standing in the
+// strip in front of a door picks that door over a nearer point to the side; standing behind the
+// building (north of its back wall) counts it farther; facing it breaks a near tie. Only the order of
+// targets already in reach changes, never the reach itself.
+const TD_DOOR = { FRONT_DEPTH: 0.9, FRONT: 0.3, BEHIND: 0.5, FACING: 0.15 };
+function tdDoorBonus(px, py, fv){
+  return (x, y, box) => { // box: the building's wall box (WORLD_OBSTACLE_BOXES)
+    const dx = px - x, dy = py - y, d = Math.hypot(dx, dy);
+    let b = 0;
+    if(dx >= box.minX - 0.1 && dx <= box.maxX + 0.1 && dy >= -0.05 && dy <= TD_DOOR.FRONT_DEPTH) b += TD_DOOR.FRONT;
+    else if(dy < box.minY) b -= TD_DOOR.BEHIND; // past its back wall
+    if(d > 1e-6) b += TD_DOOR.FACING * Math.max(0, -(fv[0] * dx + fv[1] * dy) / d);
+    return b;
+  };
+}
+
 // What the player could act on right now: the nearest target within reach, or null.
 //   { type: 'mine', id, x, y, action: 'secure' | 'mine' | 'locked', label }
 //   { type: 'base' | 'workshop', id, x, y, action: 'open', label }
@@ -13,7 +29,8 @@ function tdInteractTarget(px, py){
   if(typeof villageHomeInside === 'function' && villageHomeInside()) return villageHomeTarget(); // Task 119: inside the house only its door
   const range = TOPDOWN.INTERACT_RANGE;
   let best = null, bestD = Infinity;
-  const consider = (t, d) => { if(d <= range && d < bestD){ best = t; bestD = d; } };
+  // reach is the plain distance; `bonus` only reorders what is in reach (Task 23: the doors below)
+  const consider = (t, d, bonus) => { const s = d - (bonus || 0); if(d <= range && s < bestD){ best = t; bestD = s; } };
   (typeof worldMinesNear === 'function' ? worldMinesNear(px, py, range) : state.world.mines).forEach(m => { // the veins in reach (chunk index)
     if(!m || !isMineDiscovered(m)) return; // hidden mines are found by walking near them, not used
     const d = Math.hypot(m.x - px, m.y - py);
@@ -30,10 +47,15 @@ function tdInteractTarget(px, py){
     }
   });
   const base = state.world.base;
-  consider({ type: 'base', id: 'base', x: base.x, y: base.y, action: 'open', label: '공방 들어가기' }, Math.hypot(base.x - px, base.y - py));
-  state.world.workshops.forEach(w => {
+  const fv = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[state.world.player && state.world.player.facing] || [0, 0];
+  const door = tdDoorBonus(px, py, fv);
+  consider({ type: 'base', id: 'base', x: base.x, y: base.y, action: 'open', label: '공방 들어가기' }, Math.hypot(base.x - px, base.y - py), door(base.x, base.y, WORLD_OBSTACLE_BOXES.base));
+  state.world.workshops.forEach((w, i) => {
     if(!w) return;
-    consider({ type: 'workshop', id: w.id, x: w.x, y: w.y, action: 'open', label: '제작소 Lv.' + w.level }, Math.hypot(w.x - px, w.y - py));
+    const rec = typeof recipeByKey === 'function' && w.recipeKey ? recipeByKey(w.recipeKey) : null;
+    // Task 23: which hut it is (its number in the list and what it makes), so two side by side can be told apart
+    const label = '제작소 ' + (i + 1) + ' Lv.' + w.level + ' · ' + (rec ? rec.name : '레시피 없음');
+    consider({ type: 'workshop', id: w.id, x: w.x, y: w.y, action: 'open', label }, Math.hypot(w.x - px, w.y - py), door(w.x, w.y, WORLD_OBSTACLE_BOXES.workshop));
   });
   // Task 114: the village facilities (their door step is the site point)
   if(typeof villageTargetFor === 'function' && state.village && state.village.sites){

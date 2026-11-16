@@ -1,0 +1,579 @@
+{
+  "base": "ab0ad8c464319bbaf2735e4a46998050878f17f0",
+  "browser": "154.0.8037.57",
+  "seed": 20261101,
+  "timeMs": 0,
+  "duskMs": 240000,
+  "cases": [
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "current",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "A",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "movement": {
+        "start": 1.2,
+        "y": -0.03999023437500011,
+        "stand": true,
+        "edge": -0.1,
+        "storageIntact": true
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "B",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "movement": {
+        "start": 1.2,
+        "y": -0.03999023437500011,
+        "stand": true,
+        "edge": -0.1,
+        "storageIntact": true
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "classic",
+      "art": "C",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "movement": {
+        "start": 1.2,
+        "y": -0.03999023437500011,
+        "stand": true,
+        "edge": -0.1,
+        "storageIntact": true
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "current",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "A",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "movement": {
+        "start": 1.2,
+        "y": -0.03999023437500011,
+        "stand": true,
+        "edge": -0.1,
+        "storageIntact": true
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "B",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "movement": {
+        "start": 1.2,
+        "y": -0.03999023437500011,
+        "stand": true,
+        "edge": -0.1,
+        "storageIntact": true
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "art": "C",
+      "spriteBox": [
+        458,
+        113,
+        192,
+        174
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 3,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "movement": {
+        "start": 1.2,
+        "y": -0.03999023437500011,
+        "stand": true,
+        "edge": -0.1,
+        "storageIntact": true
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "current",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "A",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "B",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "art": "C",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "current",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "A",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "B",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "art": "C",
+      "spriteBox": [
+        219,
+        693,
+        384,
+        348
+      ],
+      "size": [
+        64,
+        58
+      ],
+      "door": true,
+      "step": true,
+      "lights": true,
+      "bounds": true,
+      "contractUnchanged": true,
+      "storageIntact": true,
+      "zoom": 2,
+      "player": {
+        "x": 2.45,
+        "y": 0.65,
+        "facing": "down",
+        "pose": "idle"
+      },
+      "camera": {
+        "x": 2.45,
+        "y": 0.65
+      },
+      "errors": []
+    }
+  ]
+}

@@ -260,11 +260,6 @@ function workshopProgressLabel(workshop, recipe){
   if(st.state === 'blocked') return auto ? '자동 제작 중 · 재료 부족' : '재료 부족';
   return auto ? '자동 제작 중' : '대기 중';
 }
-// Task 86: stock target input (auto-craft and workshops pause at this stock; empty = no limit).
-function targetInputHtml(key){
-  const t = state.craftTarget[key] || '';
-  return '<label class="toggle-auto">목표 재고 <input type="number" min="0" step="1" class="target-input" data-craft-target="' + key + '" value="' + t + '" placeholder="제한 없음"> 개에서 멈춤</label>';
-}
 // Task 79: workshop upgrade button (cost = gold + any high-tier products).
 function workshopUpgradeCostText(workshop){
   const cost = workshopUpgradeCost(workshop);
@@ -647,59 +642,204 @@ function updateDeliveryNumbers(){
   });
 }
 
+// UX-01 (Issue #32): a recipe card shows what you need first — the product and its stock, every
+// input with what you HAVE and what it NEEDS, the craft button and, when it cannot be pressed, the
+// real reason. Selling, auto-craft, the stock target and auto-sell live in a native
+// <details> ("판매 · 자동화 설정"), closed by default. The controls keep their data-* attributes,
+// element kinds and handlers; only their containers moved.
+// Which details are open is UI state only: kept per run object (a new village, a restore or a
+// reload starts closed) and never written to the save, localStorage or IndexedDB.
+const RECIPE_MORE_OPEN = new WeakMap();
+function recipeMoreOpenSet(){
+  let set = RECIPE_MORE_OPEN.get(state);
+  if(!set){ set = new Set(); RECIPE_MORE_OPEN.set(state, set); }
+  return set;
+}
+// Inputs as the card reads them: whole units, the same rule as recipeShortages() (factory.js).
+function recipeNeedRows(r){
+  return Object.entries(r.need).map(([k, need]) => {
+    const have = Math.floor(stockOf(k) || 0);
+    return { key: k, name: itemName(k), need, have, short: have < need };
+  });
+}
+function recipeNeedText(row){
+  return row.name + ' 보유 ' + fmt(row.have) + ' / 필요 ' + row.need + (row.short ? ' (부족)' : '');
+}
+// The same line as markup: the name, then the counts kept together so they never break mid-number.
+function recipeNeedInnerHtml(row){
+  return '<span class="recipe-need-name">' + row.name + '</span> <span class="recipe-need-count">보유 ' + fmt(row.have) + ' / 필요 ' + row.need + '</span>' +
+    (row.short ? ' <span class="recipe-need-flag">(부족)</span>' : '');
+}
+// Why the craft button cannot be pressed ('' when it can, or while it is crafting: the button says so).
+function recipeCraftReason(r){
+  if(r.workshopOnly) return '';
+  if(state.craftQueue[r.key] !== null) return '';
+  const short = recipeShortages(r);
+  return short.length ? short.map(s => s.name + ' ' + (s.need - s.have) + '개').join(' · ') + ' 부족' : '';
+}
+function recipeSellReason(r){
+  if(state.autoSell[r.key] && state.autoSellOn[r.key]) return '자동 판매가 켜져 있어 직접 팔 수 없어요';
+  if(!(state.products[r.key] > 0)) return '팔 수 있는 재고가 없어요';
+  return '';
+}
+function recipeAutoSellReason(r){
+  const cost = autoSellCost(r);
+  if(state.gold >= cost) return '';
+  return '골드 ' + fmt(Math.ceil(cost - state.gold)) + 'G 부족 (필요 ' + fmt(cost) + 'G · 보유 ' + fmt(Math.floor(state.gold)) + 'G)';
+}
+// What auto-craft is really doing (shown on the closed card, so a hidden setting is never a surprise).
+function recipeAutoStateText(r){
+  if(r.workshopOnly) return '';
+  const parts = [];
+  if(state.autoCraft[r.key]){
+    if(!isAutoCraftUnlocked()) parts.push('자동 제작 켜짐 · 연구 필요');
+    else if(state.craftQueue[r.key] !== null) parts.push('자동 제작 중');
+    else if(atCraftTarget(r.key)) parts.push('자동 제작 · 목표 재고 도달로 쉬는 중');
+    else if(recipeShortages(r).length) parts.push('자동 제작 · 재료 부족으로 대기');
+    else parts.push('자동 제작 켜짐');
+  }
+  if(canAutoSell(r) && state.autoSell[r.key] && state.autoSellOn[r.key]) parts.push('자동 판매 켜짐');
+  return parts.join(' · ');
+}
+function recipeMoreStateText(r){
+  const t = state.craftTarget[r.key] || 0;
+  const parts = ['판매 ' + fmt(r.sell * mult()) + 'G/개'];
+  if(!r.workshopOnly) parts.push('자동 제작 ' + (state.autoCraft[r.key] ? '켜짐' : '꺼짐'));
+  parts.push(t > 0 ? '목표 ' + fmt(t) + '개' : '목표 없음');
+  return parts.join(' · ');
+}
+function recipeSellHintVisible(r, details){
+  return state.products[r.key] > 0 && !(details && details.open) && !(state.autoSell[r.key] && state.autoSellOn[r.key]);
+}
+// Task 86 + UX-01: the stock target as its own label, the field with its unit, and one line of help.
+function recipeTargetHtml(r){
+  const t = state.craftTarget[r.key] || '';
+  const id = 'craft-target-' + r.key;
+  return '<div class="recipe-target" data-target-row="' + r.key + '">' +
+    '<label class="recipe-target-label" for="' + id + '">목표 재고</label>' +
+    '<span class="recipe-target-field"><input type="number" min="0" step="1" class="target-input" id="' + id + '" data-craft-target="' + r.key + '" value="' + t + '" placeholder="제한 없음" aria-describedby="' + id + '-help"> <span class="recipe-target-unit">개에서 멈춤</span></span>' +
+    '<p class="recipe-target-help" id="' + id + '-help">자동 생산의 새 시작만 멈춰요. 빈칸이나 0은 제한 없음. 제작소와 함께 써요.</p>' +
+  '</div>';
+}
+function recipeAutoSellHtml(r){
+  if(state.autoSell[r.key]) return `
+        <label class="toggle-auto">
+          <input type="checkbox" data-autoselltoggle="${r.key}" ${state.autoSellOn[r.key]?'checked':''}>
+          자동 판매 (켜짐/꺼짐)
+        </label>`;
+  const reason = recipeAutoSellReason(r);
+  return `
+        <div class="facility recipe-autosell-buy">
+          <span>자동 판매 미구매</span>
+          <button data-buyautosell="${r.key}" class="ghost" ${dis(state.gold < autoSellCost(r))} aria-describedby="buyautosell-reason-${r.key}">구매 (${autoSellCost(r)}G)</button>
+        </div>
+        <p class="recipe-reason" id="buyautosell-reason-${r.key}" data-buyautosell-reason="${r.key}"${reason ? '' : ' hidden'}>${reason}</p>`;
+}
+function recipeCardHtml(r, autoUnlocked){
+  const needs = recipeNeedRows(r).map(row =>
+    `<li class="recipe-need${row.short ? ' is-short' : ''}" data-need="${r.key}:${row.key}">${recipeNeedInnerHtml(row)}</li>`).join('');
+  const sellReason = recipeSellReason(r), craftReason = recipeCraftReason(r), autoState = recipeAutoStateText(r);
+  const sellButton = `<button data-sell="${r.key}" class="ghost" ${dis(state.products[r.key]<=0)} aria-describedby="sell-reason-${r.key}">전량 판매 (${fmt(r.sell * mult())}G/개)</button>`;
+  const head = `
+      <div class="name">${r.name}</div>
+      <div class="stock" data-stock="${r.key}">${fmt(state.products[r.key])}개 보유</div>
+      <ul class="recipe-needs" aria-label="${r.name} 재료">${needs}</ul>`;
+  const main = r.workshopOnly
+    // Task 79: higher recipes are made in a workshop; no hand craft, auto-craft or auto-sell here.
+    ? `<div class="rate" data-workshop-only="${r.key}">제작소에서 만들 수 있어요 (개발 탭의 제작소)</div>`
+    : `<div class="row recipe-main">
+        <button data-craft="${r.key}" ${dis(!canCraft(r))} aria-describedby="craft-reason-${r.key}">제작</button>
+      </div>
+      <p class="recipe-reason" id="craft-reason-${r.key}" data-craft-reason="${r.key}"${craftReason ? '' : ' hidden'}>${craftReason}</p>`;
+  const more = `
+      <p class="recipe-auto-state" data-recipe-auto-state="${r.key}"${autoState ? '' : ' hidden'}>${autoState}</p>
+      <p class="recipe-sell-hint" data-recipe-sell-hint="${r.key}" hidden>만든 물건은 아래 「판매 · 자동화 설정」을 펼쳐 팔 수 있어요.</p>
+      <details class="recipe-more" data-recipe-more="${r.key}">
+        <summary data-recipe-summary="${r.key}"><span class="recipe-more-title">판매 · 자동화 설정</span><span class="recipe-more-state" data-recipe-more-state="${r.key}">${recipeMoreStateText(r)}</span></summary>
+        <div class="recipe-more-body">
+          <div class="row">${sellButton}</div>
+          <p class="recipe-reason" id="sell-reason-${r.key}" data-sell-reason="${r.key}"${sellReason ? '' : ' hidden'}>${sellReason}</p>
+          ${r.workshopOnly ? '' : `<label class="toggle-auto">
+            <input type="checkbox" data-autocraft="${r.key}" ${state.autoCraft[r.key]?'checked':''} ${dis(!autoUnlocked)}>
+            ${autoUnlocked ? '자동 제작' : '자동 제작 (연구: 자동 제작 장치)'}
+          </label>`}
+          ${recipeTargetHtml(r)}
+          ${r.workshopOnly ? '' : recipeAutoSellHtml(r)}
+        </div>
+      </details>`;
+  return head + main + more;
+}
+// Kept across a rebuild: which control had the focus, and a target value being typed.
+const RECIPE_FOCUS_ATTRS = ['data-craft', 'data-recipe-summary', 'data-sell', 'data-autocraft', 'data-craft-target', 'data-autoselltoggle', 'data-buyautosell'];
+function recipeInputsSnapshot(wrap){
+  const active = document.activeElement;
+  const attr = active && wrap.contains(active) ? RECIPE_FOCUS_ATTRS.find(a => active.hasAttribute(a)) : null;
+  const drafts = {};
+  if(attr === 'data-craft-target') drafts[active.getAttribute(attr)] = active.value;
+  return { focus: attr ? { attr, key: active.getAttribute(attr) } : null, drafts };
+}
+function restoreRecipeInputs(wrap, snap){
+  Object.keys(snap.drafts).forEach(key => { const el = wrap.querySelector('[data-craft-target="' + key + '"]'); if(el) el.value = snap.drafts[key]; });
+  const f = snap.focus;
+  const el = f && (wrap.querySelector('[' + f.attr + '="' + f.key + '"]') ||
+    (f.attr === 'data-buyautosell' ? wrap.querySelector('[data-autoselltoggle="' + f.key + '"]') : null));
+  if(el && el.focus) el.focus();
+}
+// Space on a summary opens it, and Space on the card's enabled auto-craft / auto-sell checkbox ticks it
+// (Issue #32 F-01); neither must also act in the world (topdown/app.js acts on Space outside buttons and
+// would cancel the checkbox's default). Only propagation is stopped — the browser's own toggle and the
+// existing change handlers do the work. Enter, letters, movement keys and keyup keep going.
+function recipeSpaceStaysInCard(t){
+  if(!t || !t.hasAttribute) return false;
+  if(t.tagName === 'SUMMARY') return t.hasAttribute('data-recipe-summary');
+  return t.tagName === 'INPUT' && t.type === 'checkbox' && !t.disabled && (t.hasAttribute('data-autocraft') || t.hasAttribute('data-autoselltoggle'));
+}
+function recipeSummaryKeydown(e){
+  if((e.key === ' ' || e.code === 'Space') && recipeSpaceStaysInCard(e.target)) e.stopPropagation();
+}
+
 // Full rebuild: only called after structural changes (auto-craft unlock
 // toggling, site unlock). Buttons keep their identity between ticks.
+// Issue #32 B/D: while a stock-target field of the SAME run is being edited (it has the focus — typing,
+// an unfinished number like "1e", or an input-method composition), a rebuild waits: replacing that node
+// would drop the draft (a removed number field reports value '' and the target became 0) and break the
+// composition. The rebuild runs as soon as the focus leaves the field (after its own change event).
+// A rebuild for another run (new village, restore, reload) never waits.
+function recipeEditingTarget(wrap){
+  const a = document.activeElement;
+  return !!(a && wrap.contains(a) && a.hasAttribute('data-craft-target'));
+}
+function recipeTargetFocusout(e){
+  const wrap = e.currentTarget;
+  if(!wrap.__recipeRebuildPending) return;
+  setTimeout(() => { if(wrap.__recipeRebuildPending) buildRecipes(); }, 0); // after the focus has moved
+}
 function buildRecipes(){
   const wrap = document.getElementById('recipes');
-  wrap.innerHTML = '';
-  const autoUnlocked = isAutoCraftUnlocked();
+  if(!wrap.dataset.recipeKeys){ wrap.addEventListener('keydown', recipeSummaryKeydown); wrap.addEventListener('focusout', recipeTargetFocusout); wrap.dataset.recipeKeys = '1'; }
+  if(wrap.__recipeRun === state && recipeEditingTarget(wrap)){ wrap.__recipeRebuildPending = true; return; }
+  wrap.__recipeRebuildPending = false;
+  const snap = recipeInputsSnapshot(wrap);
+  if(wrap.__recipeRun !== state) snap.drafts = {}; // a draft belongs to the run it was typed in
+  wrap.__recipeRebuilding = true; // a field removed here may fire change: it must not set a target
+  try { wrap.innerHTML = ''; } finally { wrap.__recipeRebuilding = false; }
+  wrap.__recipeRun = state;
+  const autoUnlocked = isAutoCraftUnlocked(), open = recipeMoreOpenSet();
   RECIPES.forEach(r=>{
     // Hide recipes whose raw resource inputs aren't unlocked yet, to avoid clutter.
     const needsLockedResource = recipeNeedsLockedResource(r);
     if(needsLockedResource) return;
-    const needText = Object.entries(r.need).map(([k,v])=>{
-      const name = resourceByKey(k)?.name || recipeByKey(k)?.name || k;
-      return `${name} ${v}`;
-    }).join(' + ');
     const div = document.createElement('div');
-    div.className = 'recipe';
-    const sellButton = `<button data-sell="${r.key}" class="ghost" ${dis(state.products[r.key]<=0)}>전량 판매 (${fmt(r.sell * mult())}G/개)</button>`;
-    if(r.workshopOnly){
-      // Task 79: higher recipes are made in a workshop; no hand craft, auto-craft or auto-sell here.
-      div.className = 'recipe is-workshop-only';
-      div.innerHTML = `
-      <div class="name">${r.name}</div>
-      <div class="need">${needText} →</div>
-      <div class="stock" data-stock="${r.key}">${fmt(state.products[r.key])}개 보유</div>
-      <div class="rate" data-workshop-only="${r.key}">제작소에서 만들 수 있어요 (개발 탭의 제작소)</div>
-      <div class="row">${sellButton}</div>
-      ${targetInputHtml(r.key)}
-    `;
-    } else div.innerHTML = `
-      <div class="name">${r.name}</div>
-      <div class="need">${needText} →</div>
-      <div class="stock" data-stock="${r.key}">${fmt(state.products[r.key])}개 보유</div>
-      <div class="row">
-        <button data-craft="${r.key}" ${dis(!canCraft(r))}>제작</button>
-        ${sellButton}
-      </div>
-      <label class="toggle-auto">
-        <input type="checkbox" data-autocraft="${r.key}" ${state.autoCraft[r.key]?'checked':''} ${dis(!autoUnlocked)}>
-        ${autoUnlocked ? '자동 제작' : '자동 제작 (연구: 자동 제작 장치)'}
-      </label>
-      ${targetInputHtml(r.key)}
-      ${state.autoSell[r.key] ? `
-      <label class="toggle-auto">
-        <input type="checkbox" data-autoselltoggle="${r.key}" ${state.autoSellOn[r.key]?'checked':''}>
-        자동 판매 (켜짐/꺼짐)
-      </label>
-      ` : `
-      <div class="facility">
-        <span>자동 판매 미구매</span>
-        <button data-buyautosell="${r.key}" class="ghost" ${dis(state.gold < autoSellCost(r))}>구매 (${autoSellCost(r)}G)</button>
-      </div>
-      `}
-    `;
+    div.className = r.workshopOnly ? 'recipe is-workshop-only' : 'recipe';
+    div.innerHTML = recipeCardHtml(r, autoUnlocked);
+    const details = div.querySelector('[data-recipe-more]');
+    details.open = open.has(r.key);
+    details.addEventListener('toggle', () => {
+      if(details.open) recipeMoreOpenSet().add(r.key); else recipeMoreOpenSet().delete(r.key);
+      const hint = div.querySelector('[data-recipe-sell-hint]');
+      if(hint) hint.hidden = !recipeSellHintVisible(r, details);
+    });
+    div.querySelector('[data-recipe-sell-hint]').hidden = !recipeSellHintVisible(r, details);
     wrap.appendChild(div);
   });
   wrap.querySelectorAll('[data-craft]').forEach(btn=>{
@@ -708,21 +848,60 @@ function buildRecipes(){
   wrap.querySelectorAll('[data-sell]').forEach(btn=>{
     btn.onclick=()=>{ sellAll(recipeByKey(btn.dataset.sell)); updateNumbers(); renderCurrencies(); };
   });
+  const run = state; // the run these fields were built for
   wrap.querySelectorAll('[data-craft-target]').forEach(inp=>{
-    inp.onchange=()=>{ setCraftTarget(inp.dataset.craftTarget, inp.value); inp.value = state.craftTarget[inp.dataset.craftTarget] || ''; };
+    inp.onchange=()=>{
+      if(wrap.__recipeRebuilding || run !== state) return; // removed by a rebuild, or a field of another run
+      const key = inp.dataset.craftTarget;
+      // an unfinished number ("1e", "-") reads as '' but is not the player clearing the field: keep the target
+      if(inp.validity && inp.validity.badInput){ inp.value = state.craftTarget[key] || ''; return; }
+      setCraftTarget(key, inp.value); inp.value = state.craftTarget[key] || ''; updateNumbers();
+    };
   });
   wrap.querySelectorAll('[data-autocraft]').forEach(chk=>{
-    chk.onchange=()=>{ state.autoCraft[chk.dataset.autocraft] = chk.checked; };
+    chk.onchange=()=>{ state.autoCraft[chk.dataset.autocraft] = chk.checked; updateNumbers(); };
   });
   wrap.querySelectorAll('[data-autoselltoggle]').forEach(chk=>{
-    chk.onchange=()=>{ state.autoSellOn[chk.dataset.autoselltoggle] = chk.checked; };
+    chk.onchange=()=>{ state.autoSellOn[chk.dataset.autoselltoggle] = chk.checked; updateNumbers(); };
   });
   wrap.querySelectorAll('[data-buyautosell]').forEach(btn=>{
     btn.onclick=()=>{
       if(!buyAutoSell(btn.dataset.buyautosell)) return;
-      buildRecipes(); // row layout changed (button → toggle) → rare event, fine to rebuild
+      buildRecipes(); // row layout changed (button → toggle) → rare event, fine to rebuild; the focus moves to the new toggle
       renderCurrencies();
     };
+  });
+  restoreRecipeInputs(wrap, snap);
+}
+
+// UX-01: the per-tick part of a card. Text is only written when it changed, so nothing flickers
+// and a screen reader is not fed ten updates a second.
+function recipeSetText(el, text){
+  if(!el) return;
+  if(el.textContent !== text) el.textContent = text;
+  const hide = text === '';
+  if(el.hidden !== hide) el.hidden = hide;
+}
+function updateRecipeCardDetails(){
+  const needEls = uiFirstByAttr('data-need'), craftReasons = uiFirstByAttr('data-craft-reason'), sellReasons = uiFirstByAttr('data-sell-reason'),
+    buyReasons = uiFirstByAttr('data-buyautosell-reason'), autoStates = uiFirstByAttr('data-recipe-auto-state'), moreStates = uiFirstByAttr('data-recipe-more-state'),
+    hints = uiFirstByAttr('data-recipe-sell-hint'), mores = uiFirstByAttr('data-recipe-more');
+  RECIPES.forEach(r=>{
+    if(!moreStates.has(r.key)) return; // card not shown
+    recipeNeedRows(r).forEach(row => {
+      const el = needEls.get(r.key + ':' + row.key);
+      if(!el) return;
+      if(el.textContent !== recipeNeedText(row)) el.innerHTML = recipeNeedInnerHtml(row);
+      el.classList.toggle('is-short', row.short);
+    });
+    recipeSetText(craftReasons.get(r.key), recipeCraftReason(r));
+    recipeSetText(sellReasons.get(r.key), recipeSellReason(r));
+    recipeSetText(buyReasons.get(r.key), recipeAutoSellReason(r));
+    recipeSetText(autoStates.get(r.key), recipeAutoStateText(r));
+    const more = moreStates.get(r.key), moreText = recipeMoreStateText(r);
+    if(more && more.textContent !== moreText) more.textContent = moreText;
+    const hint = hints.get(r.key);
+    if(hint){ const hide = !recipeSellHintVisible(r, mores.get(r.key)); if(hint.hidden !== hide) hint.hidden = hide; }
   });
 }
 
@@ -811,6 +990,16 @@ document.getElementById('craftFacilityBtn').onclick = ()=>{
   updateNumbers();
 };
 
+// The first element (in document order) for each value of a data attribute: what
+// document.querySelector('[attr="value"]') would find, for every value in one pass. The
+// tick asks for many keys whose cards are not on screen yet, and each of those misses
+// read the whole page; this reads it once per attribute. Built afresh at each use.
+function uiFirstByAttr(attr){
+  const map = new Map();
+  document.querySelectorAll('[' + attr + ']').forEach(el => { const v = el.getAttribute(attr); if(!map.has(v)) map.set(v, el); });
+  return map;
+}
+
 // Runs 10x/second: only touches numbers and disabled flags on EXISTING
 // elements — never rebuilds the DOM, so nothing flickers and clicks never
 // get dropped mid-render.
@@ -822,26 +1011,29 @@ function updateNumbers(){
     : `첫 골드 ${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G를 모으면 첫 가챠권을 드려요 (현재 ${fmt(state.gold)}/${BALANCE.gacha.FIRST_TICKET_GOLD_THRESHOLD}G)`;
   document.getElementById('gachaTicketBtn').disabled = !canPullWorker() || permanent.tickets < BALANCE.gacha.PULL_COST_TICKET;
   document.getElementById('gachaGoldBtn').disabled = !canPullWorker() || state.gold < BALANCE.gacha.PULL_COST_GOLD;
+  const sharedEls = uiFirstByAttr('data-shared-amt'), amtEls = uiFirstByAttr('data-amt'), rateEls = uiFirstByAttr('data-rate'), trainBtns = uiFirstByAttr('data-train'), facBtns = uiFirstByAttr('data-fac');
   RESOURCES.forEach(r=>{
-    const sharedEl = document.querySelector(`[data-shared-amt="${r.key}"]`);
+    const sharedEl = sharedEls.get(r.key);
     if(sharedEl) sharedEl.textContent = fmt(state.resources[r.key]);
-    const el = document.querySelector(`[data-amt="${r.key}"]`);
+    const el = amtEls.get(r.key);
     if(el) el.textContent = fmt(state.resources[r.key]);
-    const rateEl = document.querySelector(`[data-rate="${r.key}"]`);
+    const rateEl = rateEls.get(r.key);
     if(rateEl) rateEl.textContent = lineRateText(r.key); // Task 98
-    const trainBtn = document.querySelector(`[data-train="${r.key}"]`);
+    const trainBtn = trainBtns.get(r.key);
     if(trainBtn) trainBtn.disabled = workforceAtMax(r.key) || state.resources[r.key] < workforceCost(r.key);
-    const facBtn = document.querySelector(`[data-fac="${r.key}"]`);
+    const facBtn = facBtns.get(r.key);
     if(facBtn) facBtn.disabled = facilityAtMax(r.key) || state.resources[r.key] < facilityCost(r.key);
   });
+  const unlockBtns = uiFirstByAttr('data-unlocksite');
   SITES.forEach(s=>{
-    const unlockBtn = document.querySelector(`[data-unlocksite="${s.key}"]`);
+    const unlockBtn = unlockBtns.get(s.key);
     if(unlockBtn) unlockBtn.disabled = !canUnlockSite(s);
   });
+  const stockEls = uiFirstByAttr('data-stock'), craftBtns = uiFirstByAttr('data-craft'), sellBtns = uiFirstByAttr('data-sell'), buyAutoSellBtns = uiFirstByAttr('data-buyautosell');
   RECIPES.forEach(r=>{
-    const stockEl = document.querySelector(`[data-stock="${r.key}"]`);
+    const stockEl = stockEls.get(r.key);
     if(stockEl) stockEl.textContent = fmt(state.products[r.key]) + '개 보유';
-    const craftBtn = document.querySelector(`[data-craft="${r.key}"]`);
+    const craftBtn = craftBtns.get(r.key);
     if(craftBtn){
       if(state.craftQueue[r.key] !== null){
         craftBtn.disabled = true;
@@ -851,14 +1043,15 @@ function updateNumbers(){
         craftBtn.textContent = '제작';
       }
     }
-    const sellBtn = document.querySelector(`[data-sell="${r.key}"]`);
+    const sellBtn = sellBtns.get(r.key);
     if(sellBtn){
       sellBtn.disabled = state.products[r.key] <= 0 || (state.autoSell[r.key] && state.autoSellOn[r.key]);
       sellBtn.textContent = `전량 판매 (${fmt(r.sell * mult())}G/개)`;
     }
-    const buyAutoSellBtn = document.querySelector(`[data-buyautosell="${r.key}"]`);
+    const buyAutoSellBtn = buyAutoSellBtns.get(r.key);
     if(buyAutoSellBtn) buyAutoSellBtn.disabled = state.gold < autoSellCost(r);
   });
+  updateRecipeCardDetails(); // UX-01
   state.world.workshops.forEach(workshop=>{
     const recipe = workshopRecipe(workshop.id);
     const btn = document.querySelector('[data-workshop-craft="' + workshop.id + '"]');
@@ -881,10 +1074,11 @@ function updateNumbers(){
   updateTunnelContract();
   const buildBtn = document.querySelector('[data-build-workshop]');
   if(buildBtn){ buildBtn.disabled = !canBuildWorkshop(); buildBtn.textContent = workshopBuildLabel(); }
+  const researchBtns = uiFirstByAttr('data-research'), researchCosts = uiFirstByAttr('data-research-cost');
   RESEARCH.forEach(def=>{
-    const btn = document.querySelector('[data-research="' + def.key + '"]');
+    const btn = researchBtns.get(def.key);
     if(btn) btn.disabled = !canResearch(def.key);
-    const costEl = document.querySelector('[data-research-cost="' + def.key + '"]');
+    const costEl = researchCosts.get(def.key);
     if(costEl) costEl.textContent = researchCostText(def);
   });
   const expandBtn = document.querySelector('[data-expand-base]');
@@ -1137,6 +1331,57 @@ function renderAll(){
   renderWorldGround();
   renderWorldObjects();
   updatePlayerSprite();
+  renderSaveNotice(); // C1: redrawn too, so a block set later in boot (PR #5's trial mode) takes the button away
+}
+
+// C1: the notice shown while a damaged or unread save is being kept (state.js).
+// It offers to start the new game's save only when that can work: not when the
+// save could not be read, not after another tab changed it, not while saving is
+// blocked for the session (a future-version save, PR #5's trial mode). Without a
+// backup the button asks once more, since the original is then gone for good.
+function renderSaveNotice(){
+  let box = document.getElementById('saveNotice');
+  const p = typeof saveProtection === 'function' ? saveProtection() : { corrupt: false, unverified: false };
+  if(!p.corrupt && !p.unverified){ if(box) box.hidden = true; return; }
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'saveNotice'; box.className = 'save-notice'; box.setAttribute('role', 'alert');
+    document.body.appendChild(box);
+  }
+  box.hidden = false;
+  box.textContent = '';
+  const text = document.createElement('p');
+  let button = null;
+  if(p.unverified){
+    text.textContent = '저장 데이터를 읽지 못했어요(브라우저 저장소에 접근할 수 없음). 원래 저장을 덮어쓰지 않도록 이번 세션은 저장하지 않습니다. 저장소 문제를 해결한 뒤 새로고침하세요.';
+  } else if(p.changed){
+    text.textContent = '다른 탭에서 저장이 바뀌었어요. 이 탭의 새 게임은 그 저장을 덮어쓰지 않으며, 이번 세션은 저장하지 않습니다. 바뀐 저장으로 이어 하려면 새로고침하세요.';
+    button = document.createElement('button');
+    button.type = 'button'; button.setAttribute('data-save-reload', ''); button.textContent = '새로고침';
+    button.onclick = () => { try { window.location.reload(); } catch(e){ /* the page stays as it is */ } };
+  } else {
+    const kept = p.backupOk
+      ? '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 지우지 않고 그대로 두었고, 백업(' + p.backupKey + ')도 만들었어요. 지금은 저장하지 않습니다.'
+      : '저장 데이터를 읽을 수 없어 새 게임으로 시작했어요. 원래 저장은 그대로 두었지만 백업을 만들지 못했어요. 지금은 저장하지 않습니다.';
+    if(p.blocked){
+      const trial = worldTestMode();
+      text.textContent = kept + (trial ? ' 시험 모드에서는 원래 저장을 보호하려고 이번 세션의 진행을 저장하지 않아요.' : ' 이번 세션은 저장이 막혀 있어 진행을 저장하지 않아요.');
+    } else {
+      text.textContent = kept + (p.backupOk ? ' 이 새 게임을 저장하려면 아래 버튼을 누르세요.' : ' 새 게임을 저장하면 원래 저장은 사라집니다.');
+      button = document.createElement('button');
+      button.type = 'button'; button.setAttribute('data-save-start-over', ''); button.textContent = '새 게임 저장 시작';
+      let armed = false;
+      button.onclick = () => {
+        if(!p.backupOk && !armed){
+          if(typeof saveCheckUnchanged === 'function' && !saveCheckUnchanged()) return; // changed meanwhile: the notice was redrawn
+          armed = true; button.textContent = '한 번 더 누르면 원래 저장 대신 새 게임을 저장합니다'; return;
+        }
+        saveStartOver();
+      };
+    }
+  }
+  box.append(text);
+  if(button) box.append(button);
 }
 
 function playerTypingTarget(el){

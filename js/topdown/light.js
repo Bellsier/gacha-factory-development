@@ -33,13 +33,32 @@ function tdFlicker(nowMs, seed){
 
 const TD_FACING_ANGLE = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
 
+// Graphics pass 2 (v2 only, ?light=cone keeps the old one to compare): instead of the
+// helmet lamp's cone, a round warm lantern that follows the dusk — next to nothing in
+// full day, a soft warm pool at the darkest. Drawing only; the day cycle is unchanged.
+const TD_LANTERN_CACHE = { on: null }; // read from the address once, like the style itself
+function tdLanternLook(){
+  if(TD_LANTERN_CACHE.on !== null) return TD_LANTERN_CACHE.on;
+  let on = typeof tdStyleV2 === 'function' && tdStyleV2();
+  if(on){ try { on = new URLSearchParams(window.location.search).get('light') !== 'cone'; } catch(e){ on = true; } }
+  TD_LANTERN_CACHE.on = on;
+  return on;
+}
+function tdLanternLight(player, darkness){
+  const d = typeof darkness === 'number' ? darkness : TD_LIGHT.MIN_DARK;
+  const k = Math.max(0, Math.min(1, (d - TD_LIGHT.MIN_DARK - 0.02) / (TD_LIGHT.MAX_DARK - TD_LIGHT.MIN_DARK - 0.02))); // 0 in full day .. 1 at dusk
+  return { kind: 'lantern', x: player.x, y: player.y - 0.22, r: 1.1 + 0.5 * k, rgb: [255, 214, 150], strength: 0.12 + 0.68 * k, glow: 0.4 + 0.9 * k };
+}
+
 // Lights in world units: { x, y, r, rgb, strength, cone? { angle, spread } }.
-// `player` is the drawn player { x, y, dir }; `extra` lights (workers) are appended.
-function tdLightList(player, nowMs, extra){
+// `player` is the drawn player { x, y, dir }; `extra` lights (workers) are appended;
+// `darkness` (optional) is this frame's dusk, for the v2 lantern.
+function tdLightList(player, nowMs, extra, darkness){
   const lights = [];
   const warm = [255, 210, 130];
   if(player){
-    lights.push({ kind: 'headlamp', x: player.x, y: player.y - 0.28, r: 1.9, rgb: [255, 240, 196], strength: 0.95,
+    if(tdLanternLook()) lights.push(tdLanternLight(player, darkness));
+    else lights.push({ kind: 'headlamp', x: player.x, y: player.y - 0.28, r: 1.9, rgb: [255, 240, 196], strength: 0.95,
       cone: { angle: TD_FACING_ANGLE[player.dir] !== undefined ? TD_FACING_ANGLE[player.dir] : Math.PI / 2, spread: 0.6 } });
     lights.push({ kind: 'aura', x: player.x, y: player.y - 0.15, r: 0.8, rgb: [255, 236, 190], strength: 0.6 });
   }

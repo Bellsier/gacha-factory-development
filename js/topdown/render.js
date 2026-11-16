@@ -19,6 +19,7 @@ const TD = {
 // `view` (a world rectangle, optional): only veins and scenery props inside it are listed (by the chunk
 // index) — the renderer passes the screen plus a margin wider than its own culling, so what is drawn is the same.
 function tdDrawList(player, view){
+  if(view && typeof worldEnsureRect === 'function') worldEnsureRect(view);
   const list = [];
   const base = state.world.base;
   // Task 107: buildings sort by the front edge of their footprint, so the player
@@ -61,12 +62,13 @@ function tdDrawList(player, view){
     list.push({ kind: 'ore', id: m.id, resource: m.resource, look, x: m.x, y: m.y, sortY: m.y });
   });
   tdOpenLandTufts().forEach(t => list.push({ kind: 'decor', prop: 'grass', x: t.x, y: t.y, sortY: t.y - 0.2 }));
-  if(terrainTunnelOpen()){
+  if(terrainTunnelOpen() || typeof currentWorldContext === 'function' && currentWorldContext()){
     // Task 111: the same pieces that block (worldScenery leaves out those on a mine or walling something in)
     (view ? worldSceneryInRect(view) : worldScenery().props).forEach(pr => {
       list.push({ kind: 'prop', prop: pr.kind, x: pr.x, y: pr.y, sortY: pr.kind === 'clearing' ? pr.y - 5 : pr.y });
     });
-  } else {
+  }
+  if(!terrainTunnelOpen()){
     const t = terrainTunnel();
     list.push({ kind: 'gate', x: t.gateX, y: t.y + t.halfWidth, sortY: t.y + t.halfWidth - 0.01 });
   }
@@ -114,7 +116,7 @@ function tdGardenLights(now){
 
 function tdDecorImage(key){
   TD.decorImages = TD.decorImages || {};
-  if(!(key in TD.decorImages)) TD.decorImages[key] = tdSpriteImage(tdDecorSprite(key));
+  if(!(key in TD.decorImages)) TD.decorImages[key] = tdSpriteImage(tdStyleFinish(tdDecorSprite(key), 'prop')); // graphics pass 2: the v2 finish (v2 only)
   return TD.decorImages[key];
 }
 
@@ -123,7 +125,7 @@ function tdVillageImage(key, stage, exhibits, specimens, hall){
   TD.villageImages = TD.villageImages || {};
   const open = key === 'museum' && stage >= 2;
   const id = key + '|' + stage + '|' + (open ? exhibits : 0) + '|' + (open ? (specimens || []).join(',') + '|' + (hall || 0) : ''); // Task 121/122: specimens, hall
-  if(!(id in TD.villageImages)) TD.villageImages[id] = tdSpriteImage(tdVillageSprite(key, stage, exhibits, specimens, hall));
+  if(!(id in TD.villageImages)) TD.villageImages[id] = tdSpriteImage(tdStyleFinish(tdVillageSprite(key, stage, exhibits, specimens, hall), 'building')); // graphics pass 2 (v2 only)
   return TD.villageImages[id];
 }
 
@@ -134,7 +136,7 @@ function tdOpenLandTufts(){
   const sites = ['appraiser', 'museum'].map(k => vs[k]).filter(Boolean); // Task 114: none on a village site
   const vg = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: nor on the plaza, roads or lots
   const vparts = vg ? villageDistrict() : null;
-  const key = w.base.x + ',' + w.base.y + '|' + w.mines.length + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
+  const key = w.base.x + ',' + w.base.y + '|' + (typeof worldVillageMines === 'function' ? worldVillageMines().length : w.mines.length) + '|' + w.workshops.length + '|' + sites.map(p => p.x + ',' + p.y).join(';') + '|' + (vg ? vg.key : '');
   if(TD.tuftKey === key && TD.tufts) return TD.tufts;
   const out = [], b = BALANCE.world;
   for(let y = b.BOUNDS_MIN_Y + 0.25; y <= b.BOUNDS_MAX_Y; y += 0.5){
@@ -168,22 +170,19 @@ function tdDrawSway(g, img, sx, sy, zoom, anchorY, k){
 function tdEnsureGround(){
   const base = state.world.base;
   const village = typeof villageGroundLayout === 'function' ? villageGroundLayout() : null; // Task 118: the plaza and roads are ground too
-  const key = (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
+  const context=typeof currentWorldContext === 'function' ? currentWorldContext():null;
+  const key = (context ? context.seed+':'+context.generatorVersion+':256|' : '') + (terrainTunnelOpen() ? 'open' : 'closed') + '|' + base.x + ',' + base.y + '|' + (village ? village.key + '|' + JSON.stringify(village.garden) : '');
   if(TD.groundKey === key && TD.groundMap) return;
   const map = tdBuildTileMap(terrainTunnelOpen(), base, village);
   // the picture is painted chunk by chunk as it comes into view (tdChunkCanvas); a new state drops the old chunks
   TD.groundKey = key; TD.groundMap = map; TD.chunks = new Map();
   // minimap base: one pixel per tile, mountain / ground / beyond colours
   const mc = document.createElement('canvas');
-  mc.width = map.cols; mc.height = map.rows;
+  mc.width = Math.min(256,map.cols); mc.height = Math.min(256,map.rows);
   const mg = mc.getContext('2d');
-  if(!mg) return; // no canvas (tests): the map and the chunk cache are ready, the minimap is not drawn
-  const mid = mg.createImageData(map.cols, map.rows);
-  const col = { [TD_TILE.GRASS]: [86, 128, 76], [TD_TILE.BEYOND]: [60, 98, 64], [TD_TILE.ROCK]: [120, 114, 106], [TD_TILE.TUNNEL]: [150, 120, 80], [TD_TILE.EDGE]: [34, 58, 40], [TD_TILE.PATH]: [160, 132, 92],
-    [TD_TILE.ROAD]: [176, 162, 138], [TD_TILE.PLAZA]: [206, 194, 170], [TD_TILE.GARDEN]: [112, 168, 92] };
-  for(let k = 0; k < map.types.length; k++){ const c3 = col[map.types[k]]; mid.data.set([c3[0], c3[1], c3[2], 255], k * 4); }
-  mg.putImageData(mid, 0, 0);
-  TD.miniBase = mc;
+  TD.miniBase=mc;TD.miniPainted=new Set();
+  if(mg){mg.fillStyle='#223a28';mg.fillRect(0,0,mc.width,mc.height);}
+
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +236,7 @@ function tdChunkWork(cx, cy, rows, now){
   const stop = rows === Infinity ? area.j1 : Math.min(area.j1, job.next + rows);
   while(job.next < stop){
     const j1 = Math.min(stop, job.next + TD_CHUNK.SLICE_ROWS), t0 = performance.now();
-    const img = tdPaintTileMap(map, { i0: area.i0, i1: area.i1, j0: job.next, j1 });
+    const img = worldPaintTileMap(map, { i0: area.i0, i1: area.i1, j0: job.next, j1 });
     job.data.set(img.data, (job.next - area.j0) * T * job.W * 4);
     const ms = performance.now() - t0; job.ms += ms; st.slices++; st.maxSliceMs = Math.max(st.maxSliceMs, ms);
     job.next = j1;
@@ -301,14 +300,52 @@ function tdDrawGroundChunks(g, cam, w, h, zoom, now){
 }
 const TD_CHUNK_DEBUG = (() => { try { return new URLSearchParams(window.location.search).get('chunks') === 'debug'; } catch(e){ return false; } })();
 
+// ---------------------------------------------------------------------------
+// Task 22: the drawing resolution on slow screens. A phone's canvas has device-ratio times
+// (up to 3 x 3 = 9 times) the pixels of its CSS size, and filling them is most of a frame on a
+// slow phone. When the frames stay slow, the canvas is drawn at 1/k of the device ratio, k a
+// whole number, and the browser shows each canvas pixel as a k x k block (the canvas is
+// image-rendering: pixelated), so the picture keeps its size and stays sharp. k is only used
+// where an art pixel is still a whole number of canvas pixels (zoom x ratio / k whole), so the
+// pixel art looks the same; text and soft light on the canvas get coarser. One step at a time,
+// at most MAX_CHANGES a session, HOLD_MS apart; back up only when the frames would stay fast at
+// the finer size (pixels grow with the square). PC screens at ratio 1 never change.
+// ---------------------------------------------------------------------------
+const TD_RES_STEP = { SLOW_MS: 45, BACK_MS: 20, HOLD_MS: 4000, MAX_CHANGES: 3 };
+// The divisors usable now: k = 1 always; 2 and 3 where the canvas stays at least the CSS size and
+// an art pixel stays whole.
+function tdRenderDivisors(native, zoom){
+  const out = [1];
+  for(let k = 2; k <= 3; k++){ const s = native / k; if(s >= 1 && Math.abs(zoom * s - Math.round(zoom * s)) < 1e-9) out.push(k); }
+  return out;
+}
+// Called once a second or so with the average frame time: steps the divisor down or up.
+function tdRenderScaleStep(now, avgMs){
+  if(!(avgMs > 0)) return false;
+  const st = TD.resStep || (TD.resStep = { k: 1, at: -Infinity, frame: 0, changes: 0 });
+  if(st.changes >= TD_RES_STEP.MAX_CHANGES || now - st.at < TD_RES_STEP.HOLD_MS || (TD.frames || 0) - st.frame < 60) return false;
+  const native = Math.max(1, Math.min(3, window.devicePixelRatio || 1)), v = TD.view;
+  const ks = tdRenderDivisors(native, v ? v.zoom : 1), i = Math.max(0, ks.indexOf(st.k));
+  let next = st.k;
+  if(avgMs > TD_RES_STEP.SLOW_MS && i < ks.length - 1) next = ks[i + 1];
+  else if(i > 0 && avgMs * Math.pow(st.k / ks[i - 1], 2) < TD_RES_STEP.BACK_MS) next = ks[i - 1];
+  if(next === st.k) return false;
+  st.k = next; st.at = now; st.frame = TD.frames || 0; st.changes++;
+  TD.frameAvg = undefined; // measure the new size afresh
+  return true;
+}
+
 function tdResize(){
   const c = TD.canvas;
   const w = Math.max(1, c.clientWidth || window.innerWidth), h = Math.max(1, c.clientHeight || window.innerHeight);
-  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  const native = Math.max(1, Math.min(3, window.devicePixelRatio || 1)), zoom = topdownZoom(w, h);
+  const div = TD.resStep && tdRenderDivisors(native, zoom).includes(TD.resStep.k) ? TD.resStep.k : 1; // Task 22 (another zoom: back to 1 if it no longer fits)
+  const dpr = native / div;
   if(c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)){ c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
-  const zoom = topdownZoom(w, h), k = typeof tdStyleRenderScale === 'function' ? tdStyleRenderScale(zoom, dpr) : dpr;
+  const k = typeof tdStyleRenderScale === 'function' ? tdStyleRenderScale(zoom, dpr) : dpr;
   // the style experiment snaps the drawing scale so an art pixel is whole device pixels; the view is then measured in those units
   TD.view = k === dpr ? { w, h, zoom, dpr } : { w: c.width / k, h: c.height / k, zoom, dpr: k };
+  TD.view.div = div; // Task 22: the divisor in use (1 = full resolution)
   // the resolution experiment's auto mode: another zoom or device ratio may need the other sprite set
   if(typeof tdResOnResize === 'function' && tdResOnResize(zoom, dpr) && TD.sheet) TD.sheet = tdBuildSpriteSheet();
 }
@@ -350,6 +387,65 @@ function tdRectsOverlap(a, b, gap){
 }
 
 // How high (sprite pixels) the interaction bubble sits above a target's point: above its picture.
+// Task 23: is a walking worker under the bubble (screen rects, the worker's 16 x 22 sprite)?
+function tdBubbleCoversWorker(b, cam, w, h, zoom){
+  const sim = TD.workerSim;
+  if(!b || !sim || !sim.byId) return false;
+  for(const id in sim.byId){
+    const s = sim.byId[id], p = topdownToScreen(s.x, s.y, cam, w, h, zoom);
+    if(tdRectsOverlap(b, { x: p.x - 8 * zoom, y: p.y - 22 * zoom, w: 16 * zoom, h: 22 * zoom }, 0)) return true;
+  }
+  return false;
+}
+
+// Task 23: while the canvas is drawn at a lowered resolution (TD.view.div > 1) the bubble is a
+// page element at the same place and size, so its text stays sharp. null hides it.
+function tdBubbleHtml(lines, r, locked, thin, font){
+  let el = TD.bubbleEl;
+  if(!lines){ if(el && !el.hidden) el.hidden = true; return; }
+  if(!el){ el = TD.bubbleEl = document.createElement('div'); el.className = 'td-bubble'; el.setAttribute('aria-hidden', 'true'); document.body.appendChild(el); }
+  const key = lines.join('\n') + '|' + r.x + ',' + r.y + ',' + Math.round(r.w) + '|' + (locked ? 1 : 0) + (thin ? 1 : 0) + '|' + font;
+  if(el.hidden) el.hidden = false;
+  if(el.dataset.key === key) return;
+  el.dataset.key = key;
+  el.textContent = lines.join('\n');
+  el.className = 'td-bubble' + (locked ? ' is-locked' : '') + (thin ? ' is-thin' : '');
+  Object.assign(el.style, { left: r.x + 'px', top: r.y + 'px', width: Math.round(r.w) + 'px', height: r.h + 'px', font });
+}
+
+// Task 23: screen boxes of the buildings with a door (cabin, huts, village facilities, house), from
+// their sprite sizes (the door is the bottom centre). Only those near the player are listed.
+const TD_DOOR_SPRITES = { base: [64, 58], workshop: [44, 40], appraiser: [44, 40], museum: [60, 48], house: [84, 73] };
+function tdDoorRects(cam, w, h, zoom){
+  const p = state.world.player, out = [];
+  const add = (x, y, size) => {
+    if(Math.abs(x - p.x) > 8 || Math.abs(y - p.y) > 8) return;
+    const sp = topdownToScreen(x, y, cam, w, h, zoom);
+    out.push({ x: sp.x - size[0] * zoom / 2, y: sp.y - size[1] * zoom, w: size[0] * zoom, h: size[1] * zoom });
+  };
+  if(state.world.base) add(state.world.base.x, state.world.base.y, TD_DOOR_SPRITES.base);
+  state.world.workshops.forEach(ws => { if(ws) add(ws.x, ws.y, TD_DOOR_SPRITES.workshop); });
+  const v = state.village;
+  if(v && v.sites) Object.keys(v.sites).forEach(k => { const st = v.sites[k]; if(st && TD_DOOR_SPRITES[k]) add(st.x, st.y, TD_DOOR_SPRITES[k]); });
+  const vd = typeof villageDistrict === 'function' ? villageDistrict() : null;
+  if(vd) add(vd.house.x, vd.house.y, TD_DOOR_SPRITES.house);
+  return out;
+}
+
+// Task 23: the next-step hint (top left) gets out of the way: almost clear while the interaction bubble
+// or the player is under it, half clear while a building with a door is. Its box is read again twice a
+// second at most.
+function tdHintClear(bubble, doors){
+  const now = performance.now(), hint = typeof document !== 'undefined' && document.getElementById('nextHint');
+  if(!hint) return;
+  if(!TD.hintBox || now - TD.hintBox.at > 500){ const b = hint.getBoundingClientRect(); TD.hintBox = { at: now, r: { x: b.left, y: b.top, w: b.width, h: b.height } }; }
+  const r = TD.hintBox.r, pr = TD.playerRect, cl = document.body.classList;
+  const under = r.w > 0 && !!((bubble && tdRectsOverlap(bubble, r, 4)) || (pr && tdRectsOverlap(pr, r, 4)));
+  const near = !under && r.w > 0 && !!doors && doors.some(d => tdRectsOverlap(d, r, 0));
+  if(cl.contains('td-hint-under') !== under) cl.toggle('td-hint-under', under);
+  if(cl.contains('td-hint-near') !== near) cl.toggle('td-hint-near', near);
+}
+
 function tdBubbleLift(target){
   if(!target) return 34;
   if(target.type === 'base') return 64;
@@ -370,7 +466,13 @@ function tdFrame(now){
     TD.frameAvg = TD.frameAvg === undefined ? dt : TD.frameAvg * 0.95 + dt * 0.05;
   }
   TD.lastFrame = now;
-  if(TD.frameAvg !== undefined && (TD.qualityCheck = (TD.qualityCheck || 0) + 1) % 30 === 0) TD.quality = tdQualityFor(TD.frameAvg, TD.quality);
+  if(TD.frameAvg !== undefined && (TD.qualityCheck = (TD.qualityCheck || 0) + 1) % 30 === 0){
+    TD.quality = tdQualityFor(TD.frameAvg, TD.quality);
+    tdRenderScaleStep(now, TD.frameAvg); // Task 22
+  }
+  // Task 21: the game clock also runs from the frames, so on a slow device the due ticks come a
+  // frame at a time (and the frame shows them) instead of in bursts when the late interval fires
+  if(typeof tickClockFrame === 'function'){ try { tickClockFrame(); } catch(e){ /* the interval keeps the clock going */ } }
   try { tdRender(now); } catch(e){ /* keep the loop alive; the game itself runs on its own tick */ }
   window.requestAnimationFrame(tdFrame);
 }
@@ -447,7 +549,7 @@ function tdRender(now){
   const darkness = typeof TD.forceDarkness === 'number' ? TD.forceDarkness : tdAmbientDarkness(Date.now());
   TD.darkness = darkness;
   const extraLights = (typeof tdWorkerLights === 'function' ? tdWorkerLights(now) : []).concat(tdVillageLights(now), tdPlazaLights(now), tdHouseLights(now), tdGardenLights(now));
-  tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights), darkness, cam, w, h, zoom, TD.quality, now);
+  tdRenderLighting(g, tdLightList({ x: pos.x, y: pos.y, dir: p.facing }, now, extraLights, darkness), darkness, cam, w, h, zoom, TD.quality, now);
   const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.78);
   vg.addColorStop(0, 'rgba(10,14,12,0)'); vg.addColorStop(1, 'rgba(10,14,12,0.32)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);
@@ -464,7 +566,8 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
   if(TD.target){
     const sp = topdownToScreen(TD.target.x, TD.target.y, cam, w, h, zoom);
     const label = (TD.touch ? '' : '[E] ') + TD.target.label;
-    g.font = 'bold ' + (12 + zoom) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
+    // Task 24: 14px and up on a PC, 16px on a phone
+    g.font = 'bold ' + (TD.touch ? 16 : Math.max(14, 12 + zoom)) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-mono');
     let lines = [label];
     if(g.measureText(label).width + 14 > w - 12 && label.includes(' · ')){ const cut = label.indexOf(' · '); lines = [label.slice(0, cut), label.slice(cut + 3)]; }
     const tw = Math.min(w - 12, Math.max(...lines.map(l => g.measureText(l).width)) + 14), bh = 22 * lines.length;
@@ -478,12 +581,23 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
       if(by < 6) by = Math.round(pr.y + pr.h + 8);
     }
     TD.bubbleRect = { x: bx, y: by, w: tw, h: bh };
-    g.fillStyle = TD.target.action === 'locked' ? 'rgba(40,36,34,0.88)' : 'rgba(22,28,32,0.9)';
-    g.fillRect(bx, by, tw, bh); g.fillStyle = TD.target.action === 'locked' ? '#8b98a1' : '#ffd27a';
-    g.fillRect(bx, by + bh - 1, tw, 2);
-    g.fillStyle = TD.target.action === 'locked' ? '#b8c0c6' : '#fff6dc'; g.textBaseline = 'middle';
-    lines.forEach((l, i) => g.fillText(l, bx + 7, by + 11 + i * 22, tw - 14));
-  } else TD.bubbleRect = null;
+    // Task 23: over a walking worker the bubble is see-through (it stays put: no jumping about)
+    const thin = tdBubbleCoversWorker(TD.bubbleRect, cam, w, h, zoom);
+    const locked = TD.target.action === 'locked';
+    if(TD.view.div > 1) tdBubbleHtml(lines, TD.bubbleRect, locked, thin, g.font); // Task 23: sharp text on a lowered resolution
+    else {
+      tdBubbleHtml(null);
+      // Task 24: the panels' wood and copper (style.css .td-bubble matches)
+      g.fillStyle = locked ? (thin ? 'rgba(44,38,34,0.5)' : 'rgba(44,38,34,0.9)') : (thin ? 'rgba(29,22,17,0.55)' : 'rgba(29,22,17,0.92)');
+      g.fillRect(bx, by, tw, bh); g.fillStyle = locked ? '#8b98a1' : '#cf8549';
+      g.fillRect(bx, by + bh - 1, tw, 2);
+      g.textBaseline = 'middle';
+      if(thin){ g.fillStyle = '#000'; lines.forEach((l, i) => g.fillText(l, bx + 8, by + 12 + i * 22, tw - 14)); }
+      g.fillStyle = locked ? '#c9c0b6' : '#fff3e2';
+      lines.forEach((l, i) => g.fillText(l, bx + 7, by + 11 + i * 22, tw - 14));
+    }
+  } else { TD.bubbleRect = null; tdBubbleHtml(null); }
+  tdHintClear(scene === 'world' ? TD.bubbleRect : null, scene === 'world' ? tdDoorRects(cam, w, h, zoom) : null);
   // floating texts (+1 철광석 ...)
   TD.floats = TD.floats.filter(f => now - f.t0 < TD_FLOAT.MS);
   const bubble = TD.bubbleRect, t = TD.target;
@@ -505,6 +619,7 @@ function tdDrawOverlay(g, cam, w, h, zoom, now, scene){
 
 // Minimap (blueprint 3.5): ground, the workshop, DISCOVERED mines only, the player and the view.
 function tdRenderMinimap(cam){
+  tdUpdateMinimapChunks(1);
   const c = TD.mini;
   if(!c || !TD.miniBase) return;
   const g = c.getContext('2d');
@@ -587,4 +702,23 @@ function tdRenderHome(now){
   vg.addColorStop(0, 'rgba(20,12,6,0)'); vg.addColorStop(1, 'rgba(20,12,6,0.4)');
   g.fillStyle = vg; g.fillRect(0, 0, w, h);
   return cam;
+}
+
+// Paint at most a few already-known chunks; unknown land stays dark.
+// The overview backing store stays bounded, even if the world grows later.
+function tdUpdateMinimapChunks(budget=1){
+ const map=TD.groundMap,canvas=TD.miniBase;if(!map||!canvas)return;
+ const g=canvas.getContext('2d');if(!g)return;
+ const colors=['#56804c','#3c6240','#78726a','#967850','#223a28','#a0845c','#b0a28a','#cec2aa','#70a85c'];
+ const sx=canvas.width/map.cols,sy=canvas.height/map.rows;
+ for(const [key,types] of map.chunkTypes){
+  if(TD.miniPainted.has(key))continue;
+  const cy=((key%65536)+65536+32768)%65536-32768,cx=(key-cy)/65536;
+  const i0=cx*32-map.originX*4,j0=cy*32-map.originY*4;
+  for(let y=0;y<32;y++)for(let x=0;x<32;x++){
+   const i=i0+x,j=j0+y;if(i<0||j<0||i>=map.cols||j>=map.rows)continue;
+   g.fillStyle=colors[types[y*32+x]];g.fillRect(Math.floor(i*sx),Math.floor(j*sy),Math.max(1,Math.ceil(sx)),Math.max(1,Math.ceil(sy)));
+  }
+  TD.miniPainted.add(key);if(--budget<=0)break;
+ }
 }

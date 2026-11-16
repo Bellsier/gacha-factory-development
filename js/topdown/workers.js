@@ -30,6 +30,7 @@ const TD_WORKER = {
   SUB_STEP: 0.08,    // longest single collision step
   START_GAP_MS: 450, // workers leave the door one after another
   STUCK_MS: 900,     // no progress for this long = stuck
+  FRAME_MAX_MS: 250, // Task 21: the longest frame time walked (in steps of at most 100 ms)
   PROGRESS: 0.04,    // getting this much closer counts as progress
   DETOUR: 0.45,      // side step taken round something in the way
   GHOST_MS: 1400,    // after two detours: this long ignoring obstacles (not rock)
@@ -60,7 +61,7 @@ function tdWorkerPlacements(){
   // cached: the answer only changes when the workers, veins, huts, base or tunnel change
   const w = state.world;
   const key = state.characters.map(c => c && c.id + ':' + c.resource + ':' + c.rarity).join(',') + '|' +
-    w.mines.map(m => m && m.id + ':' + m.x + ':' + m.y + ':' + m.developmentState + ':' + (isMineDiscovered(m) ? 1 : 0)).join(',') + '|' +
+    (typeof currentWorldContext==='function'&&currentWorldContext()?worldVillageMines():w.mines).map(m => m && m.id + ':' + m.x + ':' + m.y + ':' + m.developmentState + ':' + (isMineDiscovered(m) ? 1 : 0)).join(',') + '|' + (typeof currentWorldContext==='function'&&currentWorldContext()?worldRuntime().workerRevision||0:0) + '|' +
     w.workshops.map(ws => ws && ws.x + ':' + ws.y).join(',') + '|' + w.base.x + ',' + w.base.y + '|' + (w.tunnelUnlocked ? 1 : 0);
   if(TD.workerKey === key && TD.workerPlacements) return TD.workerPlacements;
   const out = tdComputeWorkerPlacements();
@@ -147,7 +148,7 @@ function tdWorkerImage(look, dir, frame){
   const key = [look.shirt, look.helmet, look.hair, look.skin, look.gold ? 1 : 0, dir, frame].join('|');
   if(!(key in TD.workerImages)){
     const walking = typeof frame === 'string' && frame[0] === 'w';
-    TD.workerImages[key] = tdSpriteImage(walking ? tdWorkerWalkSprite(dir, +frame.slice(1), look) : tdWorkerSprite(dir, frame, look));
+    TD.workerImages[key] = tdSpriteImage(tdStyleFinish(walking ? tdWorkerWalkSprite(dir, +frame.slice(1), look) : tdWorkerSprite(dir, frame, look), 'worker')); // graphics pass 2 (v2 only)
   }
   return TD.workerImages[key];
 }
@@ -211,10 +212,18 @@ function tdWorkerDetour(s, wp){
 // Moves the walking workers on by dtMs. Renderer state only (TD.workerSim).
 function tdWorkerSimStep(dtMs, nowMs){
   if(!TD.workerSim) tdWorkerSimReset();
-  const sim = TD.workerSim, W = TD_WORKER, dt = Math.max(0, Math.min(100, dtMs));
+  // Task 21: a slow frame (up to FRAME_MAX_MS) is walked in steps of at most 100 ms, so the workers keep
+  // their walking speed when the frames are slow; anything longer (a stall) still counts as FRAME_MAX_MS
+  const sim = TD.workerSim, W = TD_WORKER, total = Math.max(0, Math.min(W.FRAME_MAX_MS, dtMs || 0)), steps = Math.max(1, Math.ceil(total / 100)), dt = total / steps;
   const placements = tdWorkerPlacements(), base = state.world.base, ids = {};
+  // The test world's route searches (worldWorkerStep) share a time budget per frame: 12% of
+  // the time since the last frame, at least 2 ms and at most 6 ms (128 search nodes a ms).
+  // At 60 fps that is the 2 ms it always was; when frames are slow (a weak PC or phone)
+  // the search keeps its share of the time instead of falling behind the walking.
+  const navMs = Math.min(6, Math.max(2, (dtMs || 0) * 0.12));
+  TD.navBudget = Math.round(128 * navMs); TD.navDeadline = performance.now() + navMs;
   let newcomers = 0;
-  placements.forEach(p => {
+  for(let k = 0; k < steps; k++) placements.forEach(p => {
     ids[p.id] = true;
     let s = sim.byId[p.id];
     if(!s){ // a worker (just hired, or the game just opened) comes out of the workshop door
@@ -222,6 +231,7 @@ function tdWorkerSimStep(dtMs, nowMs){
         delay: newcomers++ * W.START_GAP_MS, walked: 0, goalKey: '', route: [], lane: (tdWorkerHash(p.id, 8) * 2 - 1) * W.LANE,
         best: Infinity, stuckMs: 0, detours: 0, ghostMs: 0, ghosts: 0, snaps: 0, hidden: true };
     }
+    if(typeof currentWorldContext === 'function' && currentWorldContext()){worldWorkerStep(s,p,dt);return;}
     const key = p.x + ',' + p.y;
     if(s.goalKey !== key){ // a new place to work (or wait): walk there from wherever it is
       s.goalKey = key; s.route = tdWorkerRoute(s.x, s.y, p.x, p.y, s.lane); s.mode = 'walk';

@@ -1,0 +1,125 @@
+{
+  "browser": "155.0.8059.79",
+  "cases": [
+    {
+      "device": "pc",
+      "style": "classic",
+      "contract": {
+        "size": [
+          84,
+          73
+        ],
+        "stateUnchanged": true,
+        "resolution": 1,
+        "sheet": [
+          84,
+          73
+        ]
+      },
+      "checks": {
+        "exit": true,
+        "door": true,
+        "save": true,
+        "version": 1,
+        "room": true
+      },
+      "loaded": {
+        "gold": 137,
+        "iron": 42,
+        "tickets": 7,
+        "version": 1
+      },
+      "errors": []
+    },
+    {
+      "device": "pc",
+      "style": "v2",
+      "contract": {
+        "size": [
+          84,
+          73
+        ],
+        "stateUnchanged": true,
+        "resolution": 1,
+        "sheet": [
+          84,
+          73
+        ]
+      },
+      "checks": {
+        "exit": true,
+        "door": true,
+        "save": true,
+        "version": 1,
+        "room": true
+      },
+      "loaded": {
+        "gold": 137,
+        "iron": 42,
+        "tickets": 7,
+        "version": 1
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "classic",
+      "contract": {
+        "size": [
+          84,
+          73
+        ],
+        "stateUnchanged": true,
+        "resolution": 1,
+        "sheet": [
+          84,
+          73
+        ]
+      },
+      "checks": {
+        "exit": true,
+        "door": true,
+        "save": true,
+        "version": 1,
+        "room": true
+      },
+      "loaded": {
+        "gold": 137,
+        "iron": 42,
+        "tickets": 7,
+        "version": 1
+      },
+      "errors": []
+    },
+    {
+      "device": "mobile",
+      "style": "v2",
+      "contract": {
+        "size": [
+          84,
+          73
+        ],
+        "stateUnchanged": true,
+        "resolution": 1,
+        "sheet": [
+          84,
+          73
+        ]
+      },
+      "checks": {
+        "exit": true,
+        "door": true,
+        "save": true,
+        "version": 1,
+        "room": true
+      },
+      "loaded": {
+        "gold": 137,
+        "iron": 42,
+        "tickets": 7,
+        "version": 1
+      },
+      "errors": []
+    }
+  ]
+}

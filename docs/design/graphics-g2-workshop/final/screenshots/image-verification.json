@@ -1,0 +1,194 @@
+[
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "approved",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "classic",
+    "art": "final",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "approved",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "pc",
+    "style": "v2",
+    "art": "final",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "approved",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "classic",
+    "art": "final",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "approved",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "mobile",
+    "style": "v2",
+    "art": "final",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "classic",
+    "art": "approved",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "classic",
+    "art": "final",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "v2",
+    "art": "approved",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-pc",
+    "style": "v2",
+    "art": "final",
+    "changedBox": [
+      467,
+      119,
+      638,
+      275
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "classic",
+    "art": "approved",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "classic",
+    "art": "final",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "v2",
+    "art": "approved",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  },
+  {
+    "device": "dusk-mobile",
+    "style": "v2",
+    "art": "final",
+    "changedBox": [
+      237,
+      705,
+      579,
+      1017
+    ],
+    "outsideWorkshopChanges": false
+  }
+]

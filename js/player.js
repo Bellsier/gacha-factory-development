@@ -2,6 +2,9 @@
 // No wandering AI, no collision with mines, no pathfinding.
 // Task 66: the mountain range (js/terrain.js) blocks movement — see tickPlayer.
 const playerHeld = { up: false, down: false, left: false, right: false };
+// Task 21: when the player started holding a direction (performance.now()). A game tick the clock
+// makes up for time before that moment does not move the player (main.js tickClock).
+let playerHeldSince = -Infinity;
 
 function playerDirFromKey(key){
   if(key === 'w' || key === 'W' || key === 'ArrowUp') return 'up';
@@ -13,6 +16,7 @@ function playerDirFromKey(key){
 
 function setPlayerHeld(dir, down){
   if(!Object.prototype.hasOwnProperty.call(playerHeld, dir)) return false;
+  if(down && !playerHeld.up && !playerHeld.down && !playerHeld.left && !playerHeld.right && typeof performance !== 'undefined') playerHeldSince = performance.now();
   playerHeld[dir] = !!down;
   return true;
 }
@@ -25,6 +29,7 @@ function clearPlayerHeld(){
 }
 
 function clampPlayerPosition(x, y){
+  if(currentWorldContext()){ const b=worldBounds(); return {x:clampPlayerAxis(x,b.minX,b.maxX),y:clampPlayerAxis(y,b.minY,b.maxY)}; }
   return {
     x: clampPlayerAxis(x, BALANCE.world.BOUNDS_MIN_X, BALANCE.world.BOUNDS_MAX_X),
     y: clampPlayerAxis(y, BALANCE.world.BOUNDS_MIN_Y, BALANCE.world.BOUNDS_MAX_Y),
@@ -127,6 +132,10 @@ function worldSceneryBase(){
 // The scenery of this game: the fixed pieces minus those on a mine, with a
 // grid of the solid ones for quick lookups. Cached until the mines change.
 function worldScenery(){
+  if(currentWorldContext()) return worldGeneratedScenery();
+  return worldSceneryLegacy();
+}
+function worldSceneryLegacy(){
   const mines = state.world.mines;
   const c = worldSceneryCache, last = mines[mines.length - 1];
   const key = mines.length + '|' + (mines[0] ? mines[0].x + ',' + mines[0].y : '') + '|' + (last ? last.x + ',' + last.y : '');
@@ -141,7 +150,11 @@ function worldScenery(){
 
 // Obstacle boxes in world coordinates, optionally only those near (x, y). Near a point the chunk
 // index answers (worldindex.js, same boxes in the same order); the whole world is the full scan.
+// In the 256 test world this first loads the generated chunks round the point (worldEnsureRect),
+// which adds their veins to state.world.mines: code that reads the index directly must do the same
+// (villageStandGrid in village.js does).
 function worldObstacles(nearX, nearY, radius){
+  if(radius !== undefined && Number.isFinite(nearX) && Number.isFinite(nearY)) worldEnsureRect({minX:nearX-radius-1,maxX:nearX+radius+1,minY:nearY-radius-1,maxY:nearY+radius+1});
   if(radius !== undefined && typeof worldObstaclesNear === 'function') return worldObstaclesNear(nearX, nearY, radius);
   return worldObstaclesScan(nearX, nearY, radius);
 }
@@ -163,7 +176,7 @@ function worldObstaclesScan(nearX, nearY, radius){
     out.push(o);
   });
   // Task 111: solid scenery beyond the mountain (only reachable, and drawn, with the tunnel open)
-  if(terrainTunnelOpen()){
+  if(terrainTunnelOpen() || currentWorldContext()){
     const sc = worldScenery();
     let cands = sc.solid;
     if(radius !== undefined){
@@ -190,6 +203,7 @@ function playerCanStand(x, y){
 }
 
 function tickPlayer(){
+  if(typeof tickClockTickAt === 'number' && tickClockTickAt < playerHeldSince) return; // Task 21: a made-up tick from before the press
   const player = state.world.player;
   // Task 119: inside the house the room moves; the world position waits on the door step
   if(typeof villageHomeInside === 'function' && villageHomeInside()){ player.pose = 'idle'; villageHomeTick(); return; }
@@ -205,6 +219,7 @@ function tickPlayer(){
   const step = BALANCE.world.PLAYER_SPEED / TICKS_PER_SECOND;
   const startX = player.x, startY = player.y;
   const moved = worldStepFoot(startX, startY, dx, dy, step);
+  worldRememberReturn(startX,startY,moved.x,moved.y);
   player.x = moved.x;
   player.y = moved.y;
   if(Math.abs(dx) >= Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
@@ -249,8 +264,11 @@ function worldStepFoot(startX, startY, dx, dy, step, opts){
     }
     return 0;
   };
-  // Only obstacles are slipped around; the mountain behaves exactly as before (Task 66).
-  const terrainAllows = (tx, ty) => !terrainOk || isWorldPointWalkable(tx, ty);
+  // Only obstacles are slipped around; the mountain behaves exactly as before (Task 66). Task 22: in
+  // the 256 test world the generated rock's corners are slipped round too (its gaps can be one cell
+  // wide), within the same CORNER_SLIP; a straight face still stops the player flush there, as no
+  // side step clears it.
+  const terrainAllows = (tx, ty) => !terrainOk || isWorldPointWalkable(tx, ty) || !!currentWorldContext();
   if(dy === 0 && Math.abs(x - next.x) > 1e-9 && Math.abs(x - startX) < step * 0.5 && terrainAllows(next.x, startY)){
     const s2 = slip('x', startY, next.x);
     if(s2 && ok(x, startY + s2)) y = startY + s2;

@@ -19,7 +19,7 @@ function freshBasePosition(){
 function freshWorldState(){
   const base = { ...freshBasePosition(), level: 1 };
   const mines = generateInitialWorldMines(base);
-  return {
+  const world = {
     base,
     mines,
     workshops: [],
@@ -36,6 +36,8 @@ function freshWorldState(){
     // Task 112: torches the player has set down in the world ({ x, y } each)
     torches: [],
   };
+  worldTestInitialize(world);
+  return world;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,24 +183,19 @@ function sanitizeVillageState(raw){
 }
 
 // ---------------------------------------------------------------------------
-// Save / load (localStorage). Task 1. Single storage key, versioned payload,
+// Save / load (localStorage). Task 1. One key per page, versioned payload,
 // per-field defensive validation. Never touches game balance/rules — only
 // persists and restores the state that already exists above.
 // ---------------------------------------------------------------------------
-// The development repository's Pages preview (<owner>.github.io/gacha-factory-development/)
-// shares its origin, and so its localStorage, with the original game's preview on the
-// same github.io domain. It saves under its own key and never reads, writes or removes the
-// original one. Everywhere else (local files, a local server, the tests, the original
-// preview) the key stays 'gachaFactorySave'. The saved payload is the same either way.
-const SAVE_KEY_DEFAULT = 'gachaFactorySave';
-const SAVE_KEY_DEV_PREVIEW = 'gachaFactorySave.dev';
-function saveKeyFor(loc){
-  try{
-    if(loc && /\.github\.io$/i.test(String(loc.hostname)) && /^\/gacha-factory-development(\/|$)/i.test(String(loc.pathname))) return SAVE_KEY_DEV_PREVIEW;
-  }catch(e){ /* no usable location: the default key */ }
-  return SAVE_KEY_DEFAULT;
-}
-const SAVE_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null);
+// SAVE_BASE_KEY is the game's key (storagekeys.js): 'gachaFactorySave', or
+// 'gachaFactorySave.dev' on the development repository's Pages preview, which shares
+// its origin (and so its localStorage) with the original game's preview and must never
+// read, write or remove the original's save. In the 256 test world (?worldgen=256,
+// worldchunks.js) the page saves under SAVE_BASE_KEY + '.worldgen256.v1' instead, and
+// only reads SAVE_BASE_KEY once, to start the test world from the game's progress.
+// The saved payload has the same shape either way.
+const SAVE_BASE_KEY = saveKeyFor(typeof location !== 'undefined' ? location : null);
+const SAVE_KEY = worldTestMode() ? WORLDGEN_TEST_KEY : SAVE_BASE_KEY;
 const CURRENT_SAVE_VERSION = 1;
 let saveBlocked = false;    // true once a future-version save is detected, so we never overwrite it
 let saveFailLogged = false; // avoid spamming the log every 10s while storage stays unavailable
@@ -208,8 +205,11 @@ function isNonNegativeFinite(v){ return isFiniteNumber(v) && v >= 0; }
 function isNonNegativeInt(v){ return isNonNegativeFinite(v) && Number.isInteger(v); }
 function isPlainObject(v){ return v !== null && typeof v === 'object' && !Array.isArray(v); }
 
+// Before a save: can storage be used at all? The test world only reads (it writes no probe
+// key); a write that fails is still caught by saveGame's own try.
 function storageAvailable(){
   try{
+    if(worldTestMode()){ localStorage.getItem(SAVE_KEY); return true; }
     const k = '__save_test__';
     localStorage.setItem(k, '1');
     localStorage.removeItem(k);
@@ -278,6 +278,8 @@ function sanitizeCharacters(raw){
 }
 
 function isValidWorldCoord(v, axis){
+  const context = currentWorldContext();
+  if(context) return Number.isInteger(v) && Math.abs(v) <= WORLD256.EDGE; // the integers inside the 256 world's edge: -31..31
   const b = BALANCE.world;
   const min = axis === 'y' ? b.BOUNDS_MIN_Y : b.BOUNDS_MIN_X;
   const max = axis === 'y' ? b.BOUNDS_MAX_Y : b.BOUNDS_MAX_X;
@@ -351,8 +353,9 @@ function clampPlayerAxis(v, min, max){
 function sanitizePlayer(raw, base, tunnelOpen){
   const fresh = freshPlayerState(base);
   if(!isPlainObject(raw)) return fresh;
-  let x = isFiniteNumber(raw.x) ? clampPlayerAxis(raw.x, BALANCE.world.BOUNDS_MIN_X, BALANCE.world.BOUNDS_MAX_X) : fresh.x;
-  let y = isFiniteNumber(raw.y) ? clampPlayerAxis(raw.y, BALANCE.world.BOUNDS_MIN_Y, BALANCE.world.BOUNDS_MAX_Y) : fresh.y;
+  const bounds = worldBounds();
+  let x = isFiniteNumber(raw.x) ? clampPlayerAxis(raw.x, bounds.minX, bounds.maxX) : fresh.x;
+  let y = isFiniteNumber(raw.y) ? clampPlayerAxis(raw.y, bounds.minY, bounds.maxY) : fresh.y;
   // Task 66: a saved position inside the mountain / beyond it (only possible
   // in saves from before the mountain existed) is moved onto the base.
   if(!isWorldPointWalkable(x, y, tunnelOpen === true)){ x = fresh.x; y = fresh.y; }
@@ -398,7 +401,7 @@ function sanitizeWorldState(raw){
 // positions are kept exactly as saved.
 function sanitizeTorches(raw){
   if(!Array.isArray(raw)) return [];
-  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && terrainInBounds(t.x, t.y))
+  return raw.filter(t => isPlainObject(t) && isFiniteNumber(t.x) && isFiniteNumber(t.y) && (terrainInBounds(t.x, t.y) || currentWorldContext() && Math.abs(t.x) < WORLD256.EDGE && Math.abs(t.y) < WORLD256.EDGE))
     .slice(0, typeof TORCH !== 'undefined' ? TORCH.MAX : 12).map(t => ({ x: t.x, y: t.y }));
 }
 
@@ -552,7 +555,9 @@ function reportSaveFailed(){
 }
 
 function saveGame(){
+  if(typeof S2Runtime!=='undefined'&&S2Runtime.started)return S2Runtime.autosave();
   if(saveBlocked) return false; // a future-version save exists on disk — never overwrite it
+  if(saveCorrupt || saveUnverified){ setSaveStatus('저장 보호 중'); return false; } // C1: a damaged or unread save is kept
   try{
     if(!storageAvailable()){
       return reportSaveFailed();
@@ -561,7 +566,7 @@ function saveGame(){
       saveVersion: CURRENT_SAVE_VERSION,
       savedAt: Date.now(),
       permanent: { totalPrestige: permanent.totalPrestige, runCount: permanent.runCount, tickets: permanent.tickets, firstGachaGranted: permanent.firstGachaGranted, companies: permanent.companies },
-      run: state,
+      run: serializeRunForSave(state),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     saveFailLogged = false;
@@ -575,15 +580,18 @@ function saveGame(){
 // Returns one of:
 //   {ok:true, permanent, run}
 //   {ok:false, reason:'none'}        — nothing saved yet (not an error)
-//   {ok:false, reason:'unavailable'} — localStorage can't be used here
-//   {ok:false, reason:'corrupted'}   — save exists but isn't valid JSON/shape
+//   {ok:false, reason:'unavailable'} — the save can't be read here (C1: saving is then off this session)
+//   {ok:false, reason:'corrupted', raw, key} — save exists but isn't valid JSON/shape, or has no run (C1: raw is the text as
+//                                    stored under `key`: SAVE_KEY, or SAVE_BASE_KEY when the test world has no save of its own)
 //   {ok:false, reason:'future'}      — save is from a newer saveVersion than this build understands
 function loadGame(){
-  let raw;
+  let raw, key = SAVE_KEY, hadTrialSave = false;
   try{
-    if(!storageAvailable()) return { ok:false, reason:'unavailable' };
-    raw = localStorage.getItem(SAVE_KEY);
+    raw = localStorage.getItem(SAVE_KEY); // C1: only read here — a full storage still reads (a write probe used to skip every check)
+    hadTrialSave = !!raw && worldTestMode();
+    if(!raw && worldTestMode()){ key = SAVE_BASE_KEY; raw = localStorage.getItem(SAVE_BASE_KEY); }
   }catch(e){
+    saveUnverified = true; // the save could not be read: nothing may be written over it this session
     return { ok:false, reason:'unavailable' };
   }
   if(!raw) return { ok:false, reason:'none' };
@@ -591,19 +599,118 @@ function loadGame(){
   try{
     payload = JSON.parse(raw);
   }catch(e){
-    return { ok:false, reason:'corrupted' };
+    return { ok:false, reason:'corrupted', raw, key };
   }
   if(!isPlainObject(payload) || !isFiniteNumber(payload.saveVersion)){
-    return { ok:false, reason:'corrupted' };
+    return { ok:false, reason:'corrupted', raw, key };
   }
   if(payload.saveVersion > CURRENT_SAVE_VERSION){
     return { ok:false, reason:'future' }; // never touch the raw storage in this case
   }
+  if(!isPlainObject(payload.run)) return { ok:false, reason:'corrupted', raw, key }; // C1: no run, nothing to load — keep it rather than overwrite it
   payload = migrateSave(payload);
+  try{
+    worldLoadingContext = worldContext(payload.run && payload.run.world);
+    if(hadTrialSave && !worldLoadingContext) throw new Error('Missing test world metadata');
+    const run = sanitizeRunState(payload.run);
+    if(worldLoadingContext) Object.assign(run.world, worldLoadingContext);
+    if(worldLoadingContext && payload.run.world.testReturnPosition) run.world.testReturnPosition = payload.run.world.testReturnPosition;
+    return {ok:true, permanent:sanitizePermanent(payload.permanent), run};
+  }catch(error){
+    if(worldTestMode()) { saveBlocked=true; return {ok:false,reason:'worldgen',detail:error.message}; }
+    throw error;
+  }finally{ worldLoadingContext=null; }
+}
+
+// ---------------------------------------------------------------------------
+// C1: a damaged save is never overwritten. boot() hands the text that could
+// not be read to protectCorruptSave(), with the key it was read from: a copy
+// goes to a backup key named after that key (when the storage takes it), and
+// saveGame() refuses to write — autosave, closing the tab, every caller — until
+// the player chooses to start the new game's save (saveStartOver, the notice's
+// button). The original key is only read here.
+// Nothing about this is saved; the save format is unchanged.
+// ---------------------------------------------------------------------------
+let saveCorrupt = null;      // { key, raw, backupKey, backupOk, changed } while a damaged save is being kept
+let saveUnverified = false;  // the save could not be read at all: never write over it this session
+let saveWatching = false;
+
+// A short fixed name for a text (the same damaged save always gets the same backup key).
+function saveBackupHash(text){
+  let h = 5381;
+  for(let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, '0');
+}
+
+// Copies the damaged text found under `from` to its backup key (`from` + '.corrupt-backup.' + hash),
+// so the test world backs up a damaged normal save under the normal key's name, as the normal game
+// does. A key that already holds other text is left alone.
+function backupCorruptSave(raw, from){
+  const base = from + '.corrupt-backup.' + saveBackupHash(raw);
+  try{
+    for(let n = 0; n < 5; n++){
+      const key = n ? base + '.' + n : base, have = localStorage.getItem(key);
+      if(have === raw) return { backupKey: key, backupOk: true };
+      if(have !== null) continue;
+      localStorage.setItem(key, raw);
+      return { backupKey: key, backupOk: localStorage.getItem(key) === raw };
+    }
+  }catch(e){ /* storage full or refusing: the original stays where it is */ }
+  return { backupKey: null, backupOk: false };
+}
+
+function protectCorruptSave(raw, key){
+  const text = typeof raw === 'string' ? raw : String(raw), from = key || SAVE_KEY;
+  saveCorrupt = Object.assign(backupCorruptSave(text, from), { key: from, raw: text, changed: false });
+  log(saveCorrupt.backupOk
+    ? '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두고 백업도 만들었습니다(' + saveCorrupt.backupKey + ').'
+    : '저장 데이터를 읽을 수 없어 새로 시작했습니다. 원래 저장은 그대로 두었지만 백업을 만들지 못했습니다.');
+  setSaveStatus('저장 보호 중');
+  // another tab saving over the kept text withdraws this tab's offer to start over
+  if(!saveWatching && typeof window !== 'undefined' && window.addEventListener){
+    saveWatching = true;
+    window.addEventListener('storage', (e) => { if(e.key === null || (saveCorrupt && e.key === saveCorrupt.key)) saveCheckUnchanged(); });
+  }
+  if(typeof renderSaveNotice === 'function') renderSaveNotice();
+}
+
+// Is the stored save (under the key it was read from) still the text this tab is keeping?
+// If not (another tab saved, or it can't be read), the offer to start over is withdrawn for good.
+function saveCheckUnchanged(){
+  if(!saveCorrupt) return true;
+  let now;
+  try{ now = localStorage.getItem(saveCorrupt.key); }catch(e){ now = undefined; }
+  if(now === saveCorrupt.raw && !saveCorrupt.changed) return true;
+  if(!saveCorrupt.changed){
+    saveCorrupt.changed = true;
+    log('다른 탭에서 저장이 바뀌어 이 탭은 저장하지 않습니다. 이어 하려면 새로고침하세요.');
+    if(typeof renderSaveNotice === 'function') renderSaveNotice();
+  }
+  return false;
+}
+
+// Saving is off for this whole session for another reason (a future-version save, PR #5's trial mode).
+function saveIsBlocked(){ return saveBlocked; }
+
+// What the protection is doing now (read by the notice and the tests).
+function saveProtection(){
   return {
-    ok:true,
-    permanent: sanitizePermanent(payload.permanent),
-    run: sanitizeRunState(payload.run),
+    corrupt: !!saveCorrupt, unverified: saveUnverified, changed: !!(saveCorrupt && saveCorrupt.changed), blocked: saveIsBlocked(),
+    backupKey: saveCorrupt ? saveCorrupt.backupKey : null, backupOk: saveCorrupt ? saveCorrupt.backupOk : false,
   };
 }
 
+// The player chose to start the new game's save. Only while the stored text is still
+// the damaged one this tab found: the original is replaced (its backup, if any, stays).
+function saveStartOver(){
+  if(typeof S2Runtime!=='undefined'&&S2Runtime.started)return false;
+  if(!saveCorrupt || saveCorrupt.changed || saveIsBlocked() || saveUnverified) return false;
+  if(!saveCheckUnchanged()) return false;
+  const kept = saveCorrupt;
+  saveCorrupt = null;
+  const ok = saveGame();
+  if(ok) log('새 게임 저장을 시작했습니다.');
+  else saveCorrupt = kept; // nothing was written: keep protecting it
+  if(typeof renderSaveNotice === 'function') renderSaveNotice();
+  return ok;
+}

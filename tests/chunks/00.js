@@ -26,9 +26,9 @@ const html = fs.readFileSync(HTML_PATH, 'utf8');
 // in the exact same order the browser loads them — this is not a reimplementation,
 // it is the literal file content index.html points at.
 const JS_DIR = path.join(__dirname, '..', 'js');
-const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'village.js', 'ui.js', 'worldindex.js', 'main.js',
+const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'storagekeys.js', 'chunkgen.js', 'worldchunks.js', 'worldnavigation.js', 'save-engine.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'village.js', 'ui.js', 'worldindex.js', 'save-runtime.js', 'main.js',
   // Task 104-106: the top-down world (loaded after main.js, as in index.html)
-  'topdown/view.js', 'topdown/tiles.js', 'topdown/sprites.js', 'topdown/style.js', 'topdown/hires.js', 'topdown/interact.js', 'topdown/light.js', 'topdown/workers.js', 'topdown/render.js', 'topdown/app.js'];
+  'topdown/view.js', 'topdown/tiles.js', 'worldtileview.js', 'topdown/sprites.js', 'topdown/style.js', 'topdown/hires.js', 'topdown/interact.js', 'topdown/light.js', 'topdown/workers.js', 'topdown/render.js', 'topdown/app.js'];
 const moduleSource = MODULE_FILES.map((f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8')).join('\n');
 
 let passCount = 0;
@@ -95,6 +95,7 @@ function newDom(storage, opts) {
   const expose = `
 ;window.__expose = {
   state: () => state,
+  S2Runtime: () => S2Runtime, // UX-01: installs another run the way the game does
   permanent: () => permanent,
   saveBlocked: () => saveBlocked,
   RESOURCES: () => RESOURCES,
@@ -112,17 +113,19 @@ function newDom(storage, opts) {
   TICKS_PER_SECOND: () => TICKS_PER_SECOND,
   // Task 104-106: the top-down world
   TOPDOWN: () => TOPDOWN, TD_UNIT_PX: () => TD_UNIT_PX, TD: () => TD, TD_TILE: () => TD_TILE,
-  TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS,
+  TD_RES_COLORS: () => TD_RES_COLORS, TD_PLAYER_COLORS: () => TD_PLAYER_COLORS, TD_PLAYER_FAR_LEG: () => TD_PLAYER_FAR_LEG,
   // Task 107: obstacle boxes and the player's feet
   WORLD_OBSTACLE_BOXES: () => WORLD_OBSTACLE_BOXES, PLAYER_FOOT: () => PLAYER_FOOT, SCENERY_BLOCK_BOXES: () => SCENERY_BLOCK_BOXES, TORCH: () => TORCH,
   VILLAGE: () => VILLAGE, VILLAGE_RELICS: () => VILLAGE_RELICS, VILLAGE_RELIC_KEYS: () => VILLAGE_RELIC_KEYS, // Task 113
   TD_LIGHT: () => TD_LIGHT, // Task 108
   TD_WORKER: () => TD_WORKER, // Task 109
+  tickTimer: () => tickTimer, TICK_CLOCK: () => TICK_CLOCK, // Task 21: the game clock
 };
 `;
   win.eval(moduleSource + expose);
   Object.defineProperties(win, {
     state: { get: () => win.__expose.state(), configurable: true },
+    S2Runtime: { get: () => win.__expose.S2Runtime(), configurable: true },
     // permanent is the game's single cross-prestige state container
     // (totalPrestige/runCount/tickets/firstGachaGranted), replacing the
     // separate totalPrestige/runCount lets and window.tickets/
@@ -148,6 +151,7 @@ function newDom(storage, opts) {
     TD_TILE: { get: () => win.__expose.TD_TILE(), configurable: true },
     TD_RES_COLORS: { get: () => win.__expose.TD_RES_COLORS(), configurable: true },
     TD_PLAYER_COLORS: { get: () => win.__expose.TD_PLAYER_COLORS(), configurable: true },
+    TD_PLAYER_FAR_LEG: { get: () => win.__expose.TD_PLAYER_FAR_LEG(), configurable: true },
     WORLD_OBSTACLE_BOXES: { get: () => win.__expose.WORLD_OBSTACLE_BOXES(), configurable: true },
     SCENERY_BLOCK_BOXES: { get: () => win.__expose.SCENERY_BLOCK_BOXES(), configurable: true },
     TORCH: { get: () => win.__expose.TORCH(), configurable: true },

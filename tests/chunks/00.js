@@ -26,7 +26,7 @@ const html = fs.readFileSync(HTML_PATH, 'utf8');
 // in the exact same order the browser loads them — this is not a reimplementation,
 // it is the literal file content index.html points at.
 const JS_DIR = path.join(__dirname, '..', 'js');
-const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'storagekeys.js', 'chunkgen.js', 'worldchunks.js', 'worldnavigation.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'village.js', 'ui.js', 'worldindex.js', 'main.js',
+const MODULE_FILES = ['data.js', 'balance.js', 'terrain.js', 'worldgen.js', 'storagekeys.js', 'chunkgen.js', 'worldchunks.js', 'worldnavigation.js', 'save-engine.js', 'state.js', 'systems.js', 'factory.js', 'research.js', 'delivery.js', 'player.js', 'village.js', 'ui.js', 'worldindex.js', 'save-runtime.js', 'main.js',
   // Task 104-106: the top-down world (loaded after main.js, as in index.html)
   'topdown/view.js', 'topdown/tiles.js', 'worldtileview.js', 'topdown/sprites.js', 'topdown/style.js', 'topdown/hires.js', 'topdown/interact.js', 'topdown/light.js', 'topdown/workers.js', 'topdown/render.js', 'topdown/app.js'];
 const moduleSource = MODULE_FILES.map((f) => fs.readFileSync(path.join(JS_DIR, f), 'utf8')).join('\n');
@@ -95,6 +95,7 @@ function newDom(storage, opts) {
   const expose = `
 ;window.__expose = {
   state: () => state,
+  S2Runtime: () => S2Runtime, // UX-01: installs another run the way the game does
   permanent: () => permanent,
   saveBlocked: () => saveBlocked,
   RESOURCES: () => RESOURCES,
@@ -124,6 +125,7 @@ function newDom(storage, opts) {
   win.eval(moduleSource + expose);
   Object.defineProperties(win, {
     state: { get: () => win.__expose.state(), configurable: true },
+    S2Runtime: { get: () => win.__expose.S2Runtime(), configurable: true },
     // permanent is the game's single cross-prestige state container
     // (totalPrestige/runCount/tickets/firstGachaGranted), replacing the
     // separate totalPrestige/runCount lets and window.tickets/

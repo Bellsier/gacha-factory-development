@@ -1,0 +1,93 @@
+{
+ "runStatus": "passed",
+ "scenarios": [
+  {
+   "project": "pc",
+   "title": "UX-01 목표 재고 초안: 불완전 숫자·조합 중 재렌더, 정상 입력·정규화·포커스·커서",
+   "status": "passed",
+   "stages": [
+    [
+     "01-setup",
+     "통과"
+    ],
+    [
+     "02-target-7-auto",
+     "통과"
+    ],
+    [
+     "03-unfinished-1e",
+     "통과"
+    ],
+    [
+     "04-intentional-clear",
+     "통과"
+    ],
+    [
+     "05-valid-draft",
+     "통과"
+    ],
+    [
+     "06-caret",
+     "통과"
+    ],
+    [
+     "07-normalize",
+     "통과"
+    ],
+    [
+     "08-deferred-structure",
+     "통과"
+    ],
+    [
+     "09-composition",
+     "통과"
+    ]
+   ],
+   "findings": []
+  },
+  {
+   "project": "mobile",
+   "title": "UX-01 목표 재고 초안: 불완전 숫자·조합 중 재렌더, 정상 입력·정규화·포커스·커서",
+   "status": "passed",
+   "stages": [
+    [
+     "01-setup",
+     "통과"
+    ],
+    [
+     "02-target-7-auto",
+     "통과"
+    ],
+    [
+     "03-unfinished-1e",
+     "통과"
+    ],
+    [
+     "04-intentional-clear",
+     "통과"
+    ],
+    [
+     "05-valid-draft",
+     "통과"
+    ],
+    [
+     "06-caret",
+     "통과"
+    ],
+    [
+     "07-normalize",
+     "통과"
+    ],
+    [
+     "08-deferred-structure",
+     "통과"
+    ],
+    [
+     "09-composition",
+     "통과"
+    ]
+   ],
+   "findings": []
+  }
+ ]
+}

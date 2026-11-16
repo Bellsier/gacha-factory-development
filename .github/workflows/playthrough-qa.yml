@@ -1,0 +1,144 @@
+name: Playthrough QA
+
+on:
+  pull_request:
+    branches: [main, develop, codex/save-s2, test/playthrough-qa, fix/pre-s4-save-hud, feat/ux-01-crafting-cards, fix/ux-01-target-draft, test/fresh-play-autosave-wait] # fix/pre-s4-save-hud: UX-01 (Issue #32) stacks on PR #30; feat/ux-01-crafting-cards: its POST-QA fixes stack on PR #33; fix/ux-01-target-draft: POST-QA A stacks on PR #36; test/fresh-play-autosave-wait: UX-01 stabilisation stacks on PR #37
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:playthrough:reporter
+      - name: Existing full regression
+        run: |
+          mkdir -p work/regression
+          npm test 2>&1 | tee work/regression/results.log
+        env:
+          NODE_OPTIONS: --max-old-space-size=5120
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: existing-regression
+          path: work/regression/
+          retention-days: 14
+
+  existing-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Existing smoke, 38 S2 groups, and 9 bootstrap groups
+        run: |
+          mkdir -p work/existing-browser
+          node tests/browser-smoke.cjs 2>&1 | tee work/existing-browser/smoke.log
+          npm run test:saves 2>&1 | tee work/existing-browser/saves.log
+          npm run test:bootstrap 2>&1 | tee work/existing-browser/bootstrap.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: existing-browser
+          path: |
+            work/existing-browser/
+            work/bootstrap/
+          retention-days: 14
+
+  playthrough:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [pc, mobile]
+    env:
+      QA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+        id: install
+      - run: npx playwright install --with-deps chromium
+        id: browser
+      - name: Verify protected game and S2 behavior are untouched
+        id: baseline
+        # Stack-only guard (PRs #28-#38): it fixes what the stack may change since 224b3da/055588b, so it runs only
+        # for PRs into a stack branch. PRs into develop/main skip it and still play the game below.
+        if: contains(fromJSON('["codex/save-s2", "test/playthrough-qa", "fix/pre-s4-save-hud", "feat/ux-01-crafting-cards", "fix/ux-01-target-draft", "test/fresh-play-autosave-wait"]'), github.base_ref || github.ref_name)
+        run: node tools/check-pre-s4-hud-scope.cjs
+      - name: Guard fails on a checkout without its base commits (Issue #32 E)
+        run: node tests/guard-scope.test.cjs
+      - name: Record runtime versions
+        run: |
+          mkdir -p work/playthrough
+          node --version > work/playthrough/runtime.txt
+          npx playwright --version >> work/playthrough/runtime.txt
+          git rev-parse HEAD >> work/playthrough/runtime.txt
+      - name: Play through with real input
+        id: play
+        run: npm run test:playthrough -- --project=${{ matrix.viewport }}
+      - name: Korean stage summary
+        if: always()
+        env:
+          QA_INSTALL_STATUS: ${{ steps.install.outcome }}
+          QA_BROWSER_STATUS: ${{ steps.browser.outcome }}
+          QA_BASELINE_STATUS: ${{ steps.baseline.outcome }}
+          QA_PLAY_STATUS: ${{ steps.play.outcome }}
+        run: |
+          mkdir -p work/playthrough
+          if [[ -f tests/playthrough/ci-summary.cjs ]] && command -v node >/dev/null; then
+            node tests/playthrough/ci-summary.cjs | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            printf '# 채굴 공방 QA — 검증 미완료\n\n체크아웃 또는 Node 준비 실패. Actions 로그를 확인해 주세요.\n' > work/playthrough/summary.md
+            printf '{"success":false,"runStatus":"setup-failed","scenarios":[]}\n' > work/playthrough/summary.json
+            cat work/playthrough/summary.md >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playthrough-${{ matrix.viewport }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: work/playthrough/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playthrough-results-${{ matrix.viewport }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            work/playthrough/summary.json
+            work/playthrough/summary.md
+            work/playthrough/evidence-index.json
+            work/playthrough/setup.json
+            work/playthrough/runtime.txt
+          if-no-files-found: error
+          retention-days: 14

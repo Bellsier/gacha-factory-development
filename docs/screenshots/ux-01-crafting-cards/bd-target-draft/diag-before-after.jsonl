@@ -1,0 +1,2 @@
+{"label":"before c04e2cd","before":{"target":7,"bad":true},"afterRebuild":{"target":0,"bad":false,"focused":true},"steelAfter2s":27,"compositionControl":"123","compositionRebuild":"12312","pageErrors":0}
+{"label":"after fix/ux-01-target-draft","before":{"target":7,"bad":true},"afterRebuild":{"target":7,"bad":true,"focused":true},"steelAfter2s":7,"compositionControl":"123","compositionRebuild":"123","pageErrors":0}

@@ -555,6 +555,7 @@ function reportSaveFailed(){
 }
 
 function saveGame(){
+  if(typeof S2Runtime!=='undefined'&&S2Runtime.started)return S2Runtime.autosave();
   if(saveBlocked) return false; // a future-version save exists on disk — never overwrite it
   if(saveCorrupt || saveUnverified){ setSaveStatus('저장 보호 중'); return false; } // C1: a damaged or unread save is kept
   try{
@@ -702,6 +703,7 @@ function saveProtection(){
 // The player chose to start the new game's save. Only while the stored text is still
 // the damaged one this tab found: the original is replaced (its backup, if any, stays).
 function saveStartOver(){
+  if(typeof S2Runtime!=='undefined'&&S2Runtime.started)return false;
   if(!saveCorrupt || saveCorrupt.changed || saveIsBlocked() || saveUnverified) return false;
   if(!saveCheckUnchanged()) return false;
   const kept = saveCorrupt;

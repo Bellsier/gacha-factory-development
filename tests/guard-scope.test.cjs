@@ -14,7 +14,10 @@ const repo = path.resolve(__dirname, '..');
 const guardSource = fs.readFileSync(path.join(repo, 'tools/check-pre-s4-hud-scope.cjs'), 'utf8');
 const S2_BASE = '224b3dad86614438ec28ad065bd71d3bbc4b0726', HUD_HEAD = '055588bb3e979147bb3f723c1ee2b6e85b5ff5ad';
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-const head = git(repo, 'rev-parse', 'HEAD');
+// The guard is stack-only (see the workflow test below), so its cases run on the stack's last tree the guard
+// approved — c83312f, the #30 head merged as badcdba/eb15384 — not on HEAD, which may now change other files.
+const STACK_HEAD = 'c83312f96d0bf2a558da3a12c1d3bce44cd222c0';
+const head = STACK_HEAD;
 const has = sha => { try { git(repo, 'cat-file', '-e', sha + '^{commit}'); return true; } catch { return false; } };
 if (!has(S2_BASE) || !has(HUD_HEAD)) throw new Error('guard-scope.test needs the full history (fetch-depth 0): a base commit is missing here.');
 
@@ -255,6 +258,24 @@ test('negative (G-04 shape): the real bindings left as the HUD onclick lines (on
 });
 test('negative (G-04 shape): an executable line right after the late helper fails', () => {
   rejects(edited('js/topdown/app.js', g04({ after: ['tdTorchNow();'] })), OUTSIDE);
+});
+
+// Review I-3: the guard is for this PR stack only. In the Playthrough QA workflow its step runs only for PRs into a
+// stack branch; a PR into develop or main (e.g. one that changes js/balance.js) skips it and still plays the game.
+// The guard tests above and the play step keep running for every PR.
+test('workflow: the scope guard step runs only for PRs into the stack branches; tests and play always run', () => {
+  const yml = fs.readFileSync(path.join(repo, '.github/workflows/playthrough-qa.yml'), 'utf8');
+  const step = name => { const at = yml.indexOf('- name: ' + name); assert.ok(at >= 0, 'step not found: ' + name); const next = yml.indexOf('\n      - ', at + 1); return yml.slice(at, next < 0 ? undefined : next); };
+  const guardStep = step('Verify protected game and S2 behavior are untouched');
+  const m = guardStep.match(/\n\s+if: contains\(fromJSON\('(\[[^']*\])'\), github\.base_ref \|\| github\.ref_name\)\s*\n/);
+  assert.ok(m, 'the guard step needs: if: contains(fromJSON(\'[stack branches]\'), github.base_ref || github.ref_name)');
+  const stack = JSON.parse(m[1]);
+  const runsFor = base => stack.includes(base); // the expression above, for a pull_request into `base`
+  for (const base of ['develop', 'main']) assert.equal(runsFor(base), false, 'guard must not run for PRs into ' + base);
+  for (const base of ['codex/save-s2', 'test/playthrough-qa', 'fix/pre-s4-save-hud', 'feat/ux-01-crafting-cards', 'fix/ux-01-target-draft', 'test/fresh-play-autosave-wait'])
+    assert.equal(runsFor(base), true, 'guard must still run for PRs into the stack branch ' + base);
+  for (const name of ['Guard fails on a checkout without its base commits (Issue #32 E)', 'Play through with real input'])
+    assert.doesNotMatch(step(name), /\n\s+if:/, name + ' must run for every PR');
 });
 
 test('the shared checkout is back to the committed files and passes', () => {

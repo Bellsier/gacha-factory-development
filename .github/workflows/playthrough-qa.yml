@@ -91,6 +91,9 @@ jobs:
         id: browser
       - name: Verify protected game and S2 behavior are untouched
         id: baseline
+        # Stack-only guard (PRs #28-#38): it fixes what the stack may change since 224b3da/055588b, so it runs only
+        # for PRs into a stack branch. PRs into develop/main skip it and still play the game below.
+        if: contains(fromJSON('["codex/save-s2", "test/playthrough-qa", "fix/pre-s4-save-hud", "feat/ux-01-crafting-cards", "fix/ux-01-target-draft", "test/fresh-play-autosave-wait"]'), github.base_ref || github.ref_name)
         run: node tools/check-pre-s4-hud-scope.cjs
       - name: Guard fails on a checkout without its base commits (Issue #32 E)
         run: node tests/guard-scope.test.cjs

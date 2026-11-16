@@ -130,7 +130,9 @@ const S2Runtime = {
       this.engine=await SaveEngine.open(SAVE_BASE_KEY);await this.startPresence();
       const history=await this.engine.history(SAVE_BASE_KEY),raw=localStorage.getItem(SAVE_BASE_KEY);
       let migrated=null;
-      if(raw!==null&&!history.length)migrated=await this.importLegacy();
+      // A legacy save this version cannot read (damaged, newer or trial) stays untouched; the storage itself works,
+      // so the player gets the town picker with the reason instead of the start error screen.
+      if(raw!==null&&!history.length){try{migrated=await this.importLegacy();}catch(e){if(!['INVALID_SAVE','TRIAL_SAVE'].includes(e?.code))throw e;this.message='기존 저장을 불러오지 못했습니다(손상되었거나 지원하지 않는 버전). 원본은 그대로 보존됩니다. 새 마을을 만들거나 기존 마을을 선택해 주세요.';}}
       else if(raw!==null&&!history.some(h=>h.raw===raw)){this.legacyRaw=raw;this.message='구버전에서 변경된 저장 발견 · 별도 마을로 가져올 수 있습니다.';}
       const list=await this.engine.list();
       if(migrated&&!migrated.deleted){const saved=await this.engine.read(migrated.id);this.decode(saved.snapshot.payload);this.apply(await this.engine.claim(migrated.id,false,null,saved));}

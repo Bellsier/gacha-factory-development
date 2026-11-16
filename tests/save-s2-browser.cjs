@@ -227,6 +227,25 @@ const server = http.createServer(async (req, res) => {
       assert.equal(await p.evaluate(()=>S2Runtime.canPlay()),false);
       assert.equal(await p.evaluate(()=>saveGame()),false);
       assert.equal(await p.evaluate(()=>localStorage.getItem('gachaFactorySave')),before);
+      if(mode!=='unavailable'){
+        // Review I-1: a save that cannot be imported must not trap the player on the start error screen while the
+        // storage itself works. The picker opens with the reason; a new town can be made; the original stays byte-equal.
+        await p.waitForFunction(()=>GameBootstrap.state!=='loading');
+        assert.equal(await p.evaluate(()=>GameBootstrap.state),'ready');
+        await p.locator('#s2Menu').waitFor({state:'visible'});
+        assert.match(await p.locator('[data-s2-message]').textContent(),/원본/);
+        assert.equal(await p.evaluate(()=>S2Runtime.engine.list().then(l=>l.villages.length)),0);
+        await p.locator('[data-s2-name]').fill('새 출발 '+mode);await p.locator('[data-s2-new]').click();
+        await p.waitForFunction(()=>S2Runtime.canPlay());
+        assert.equal(await p.evaluate(()=>localStorage.getItem('gachaFactorySave')),before);
+        // Next visit: the same reason, the S2 town can be chosen, still no import and the original untouched.
+        await p.reload();await p.waitForFunction(()=>typeof GameBootstrap!=='undefined'&&GameBootstrap.state!=='loading');
+        assert.equal(await p.evaluate(()=>GameBootstrap.state),'ready');
+        await p.locator('[data-s2-recent]').waitFor({state:'visible'});await p.locator('[data-s2-recent]').click();
+        await p.waitForFunction(n=>S2Runtime.session?.name===n&&S2Runtime.canPlay(),'새 출발 '+mode);
+        assert.equal(await p.evaluate(()=>S2Runtime.engine.list().then(l=>l.villages.length)),1);
+        assert.equal(await p.evaluate(()=>localStorage.getItem('gachaFactorySave')),before);
+      }
       await isolated.close();console.log('PASS S2 protection:',mode);
     }
     const missing=await browser.newContext();await missing.route('https://fonts.googleapis.com/**',r=>r.fulfill({status:200,body:''}));

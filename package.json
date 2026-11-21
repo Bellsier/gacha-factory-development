@@ -15,7 +15,7 @@
     "test:playthrough:reporter": "node tests/playthrough/reporting.test.cjs && node tests/playthrough/save-wait.test.cjs"
   },
   "devDependencies": {
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.65.1",
     "jsdom": "^30.0.1"
   }
 }
